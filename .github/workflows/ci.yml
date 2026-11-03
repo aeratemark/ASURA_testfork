@@ -1,0 +1,27 @@
+# CI: format and lint, nothing else.
+#
+# The decision is recorded in docs/16-implementation-plan.md, S7 (D7.1): the test suite needs a live
+# PostgreSQL database to mean anything, and the repository's testing policy (docs/HANDOFF.md) says the
+# real game client is the test and the suite is not a gate. So this workflow runs only the checks
+# that need no database and no client, on every push and pull request.
+#
+# The Linux runner is also the first Linux signal the stack gets, since the supervisor has not had a
+# live run on a Linux host yet (docs/17-running-on-linux.md).
+
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  fmt-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: rustfmt
+        run: cargo fmt --all -- --check
+
+      - name: clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings

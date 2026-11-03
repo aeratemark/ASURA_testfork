@@ -1,0 +1,11 @@
+[package]
+name = "asura-fakeworld"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "The fake-world harness: registers, heartbeats, reserves, goes silent, and gets reaped"
+
+[dependencies]
+asura-db = { path = "../asura-db" }
+tokio = { workspace = true }

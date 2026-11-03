@@ -1,0 +1,36 @@
+# ASURA's services for the Docker bundle (docker/compose.yml).
+#
+# This is config/services.toml with ONE difference: the services that clients reach from outside
+# the container (auth :6112, web gate :6601) bind 0.0.0.0, because Docker forwards a published port
+# to the container's network address, not its loopback. The world stays on loopback: the client
+# never dials a world directly, the auth service relays to it inside the same container.
+#
+# Everything else - the service list, the arguments, the health checks, the log paths - is the
+# host file verbatim. When config/services.toml changes, this file changes with it.
+
+version = 1
+
+[settings]
+control = "127.0.0.1:7711"
+health_timeout_secs = 30
+
+[services.webgate]
+exe = "target/debug/asura-webgate"
+args = ["--bind", "0.0.0.0:6601"]
+port = 6601
+health = { tcp = "127.0.0.1:6601" }
+log = "logs/webgate.log"
+
+[services.auth]
+exe = "target/debug/asura-auth"
+args = ["--bind", "0.0.0.0:6112"]
+port = 6112
+health = { tcp = "127.0.0.1:6112" }
+log = "logs/auth.log"
+
+[services.world-8001]
+exe = "target/debug/asura-world"
+args = ["--world", "8001", "--capacity", "8", "--public", "127.0.0.1:6113"]
+port = 6113
+health = { world = 8001 }
+log = "logs/world-8001.log"

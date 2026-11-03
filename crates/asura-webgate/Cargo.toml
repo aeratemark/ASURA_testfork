@@ -1,0 +1,12 @@
+[package]
+name = "asura-webgate"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "The portal web gate: how the client learns its portal identity before it logs in"
+
+[dependencies]
+asura-db = { path = "../asura-db" }
+tokio = { workspace = true }
+uuid = { workspace = true }

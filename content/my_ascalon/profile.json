@@ -1,0 +1,7 @@
+{
+  "format": "asura-cs-profile/1",
+  "id": "my_ascalon",
+  "name": "My Ascalon",
+  "description": "Snapshot of ASURA's map catalogue, spawn points and travel portals.",
+  "based_on": "base"
+}

@@ -1,0 +1,53 @@
+# ASURA in Docker - the optional second runner.
+#
+# The machine container runs the supervisor exactly as a host does: same config/services.toml,
+# same start/stop/status, same registry rows, same logs. Docker only supplies the machine and the
+# network around it. The non-Docker path (docs/19-running.md) is unchanged and remains the default.
+#
+#   docker compose -f docker/compose.yml up -d --build
+#   docker compose -f docker/compose.yml exec machine target/debug/asura-supervisor status
+#   docker compose -f docker/compose.yml logs -f machine
+#   docker compose -f docker/compose.yml down
+#
+# The Windows client dials 127.0.0.1:6112 and 127.0.0.1:6601 as it always does; those two ports are
+# the whole client-facing surface. Worlds are dialled by the auth service inside the same container,
+# never by the client, so no world port is published.
+
+name: asura
+
+services:
+  database:
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_USER: asura
+      POSTGRES_PASSWORD: ${ASURA_DB_PASSWORD:-asura}
+      POSTGRES_DB: asura
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U asura -d asura"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+
+  machine:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      ASURA_DATABASE_URL: postgres://asura:${ASURA_DB_PASSWORD:-asura}@database:5432/asura
+      # No .git in a Docker build, so the build id is stated here instead (S3 reads it at startup).
+      ASURA_BUILD: docker
+    ports:
+      - "127.0.0.1:6112:6112" # auth: the client's front door, login and the relayed game connection
+      - "127.0.0.1:6601:6601" # web gate: the portal login the client asks before it logs in
+    volumes:
+      - logs:/src/logs
+    stop_grace_period: 30s
+
+volumes:
+  database:
+  logs:

@@ -1,0 +1,73 @@
+{
+  "map_id": 147,
+  "name": "The Northlands",
+  "map_type": 1,
+  "map_file_id": 2147871382,
+  "objects": [
+    {
+      "type": "spawn",
+      "id": "spawn_147_0",
+      "name": "Spawn 0",
+      "x": -11679.181,
+      "y": -16305.796,
+      "z": 0.0,
+      "plane": 0,
+      "yaw": 0.0,
+      "layer": "",
+      "index": 0
+    },
+    {
+      "type": "portal",
+      "id": "portal_147_0",
+      "name": "Portal 0",
+      "x": 26113.0,
+      "y": 4767.0,
+      "z": -467.0,
+      "plane": 0,
+      "yaw": 0.0,
+      "layer": "",
+      "model_file_id": 43045,
+      "radius": 250.0,
+      "to_map": 0,
+      "arrive_x": 0.0,
+      "arrive_y": 0.0,
+      "measured": false
+    },
+    {
+      "type": "portal",
+      "id": "portal_147_1",
+      "name": "Portal to 146",
+      "x": -11632.0,
+      "y": -17226.0,
+      "z": -584.8687744140625,
+      "plane": 0,
+      "yaw": 0.0,
+      "layer": "",
+      "model_file_id": 43045,
+      "radius": 250.0,
+      "to_map": 146,
+      "arrive_x": -5434.0,
+      "arrive_y": 11799.0,
+      "measured": true
+    },
+    {
+      "type": "portal",
+      "id": "portal_147_2",
+      "name": "Portal 2",
+      "x": -20684.0,
+      "y": -20666.0,
+      "z": -471.9375,
+      "plane": 0,
+      "yaw": 0.0,
+      "layer": "",
+      "model_file_id": 43045,
+      "radius": 250.0,
+      "to_map": 0,
+      "arrive_x": 0.0,
+      "arrive_y": 0.0,
+      "measured": false
+    }
+  ],
+  "routes": [],
+  "groups": []
+}

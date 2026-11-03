@@ -1,0 +1,21 @@
+[package]
+name = "asura-world"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "A world server: maps, instances, placement, and character persistence"
+
+[dependencies]
+asura-protocol = { path = "../asura-protocol" }
+asura-db = { path = "../asura-db" }
+tokio = { workspace = true }
+# The game connection's key exchange needs 20 bytes of real randomness per connection, from the
+# operating system (docs/adr/0009-crypto-primitives.md).
+getrandom = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+# The end-to-end test drives both services in one process: a client logs in to the auth service, is
+# told where to go, and connects to the world server. That is the only test that proves the handoff.
+asura-auth = { path = "../asura-auth" }

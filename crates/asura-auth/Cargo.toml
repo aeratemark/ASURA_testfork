@@ -1,0 +1,19 @@
+[package]
+name = "asura-auth"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "The auth service: login, key exchange, sessions, and telling the client which world to join"
+
+[dependencies]
+asura-protocol = { path = "../asura-protocol" }
+asura-db = { path = "../asura-db" }
+tokio = { workspace = true }
+uuid = { workspace = true }
+getrandom = { workspace = true }
+
+[dev-dependencies]
+# The end-to-end test drives the real listener over a loopback socket, using the reference client in
+# `asura-protocol::client::peer`. No game client is involved.
+tokio = { workspace = true }

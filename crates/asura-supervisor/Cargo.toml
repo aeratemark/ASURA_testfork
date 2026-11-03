@@ -1,0 +1,20 @@
+[package]
+name = "asura-supervisor"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "MIT OR Apache-2.0"
+
+[[bin]]
+name = "asura-supervisor"
+path = "src/main.rs"
+
+[dependencies]
+# The runtime and the process control: the supervisor watches children, so it needs `process` and
+# `signal` on top of what the other services already use.
+tokio = { workspace = true }
+asura-db = { path = "../asura-db" }
+# The list is data, not code: TOML, read with serde. Added with the code that needs it, as the
+# workspace does for every dependency (docs/adr/0007-rust-translation.md).
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"

@@ -1,0 +1,38 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/asura-auth",
+    "crates/asura-world",
+    "crates/asura-webgate",
+    "crates/asura-protocol",
+    "crates/asura-db",
+    "crates/asura-fakeworld",
+    "crates/asura-supervisor",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+# Added with the code that needs them (docs/adr/0007-rust-translation.md): M2 needs a database, so
+# the database and runtime dependencies arrive with placement; M3 needs a socket, so `net` arrives
+# with the listener.
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "net", "io-util", "process", "signal"] }
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres", "uuid"] }
+uuid = { version = "1", features = ["v4"] }
+# M3 needs modular exponentiation for the fixed-constant Diffie-Hellman key exchange
+# (docs/adr/0009-crypto-primitives.md). `num-bigint-dig` is the RustCrypto fork -- the crate the
+# `rsa` crate uses for exactly this operation. It is behind one function
+# (`asura_protocol::client::handshake::modpow`), so swapping it is a one-line change.
+#
+# Deliberately not the `std` feature: that one turns on `rand/std` and `serde/std`, which pulls two
+# crates this project does not otherwise need just to add two numbers. `alloc` comes from our own
+# std, so BigUint is fully usable.
+num-bigint-dig = { version = "0.8", default-features = false, features = ["u64_digit"] }
+# The key exchange needs 20 bytes of real randomness per connection, and the handshake takes them
+# from its caller so that it stays testable (docs/adr/0009-crypto-primitives.md). This is the
+# smallest crate that asks the operating system for them.
+getrandom = "0.2"

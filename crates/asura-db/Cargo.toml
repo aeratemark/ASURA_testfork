@@ -1,0 +1,16 @@
+[package]
+name = "asura-db"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Schema ownership and migrations: the only crate that knows SQL"
+
+[dependencies]
+sqlx = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+# The integration tests drive the live database from concurrent tasks; the ordinary
+# `cargo test` path still works without a database.
+tokio = { workspace = true }

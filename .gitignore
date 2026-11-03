@@ -1,0 +1,61 @@
+# Rust build output
+/target/
+/target-verify/
+**/*.rs.bk
+
+# The client's raw asset archive stays local: it is the game's 3.6 GB file, not this project's, and
+# it cannot be committed. The derived path-graph dump IS bundled -- data/path-graphs.bin is committed,
+# so a fresh clone can answer pathfinding without finding an archive (docs/03-protocol.md section 5d).
+/Gw.dat
+/data/Gw.dat
+
+# Local run artifacts: logs, captures, recordings, configs with secrets
+*.log
+/logs/
+/captures/
+*.jsonl
+/config.local.*
+# ...except the reference capture the offline checks read: it is a committed fixture, not a run log.
+!tools/fixtures/*.log
+
+# Local secrets and configuration. The real .env is never committed; the template is.
+.env
+.env.*
+!.env.example
+*.pgpass
+
+# Editors and OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+
+# Probe and comparison artifacts: captures of what a server sent, written by the diagnostics in
+# tools/ and crates/asura-auth/examples/probe.rs. Reproducible in a minute, so they do not belong in
+# the history -- the reference *session* they were distilled into is docs/06-reference-session.md.
+.reply-*.bin
+.gwps-reply.bin
+.our-reply.bin
+.probe-*.txt
+.reference-session.txt
+.gwps-session.log
+*.err
+
+# Python bytecode from the tools/ scripts
+__pycache__/
+*.pyc
+
+# The recordings are the project's public research evidence, not run logs: they are committed
+# on purpose (recordings/README.md explains the archive and its index).
+!/recordings/
+!/recordings/**
+
+# The oracles: host tools compiled out of the reference's own sources (tools/path-oracle.c,
+# tools/pack-oracle.c) by tools/build-oracle.ps1. What they print is committed as a fixture instead; a
+# binary is rebuilt when someone wants to check the fixture against the reference again.
+/tools/path-oracle.exe
+/tools/path-oracle.obj
+/tools/path-oracle.pdb
+/tools/pack-oracle.exe
+/tools/pack-oracle.obj
+/tools/pack-oracle.pdb

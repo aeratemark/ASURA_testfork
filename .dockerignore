@@ -1,0 +1,6 @@
+# Docker build context: only what the image needs.
+target
+logs
+recordings
+.git
+.env

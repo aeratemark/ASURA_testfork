@@ -1,0 +1,22 @@
+{
+  "map_id": 160,
+  "name": "Green Hills County",
+  "map_type": 1,
+  "map_file_id": 380713,
+  "objects": [
+    {
+      "type": "spawn",
+      "id": "spawn_160_0",
+      "name": "Spawn 0",
+      "x": -7492.531,
+      "y": 1454.671,
+      "z": 0.0,
+      "plane": 0,
+      "yaw": 0.0,
+      "layer": "",
+      "index": 0
+    }
+  ],
+  "routes": [],
+  "groups": []
+}

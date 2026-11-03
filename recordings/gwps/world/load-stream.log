@@ -1,0 +1,738 @@
+[2026-10-26T04:04:25.245]  info: AuthSrv listen to '127.0.0.1:6112'
+[2026-10-26T04:04:25.246]  info: AuthSrv listen to '127.0.0.1:6113'
+[2026-10-26T04:04:25.246]  info: AuthSrv listen to '127.0.0.1:1337'
+[2026-10-26T04:04:25.247]  info: No compatible server for map 148 (district 1, type 0, region 0, language 0); 0 server(s) exist:
+[2026-10-26T04:04:25.269]  info: Pre-spawned game server 1742660832 for map 148 (type 0)
+[2026-10-26T04:04:25.269] debug: Server 1742660832 started...
+[2026-10-26T04:04:25.270]  info: Reusing server 1742660832 for map 148 (district 1, type 0, region 0)
+[2026-10-26T04:04:25.271]  info: No compatible server for map 146 (district 1, type 1, region 0, language 0); 1 server(s) exist:
+[2026-10-26T04:04:25.271]  info:   server 1742660832: map 148 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.293]  info: Pre-spawned game server 2107529527 for map 146 (type 1)
+[2026-10-26T04:04:25.294]  info: Reusing server 2107529527 for map 146 (district 1, type 1, region 0)
+[2026-10-26T04:04:25.294] debug: Server 2107529527 started...
+[2026-10-26T04:04:25.294]  info: No compatible server for map 164 (district 1, type 0, region 0, language 0); 2 server(s) exist:
+[2026-10-26T04:04:25.294]  info:   server 1742660832: map 148 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.294]  info:   server 2107529527: map 146 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.317]  info: Pre-spawned game server 1553250617 for map 164 (type 0)
+[2026-10-26T04:04:25.317] debug: Server 1553250617 started...
+[2026-10-26T04:04:25.317]  info: Reusing server 1553250617 for map 164 (district 1, type 0, region 0)
+[2026-10-26T04:04:25.317]  info: No compatible server for map 145 (district 1, type 1, region 0, language 0); 3 server(s) exist:
+[2026-10-26T04:04:25.318]  info:   server 1742660832: map 148 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.318]  info:   server 2107529527: map 146 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.318]  info:   server 1553250617: map 164 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.340]  info: Pre-spawned game server 415490708 for map 145 (type 1)
+[2026-10-26T04:04:25.340] debug: Server 415490708 started...
+[2026-10-26T04:04:25.340]  info: Reusing server 415490708 for map 145 (district 1, type 1, region 0)
+[2026-10-26T04:04:25.341]  info: No compatible server for map 147 (district 1, type 1, region 0, language 0); 4 server(s) exist:
+[2026-10-26T04:04:25.341]  info:   server 1742660832: map 148 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.341]  info:   server 2107529527: map 146 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.341]  info:   server 1553250617: map 164 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.341]  info:   server 415490708: map 145 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.368]  info: Pre-spawned game server 3249067212 for map 147 (type 1)
+[2026-10-26T04:04:25.369] debug: Server 3249067212 started...
+[2026-10-26T04:04:25.369]  info: Reusing server 3249067212 for map 147 (district 1, type 1, region 0)
+[2026-10-26T04:04:25.369]  info: No compatible server for map 160 (district 1, type 1, region 0, language 0); 5 server(s) exist:
+[2026-10-26T04:04:25.369]  info:   server 1742660832: map 148 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.369]  info:   server 2107529527: map 146 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.369]  info:   server 1553250617: map 164 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.369]  info:   server 415490708: map 145 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.369]  info:   server 3249067212: map 147 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.393]  info: Pre-spawned game server 1155554623 for map 160 (type 1)
+[2026-10-26T04:04:25.393] debug: Server 1155554623 started...
+[2026-10-26T04:04:25.393]  info: No compatible server for map 163 (district 1, type 0, region 0, language 0); 6 server(s) exist:
+[2026-10-26T04:04:25.393]  info:   server 1742660832: map 148 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.393]  info:   server 2107529527: map 146 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.393]  info:   server 1553250617: map 164 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.393]  info:   server 415490708: map 145 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.393]  info:   server 3249067212: map 147 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.393]  info:   server 1155554623: map 160 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.417]  info: Pre-spawned game server 3799650864 for map 163 (type 0)
+[2026-10-26T04:04:25.417] debug: Server 3799650864 started...
+[2026-10-26T04:04:25.417]  info: Reusing server 3799650864 for map 163 (district 1, type 0, region 0)
+[2026-10-26T04:04:25.417]  info: No compatible server for map 161 (district 1, type 1, region 0, language 0); 7 server(s) exist:
+[2026-10-26T04:04:25.417]  info:   server 1742660832: map 148 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.417]  info:   server 2107529527: map 146 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.417]  info:   server 1553250617: map 164 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.417]  info:   server 415490708: map 145 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.417]  info:   server 3249067212: map 147 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.417]  info:   server 1155554623: map 160 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.417]  info:   server 3799650864: map 163 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.442]  info: Pre-spawned game server 4272405666 for map 161 (type 1)
+[2026-10-26T04:04:25.442]  info: No compatible server for map 165 (district 1, type 0, region 0, language 0); 8 server(s) exist:
+[2026-10-26T04:04:25.442]  info:   server 1742660832: map 148 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.442] debug: Server 4272405666 started...
+[2026-10-26T04:04:25.442]  info:   server 2107529527: map 146 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.442]  info:   server 1553250617: map 164 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.442]  info:   server 415490708: map 145 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.442]  info:   server 3249067212: map 147 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.442]  info:   server 1155554623: map 160 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.443]  info:   server 3799650864: map 163 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.443]  info:   server 4272405666: map 161 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.467]  info: Pre-spawned game server 1382821914 for map 165 (type 0)
+[2026-10-26T04:04:25.468] debug: Server 1382821914 started...
+[2026-10-26T04:04:25.468]  info: Reusing server 1382821914 for map 165 (district 1, type 0, region 0)
+[2026-10-26T04:04:25.468]  info: No compatible server for map 162 (district 1, type 1, region 0, language 0); 9 server(s) exist:
+[2026-10-26T04:04:25.468]  info:   server 1742660832: map 148 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.468]  info:   server 2107529527: map 146 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.468]  info:   server 1553250617: map 164 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.468]  info:   server 415490708: map 145 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.468]  info:   server 3249067212: map 147 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.469]  info:   server 1155554623: map 160 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.469]  info:   server 3799650864: map 163 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.469]  info:   server 4272405666: map 161 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.469]  info:   server 1382821914: map 165 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.498]  info: Pre-spawned game server 2472666850 for map 162 (type 1)
+[2026-10-26T04:04:25.498] debug: Server 2472666850 started...
+[2026-10-26T04:04:25.498]  info: Reusing server 2472666850 for map 162 (district 1, type 1, region 0)
+[2026-10-26T04:04:25.498]  info: No compatible server for map 166 (district 1, type 0, region 0, language 0); 10 server(s) exist:
+[2026-10-26T04:04:25.498]  info:   server 1742660832: map 148 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.498]  info:   server 2107529527: map 146 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.498]  info:   server 1553250617: map 164 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.498]  info:   server 415490708: map 145 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.498]  info:   server 3249067212: map 147 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.498]  info:   server 1155554623: map 160 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.498]  info:   server 3799650864: map 163 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.498]  info:   server 4272405666: map 161 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.498]  info:   server 1382821914: map 165 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.498]  info:   server 2472666850: map 162 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.524]  info: Pre-spawned game server 3382025726 for map 166 (type 0)
+[2026-10-26T04:04:25.524] debug: Server 3382025726 started...
+[2026-10-26T04:04:25.525]  info: No compatible server for map 449 (district 1, type 0, region 0, language 0); 11 server(s) exist:
+[2026-10-26T04:04:25.525]  info:   server 1742660832: map 148 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.525]  info:   server 2107529527: map 146 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.525]  info:   server 1553250617: map 164 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.525]  info:   server 415490708: map 145 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.525]  info:   server 3249067212: map 147 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.525]  info:   server 1155554623: map 160 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.525]  info:   server 3799650864: map 163 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.525]  info:   server 4272405666: map 161 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.525]  info:   server 1382821914: map 165 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.525]  info:   server 2472666850: map 162 district 1 type 1 region 0 language 0
+[2026-10-26T04:04:25.525]  info:   server 3382025726: map 166 district 1 type 0 region 0 language 0
+[2026-10-26T04:04:25.539]  info: Pre-spawned game server 133859148 for map 449 (type 0)
+[2026-10-26T04:04:25.539] debug: Server 133859148 started...
+[2026-10-26T04:04:25.539]  info: Pre-spawned 12 game server(s); 8 destination(s) already covered
+[2026-10-26T04:04:25.539]  info: New connection 0004 accepted with address '127.0.0.1:50823'
+[2026-10-26T04:04:25.540]  info: New connection 0005 accepted with address '127.0.0.1:50824'
+[2026-10-26T04:04:25.540]  info: New connection 0006 accepted with address '127.0.0.1:50825'
+[2026-10-26T04:04:25.540]  info: New connection 0007 accepted with address '127.0.0.1:50827'
+[2026-10-26T04:04:25.540]  info: New connection 0008 accepted with address '127.0.0.1:50828'
+[2026-10-26T04:04:25.540]  info: New connection 0009 accepted with address '127.0.0.1:50829'
+[2026-10-26T04:04:25.540]  info: New connection 000A accepted with address '127.0.0.1:50830'
+[2026-10-26T04:04:25.540]  info: New connection 000B accepted with address '127.0.0.1:50831'
+[2026-10-26T04:04:25.540]  info: New connection 000C accepted with address '127.0.0.1:50832'
+[2026-10-26T04:04:25.540]  info: New connection 000D accepted with address '127.0.0.1:50833'
+[2026-10-26T04:04:25.540]  info: New connection 000E accepted with address '127.0.0.1:50834'
+[2026-10-26T04:04:25.540]  info: New connection 000F accepted with address '127.0.0.1:50835'
+[2026-10-26T04:04:25.540]  info: Accepted Ctrl connection 0004
+[2026-10-26T04:04:25.541]  info: Accepted Ctrl connection 0005
+[2026-10-26T04:04:25.541]  info: Accepted Ctrl connection 0006
+[2026-10-26T04:04:25.541]  info: Accepted Ctrl connection 0007
+[2026-10-26T04:04:25.541]  info: Accepted Ctrl connection 0008
+[2026-10-26T04:04:25.541]  info: Accepted Ctrl connection 0009
+[2026-10-26T04:04:25.541]  info: Accepted Ctrl connection 000A
+[2026-10-26T04:04:25.541]  info: Accepted Ctrl connection 000B
+[2026-10-26T04:04:25.541]  info: Accepted Ctrl connection 000C
+[2026-10-26T04:04:25.541]  info: Accepted Ctrl connection 000D
+[2026-10-26T04:04:25.541]  info: Accepted Ctrl connection 000E
+[2026-10-26T04:04:25.541]  info: Accepted Ctrl connection 000F
+[2026-10-26T04:04:25.541]  info: Server 1742660832 is ready (ctrl 0004); 0 pending transfer(s):
+[2026-10-26T04:04:25.541]  info: Server 2107529527 is ready (ctrl 0005); 0 pending transfer(s):
+[2026-10-26T04:04:25.541]  info: Server 1553250617 is ready (ctrl 0006); 0 pending transfer(s):
+[2026-10-26T04:04:25.541]  info: Server 415490708 is ready (ctrl 0007); 0 pending transfer(s):
+[2026-10-26T04:04:25.541]  info: Server 3249067212 is ready (ctrl 0008); 0 pending transfer(s):
+[2026-10-26T04:04:25.541]  info: Server 1155554623 is ready (ctrl 0009); 0 pending transfer(s):
+[2026-10-26T04:04:25.542]  info: Server 3799650864 is ready (ctrl 000A); 0 pending transfer(s):
+[2026-10-26T04:04:25.542]  info: Server 4272405666 is ready (ctrl 000B); 0 pending transfer(s):
+[2026-10-26T04:04:25.542]  info: Server 1382821914 is ready (ctrl 000C); 0 pending transfer(s):
+[2026-10-26T04:04:25.542]  info: Server 2472666850 is ready (ctrl 000D); 0 pending transfer(s):
+[2026-10-26T04:04:25.542]  info: Server 3382025726 is ready (ctrl 000E); 0 pending transfer(s):
+[2026-10-26T04:04:25.542]  info: Server 133859148 is ready (ctrl 000F); 0 pending transfer(s):
+[2026-10-26T04:05:34.348]  info: New connection 0010 accepted with address '127.0.0.1:50874'
+[2026-10-26T04:05:34.349]  info: AUTH RECV <- version header 0x0400 (1024) 16 bytes: 00 04 0C 00 C8 98 00 00 01 00 00 00 04 00 00 00 
+[2026-10-26T04:05:36.129]  info: AUTH RECV <- client seed header 0x4200 (16896) 66 bytes: 00 42 17 7C D8 C0 B3 3A 0B E3 D9 22 A2 43 AE 9D 67 24 F7 E4 48 07 77 85 
+[2026-10-26T04:05:36.129]  info: AUTH SEND -> server seed header 0x1601 (5633) 22 bytes: 01 16 04 3B 3D BD C9 09 4B 7C 93 1D 8A C0 F5 F4 3A 69 C0 DE 7A 70 
+[2026-10-26T04:05:36.129]  info: Accepted Auth connection 0010
+[2026-10-26T04:05:36.255]  info: AUTH RECV <- message header 0x8001 (1) 42 bytes: 01 80 03 00 41 00 70 00 6F 00 0F 00 44 00 45 00 53 00 4B 00 54 00 4F 00 
+[2026-10-26T04:05:36.256]  info: AUTH RECV <- message header 0x8002 (2) 22 bytes: 02 80 C8 98 00 00 F5 E6 06 66 71 A9 87 45 B8 FC 3A A6 B3 C8 55 25 
+[2026-10-26T04:05:36.256]  info: AUTH SEND -> message header 0x0001 (1) 10 bytes: 01 00 84 2D 4B E9 00 00 00 00 
+[2026-10-26T04:05:36.266]  info: AUTH RECV <- message header 0x8000 (0) 6 bytes: 00 80 A7 6D FF 7F 
+[2026-10-26T04:05:36.266]  info: AUTH RECV <- message header 0x8023 (35) 6 bytes: 23 80 9C 12 12 2D 
+[2026-10-26T04:05:36.267]  info: AUTH SEND -> message header 0x0000 (0) 6 bytes: 00 00 10 00 00 00 
+[2026-10-26T04:05:36.267]  warn: Unhandled AuthSrv packet with header 35 (0x23)
+[2026-10-26T04:05:42.866]  info: AUTH RECV <- message header 0x8038 (56) 54 bytes: 38 80 01 00 00 00 E2 0E 52 FA 19 44 B4 4E AE 49 6E 9A BE 6E F2 4F 5D BF 
+[2026-10-26T04:05:42.866] debug: User login user id: fa520ee2-4419-4eb4-ae49-6e9abe6ef24f, session id: d8b9bf5d-90b1-4cbd-9b76-88da7be763b6
+[2026-10-26T04:05:42.867]  info: AUTH SEND -> message header 0x0007 (7) 102 bytes: 07 00 01 00 00 00 A6 D0 EA 4E 01 6A 0B 43 30 88 13 51 59 9A EB BA 00 00 
+[2026-10-26T04:05:42.867]  info: AUTH SEND -> message header 0x0016 (22) 599 bytes: 16 00 01 00 00 00 4F 02 08 00 66 21 00 10 38 43 7F DE 68 8E F5 93 FF FF 
+[2026-10-26T04:05:42.867]  info: AUTH SEND -> message header 0x0014 (20) 10 bytes: 14 00 01 00 00 00 01 00 00 00 
+[2026-10-26T04:05:42.867]  info: AUTH SEND -> message header 0x0011 (17) 81 bytes: 11 00 01 00 00 00 00 00 00 00 04 00 00 00 3F 00 00 00 00 00 00 00 80 3F 
+[2026-10-26T04:05:42.867]  info: AUTH SEND -> message header 0x0003 (3) 10 bytes: 03 00 01 00 00 00 00 00 00 00 
+[2026-10-26T04:05:43.974]  info: AUTH RECV <- message header 0x8026 (38) 3 bytes: 26 80 1A 
+[2026-10-26T04:05:43.974]  info: AUTH RECV <- message header 0x8035 (53) 6 bytes: 35 80 02 00 00 00 
+[2026-10-26T04:05:43.974]  info: AUTH_CMSG_ASK_SERVER_RESPONSE
+[2026-10-26T04:05:43.974]  info: AUTH SEND -> message header 0x0003 (3) 10 bytes: 03 00 02 00 00 00 00 00 00 00 
+[2026-10-26T04:05:45.284]  info: AUTH RECV <- message header 0x800E (14) 6 bytes: 0E 80 01 00 00 00 
+[2026-10-26T04:05:45.284]  info: AUTH RECV <- message header 0x8029 (41) 26 bytes: 29 80 03 00 00 00 01 00 00 00 92 00 00 00 00 00 00 00 02 00 00 00 00 00 
+[2026-10-26T04:05:45.285]  info: Reusing server 2107529527 for map 146 (district 0, type 1, region 0)
+[2026-10-26T04:05:45.285]  info: AUTH SEND -> message header 0x0009 (9) 42 bytes: 09 00 03 00 00 00 37 59 9E 7D 92 00 00 00 02 00 17 E0 7F 00 00 01 00 00 
+[2026-10-26T04:05:45.285]  info: AUTH SEND -> message header 0x0003 (3) 10 bytes: 03 00 03 00 00 00 00 00 00 00 
+[2026-10-26T04:05:45.321]  info: New connection 0011 accepted with address '127.0.0.1:50883'
+[2026-10-26T04:05:45.338]  info: AUTH RECV <- client seed header 0x4200 (16896) 66 bytes: 00 42 A8 76 7C 1E CB 4E F5 03 D6 2B 03 90 E7 CB 94 5F CA 2C 0D 14 5F 6C 
+[2026-10-26T04:05:45.338]  info: AUTH SEND -> server seed header 0x1601 (5633) 22 bytes: 01 16 BB D0 23 99 00 47 B4 FA 03 FB B6 72 C5 1E B9 DB 2C E2 8D 27 
+[2026-10-26T04:05:45.338]  info: Client reconnected to server 2107529527, which it was already on
+[2026-10-26T04:05:45.339]  info: SEND 0x017C   6 bytes : 7C 01 3F 3F 00 00 
+[2026-10-26T04:05:45.339]  info: SEND 0x0186   2 bytes : 86 01 
+[2026-10-26T04:05:45.339]  info: SEND 0x017D  14 bytes : 7D 01 05 00 41 00 70 00 70 00 6F 00 6B 00 
+[2026-10-26T04:05:45.339]  info: SEND 0x019A  16 bytes : 9A 01 01 00 00 00 92 00 01 01 00 00 00 00 00 00 
+[2026-10-26T04:05:45.422]  info: SEND 0x000C   2 bytes : 0C 00 
+[2026-10-26T04:05:45.422]  info: SEND 0x000D   6 bytes : 0D 00 14 00 00 00 
+[2026-10-26T04:05:45.553]  info: RECV 0x800A 140 bytes : 0A 80 73 74 C5 C7 C4 54 A6 4A B0 90 5C 2F 30 67 79 84 0A 00 00 00 00 00 00 00 65 4A 00 00 47 65 6E 75 69 6E 65 49 6E 74 65 6C 71 06 00 00 14 00 00 00 1B FF 00 00 20 90 00 00 02 10 00 00 BF 73 00 00 FF 0D 00 00 12 00 41 00 4D 00 44 00 20 00 52 00 61 00 64 00 65 00 6F 00 6E 00 20 00 52 00 58 00 20 00 36 00 38 00 30 00 30 00 0F 00 33 00 32 00 2E 00 30 00 2E 00 32 00 31 00 30 00 34 00 35 00 2E 00 31 00 36 00 30 00 31 00 
+[2026-10-26T04:05:45.553]  info: RECV 0x800B  88 bytes : 0B 80 73 74 C5 C7 C4 54 A6 4A B0 90 5C 2F 30 67 79 84 00 00 00 00 01 00 00 00 1B FF 00 00 14 00 00 00 07 00 57 00 69 00 6E 00 64 00 6F 00 77 00 73 00 12 00 47 00 77 00 2F 00 33 00 39 00 31 00 31 00 32 00 2E 00 30 00 20 00 28 00 57 00 69 00 6E 00 33 00 32 00 29 00 
+[2026-10-26T04:05:45.555]  warn: Unhandled GameSrv packet with header 10 (0xA)
+[2026-10-26T04:05:45.555]  warn: Unhandled GameSrv packet with header 11 (0xB)
+[2026-10-26T04:05:45.555]  info: RECV 0x8009  10 bytes : 09 80 10 00 00 00 00 00 00 00 
+[2026-10-26T04:05:45.555]  info: RECV 0x8091   4 bytes : 91 80 00 00 
+[2026-10-26T04:05:45.555]  info: GAME_CMSG_INSTANCE_LOAD_REQUEST_ITEMS
+[2026-10-26T04:05:45.555]  info: SEND 0x0144   5 bytes : 44 01 01 00 00 
+[2026-10-26T04:05:45.555]  info: SEND 0x0148   5 bytes : 48 01 01 00 00 
+[2026-10-26T04:05:45.555]  info: SEND 0x0161  48 bytes : 61 01 01 00 00 00 36 B5 01 80 03 01 00 00 00 00 00 00 10 00 20 05 00 00 00 20 00 00 00 01 00 00 00 04 00 A8 21 57 D1 8F B5 6F 16 01 00 14 48 24 
+[2026-10-26T04:05:45.555]  info: SEND 0x013F  13 bytes : 3F 01 01 00 01 00 01 00 14 01 00 00 00 
+[2026-10-26T04:05:45.555]  info: SEND 0x0161  36 bytes : 61 01 02 00 00 00 34 7C 04 00 09 00 00 00 00 00 00 01 02 08 21 00 00 00 00 FD 56 00 00 64 00 00 00 00 00 00 
+[2026-10-26T04:05:45.555]  info: SEND 0x013E  11 bytes : 3E 01 01 00 02 00 00 00 01 00 00 
+[2026-10-26T04:05:45.555]  info: SEND 0x0161  36 bytes : 61 01 09 00 00 00 34 7C 04 00 09 00 00 00 00 00 00 01 02 08 21 00 00 00 00 FD 56 00 00 64 00 00 00 00 00 00 
+[2026-10-26T04:05:45.555]  info: SEND 0x013E  11 bytes : 3E 01 01 00 09 00 00 00 01 00 01 
+[2026-10-26T04:05:45.555]  info: SEND 0x013F  13 bytes : 3F 01 01 00 05 05 02 00 29 00 00 00 00 
+[2026-10-26T04:05:45.555]  info: SEND 0x013F  13 bytes : 3F 01 01 00 03 06 06 00 0C 00 00 00 00 
+[2026-10-26T04:05:45.555]  info: SEND 0x013F  13 bytes : 3F 01 01 00 04 07 03 00 19 00 00 00 00 
+[2026-10-26T04:05:45.555]  info: SEND 0x013F  13 bytes : 3F 01 01 00 04 08 04 00 19 00 00 00 00 
+[2026-10-26T04:05:45.555]  info: SEND 0x013F  13 bytes : 3F 01 01 00 02 15 05 00 09 00 00 00 00 
+[2026-10-26T04:05:45.555]  info: SEND 0x0161  36 bytes : 61 01 03 00 00 00 60 9B 00 80 0F 06 00 00 00 00 00 00 10 20 22 00 00 00 00 A3 06 00 00 01 00 00 00 00 00 00 
+[2026-10-26T04:05:45.555]  info: SEND 0x015A   7 bytes : 5A 01 03 00 00 00 01 
+[2026-10-26T04:05:45.555]  info: SEND 0x013E  11 bytes : 3E 01 01 00 03 00 00 00 05 00 00 
+[2026-10-26T04:05:45.555]  info: SEND 0x0161  36 bytes : 61 01 04 00 00 00 5B 00 00 80 07 13 0B 00 00 00 00 06 10 00 20 00 00 00 00 37 03 00 00 01 00 00 00 00 00 00 
+[2026-10-26T04:05:45.555]  info: SEND 0x015A   7 bytes : 5A 01 04 00 00 00 01 
+[2026-10-26T04:05:45.555]  info: SEND 0x013E  11 bytes : 3E 01 01 00 04 00 00 00 05 00 02 
+[2026-10-26T04:05:45.555]  info: SEND 0x0161  36 bytes : 61 01 05 00 00 00 5E 00 00 80 13 13 0B 00 00 00 00 06 10 00 20 00 00 00 00 88 09 00 00 01 00 00 00 00 00 00 
+[2026-10-26T04:05:45.555]  info: SEND 0x015A   7 bytes : 5A 01 05 00 00 00 01 
+[2026-10-26T04:05:45.555]  info: SEND 0x013E  11 bytes : 3E 01 01 00 05 00 00 00 05 00 03 
+[2026-10-26T04:05:45.555]  info: SEND 0x0161  36 bytes : 61 01 06 00 00 00 5D 00 00 80 10 13 0B 00 00 00 00 06 10 00 20 00 00 00 00 F8 17 00 00 01 00 00 00 00 00 00 
+[2026-10-26T04:05:45.555]  info: SEND 0x015A   7 bytes : 5A 01 06 00 00 00 01 
+[2026-10-26T04:05:45.555]  info: SEND 0x013E  11 bytes : 3E 01 01 00 06 00 00 00 05 00 04 
+[2026-10-26T04:05:45.555]  info: SEND 0x0161  36 bytes : 61 01 07 00 00 00 5A 00 00 80 04 13 0B 00 00 00 00 06 10 00 20 00 00 00 00 63 01 00 00 01 00 00 00 00 00 00 
+[2026-10-26T04:05:45.555]  info: SEND 0x015A   7 bytes : 5A 01 07 00 00 00 01 
+[2026-10-26T04:05:45.555]  info: SEND 0x013E  11 bytes : 3E 01 01 00 07 00 00 00 05 00 05 
+[2026-10-26T04:05:45.556]  info: SEND 0x0161  36 bytes : 61 01 08 00 00 00 5C 00 00 80 0D 13 0B 00 00 00 00 06 10 00 20 00 00 00 00 3E 06 00 00 01 00 00 00 00 00 00 
+[2026-10-26T04:05:45.556]  info: SEND 0x015A   7 bytes : 5A 01 08 00 00 00 01 
+[2026-10-26T04:05:45.556]  info: SEND 0x013E  11 bytes : 3E 01 01 00 08 00 00 00 05 00 06 
+[2026-10-26T04:05:45.556]  info: SEND 0x0147  13 bytes : 47 01 01 00 00 00 00 00 00 00 00 00 00 
+[2026-10-26T04:05:45.556]  info: SEND 0x0147  13 bytes : 47 01 01 00 01 00 00 00 00 00 00 00 00 
+[2026-10-26T04:05:45.556]  info: SEND 0x0147  13 bytes : 47 01 01 00 02 00 00 00 00 00 00 00 00 
+[2026-10-26T04:05:45.556]  info: SEND 0x0147  13 bytes : 47 01 01 00 03 00 00 00 00 00 00 00 00 
+[2026-10-26T04:05:45.556]  info: SEND 0x0141   8 bytes : 41 01 01 00 00 00 00 00 
+[2026-10-26T04:05:45.556]  info: SEND 0x00EA   6 bytes : EA 00 10 27 00 00 
+[2026-10-26T04:05:45.556]  info: SEND 0x00EB   6 bytes : EB 00 10 27 00 00 
+[2026-10-26T04:05:45.556]  info: SEND 0x00EC   6 bytes : EC 00 10 27 00 00 
+[2026-10-26T04:05:45.556]  info: SEND 0x00ED   6 bytes : ED 00 10 27 00 00 
+[2026-10-26T04:05:45.556]  info: SEND 0x0070   3 bytes : 70 00 01 
+[2026-10-26T04:05:45.556]  info: SEND 0x0030  28 bytes : 30 00 00 00 00 00 00 00 00 00 00 00 E8 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[2026-10-26T04:05:45.556]  info: SEND 0x0099   5 bytes : 99 00 92 00 00 
+[2026-10-26T04:05:45.556]  info: SEND 0x01AC   6 bytes : AC 01 00 00 00 00 
+[2026-10-26T04:05:45.556]  info: SEND 0x0199   3 bytes : 99 01 00 
+[2026-10-26T04:05:45.556]  info: SEND 0x0199   3 bytes : 99 01 01 
+[2026-10-26T04:05:45.556]  info: SEND 0x0198   9 bytes : 98 01 02 6D 03 00 00 00 00 
+[2026-10-26T04:05:45.556]  info: SEND 0x0199   3 bytes : 99 01 00 
+[2026-10-26T04:05:45.556]  info: SEND 0x0199   3 bytes : 99 01 01 
+[2026-10-26T04:05:45.556]  info: SEND 0x0198   9 bytes : 98 01 00 92 00 00 00 00 00 
+[2026-10-26T04:05:45.587]  info: RECV 0x8088   2 bytes : 88 80 
+[2026-10-26T04:05:45.587]  info: SEND 0x0196  26 bytes : 96 01 7D B9 01 00 00 50 CE 45 00 28 8C 45 00 00 00 00 00 00 00 00 00 00 00 00 
+[2026-10-26T04:05:45.718]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:05:46.207]  info: RECV 0x8090  19 bytes : 90 80 F5 E6 06 66 71 A9 87 45 B8 FC 3A A6 B3 C8 55 25 01 
+[2026-10-26T04:05:46.207]  info: GAME_CMSG_INSTANCE_LOAD_REQUEST_PLAYERS
+[2026-10-26T04:05:46.208]  info: SEND 0x001D   4 bytes : 1D 00 00 00 
+[2026-10-26T04:05:46.208]  info: SEND 0x0018  36 bytes : 18 00 08 00 FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF 
+[2026-10-26T04:05:46.208]  info: SEND 0x001A  17 bytes : 1A 00 01 00 03 81 00 08 24 81 00 08 24 81 00 08 24 
+[2026-10-26T04:05:46.208]  info: SEND 0x001A  17 bytes : 1A 00 02 00 03 82 00 08 24 82 00 08 24 82 00 08 24 
+[2026-10-26T04:05:46.208]  info: SEND 0x001A  17 bytes : 1A 00 03 00 03 83 00 08 24 83 00 08 24 83 00 08 24 
+[2026-10-26T04:05:46.208]  info: SEND 0x001A  17 bytes : 1A 00 04 00 03 84 00 08 24 84 00 08 24 84 00 08 24 
+[2026-10-26T04:05:46.208]  info: SEND 0x001A  17 bytes : 1A 00 05 00 03 85 00 08 24 85 00 08 24 85 00 08 24 
+[2026-10-26T04:05:46.208]  info: SEND 0x001A  17 bytes : 1A 00 06 00 03 86 00 08 24 86 00 08 24 86 00 08 24 
+[2026-10-26T04:05:46.209]  info: SEND 0x001A  17 bytes : 1A 00 07 00 03 87 00 08 24 87 00 08 24 87 00 08 24 
+[2026-10-26T04:05:46.209]  info: SEND 0x001A  17 bytes : 1A 00 08 00 03 88 00 08 24 88 00 08 24 88 00 08 24 
+[2026-10-26T04:05:46.209]  info: SEND 0x001A  17 bytes : 1A 00 09 00 03 89 00 08 24 89 00 08 24 89 00 08 24 
+[2026-10-26T04:05:46.209]  info: SEND 0x001A  17 bytes : 1A 00 0A 00 03 8A 00 08 24 8A 00 08 24 8A 00 08 24 
+[2026-10-26T04:05:46.209]  info: SEND 0x001A  17 bytes : 1A 00 0B 00 03 8B 00 08 24 8B 00 08 24 8B 00 08 24 
+[2026-10-26T04:05:46.209]  info: SEND 0x001A  17 bytes : 1A 00 0C 00 03 8C 00 08 24 8C 00 08 24 8C 00 08 24 
+[2026-10-26T04:05:46.209]  info: SEND 0x001A  17 bytes : 1A 00 0D 00 03 8D 00 08 24 8D 00 08 24 8D 00 08 24 
+[2026-10-26T04:05:46.209]  info: SEND 0x001A  17 bytes : 1A 00 0E 00 03 8E 00 08 24 8E 00 08 24 8E 00 08 24 
+[2026-10-26T04:05:46.209]  info: SEND 0x001A  17 bytes : 1A 00 0F 00 03 8F 00 08 24 8F 00 08 24 8F 00 08 24 
+[2026-10-26T04:05:46.209]  info: SEND 0x001A  17 bytes : 1A 00 10 00 03 90 00 08 24 90 00 08 24 90 00 08 24 
+[2026-10-26T04:05:46.209]  info: SEND 0x001A  17 bytes : 1A 00 11 00 03 99 00 08 24 99 00 08 24 99 00 08 24 
+[2026-10-26T04:05:46.209]  info: SEND 0x001A  17 bytes : 1A 00 12 00 03 9A 00 08 24 9A 00 08 24 9A 00 08 24 
+[2026-10-26T04:05:46.209]  info: SEND 0x001A  17 bytes : 1A 00 13 00 03 9B 00 08 24 9B 00 08 24 9B 00 08 24 
+[2026-10-26T04:05:46.209]  info: SEND 0x001A  17 bytes : 1A 00 16 00 03 AF 00 08 24 AF 00 08 24 AF 00 08 24 
+[2026-10-26T04:05:46.210]  info: SEND 0x001A  17 bytes : 1A 00 17 00 03 AF 00 08 24 AF 00 08 24 AF 00 08 24 
+[2026-10-26T04:05:46.210]  info: SEND 0x001A  17 bytes : 1A 00 18 00 03 AF 00 08 24 AF 00 08 24 AF 00 08 24 
+[2026-10-26T04:05:46.210]  info: SEND 0x001A  17 bytes : 1A 00 19 00 03 AF 00 08 24 AF 00 08 24 AF 00 08 24 
+[2026-10-26T04:05:46.210]  info: SEND 0x001A  17 bytes : 1A 00 1A 00 03 B0 00 08 24 B0 00 08 24 B0 00 08 24 
+[2026-10-26T04:05:46.210]  info: SEND 0x001A  17 bytes : 1A 00 1B 00 03 B0 00 08 24 B0 00 08 24 B0 00 08 24 
+[2026-10-26T04:05:46.210]  info: SEND 0x001A  17 bytes : 1A 00 1C 00 03 B0 00 08 24 B0 00 08 24 B0 00 08 24 
+[2026-10-26T04:05:46.210]  info: SEND 0x001A  17 bytes : 1A 00 1D 00 03 B0 00 08 24 B0 00 08 24 B0 00 08 24 
+[2026-10-26T04:05:46.210]  info: SEND 0x001A  17 bytes : 1A 00 1E 00 03 B1 00 08 24 B1 00 08 24 B1 00 08 24 
+[2026-10-26T04:05:46.210]  info: SEND 0x001A  17 bytes : 1A 00 1F 00 03 B1 00 08 24 B1 00 08 24 B1 00 08 24 
+[2026-10-26T04:05:46.210]  info: SEND 0x001A  17 bytes : 1A 00 20 00 03 B1 00 08 24 B1 00 08 24 B1 00 08 24 
+[2026-10-26T04:05:46.210]  info: SEND 0x001A  17 bytes : 1A 00 21 00 03 B1 00 08 24 B1 00 08 24 B1 00 08 24 
+[2026-10-26T04:05:46.210]  info: SEND 0x001A  17 bytes : 1A 00 22 00 03 B1 00 08 24 B1 00 08 24 B1 00 08 24 
+[2026-10-26T04:05:46.210]  info: SEND 0x001A  17 bytes : 1A 00 23 00 03 B2 00 08 24 B2 00 08 24 B2 00 08 24 
+[2026-10-26T04:05:46.210]  info: SEND 0x001A  17 bytes : 1A 00 24 00 03 B2 00 08 24 B2 00 08 24 B2 00 08 24 
+[2026-10-26T04:05:46.210]  info: SEND 0x001A  17 bytes : 1A 00 25 00 03 B2 00 08 24 B2 00 08 24 B2 00 08 24 
+[2026-10-26T04:05:46.210]  info: SEND 0x001A  17 bytes : 1A 00 26 00 03 B2 00 08 24 B2 00 08 24 B2 00 08 24 
+[2026-10-26T04:05:46.210]  info: SEND 0x001A  17 bytes : 1A 00 27 00 03 B3 00 08 24 B3 00 08 24 B3 00 08 24 
+[2026-10-26T04:05:46.210]  info: SEND 0x001A  17 bytes : 1A 00 28 00 03 B3 00 08 24 B3 00 08 24 B3 00 08 24 
+[2026-10-26T04:05:46.211]  info: SEND 0x001A  17 bytes : 1A 00 29 00 03 B3 00 08 24 B3 00 08 24 B3 00 08 24 
+[2026-10-26T04:05:46.211]  info: SEND 0x001A  17 bytes : 1A 00 2A 00 03 B3 00 08 24 B3 00 08 24 B3 00 08 24 
+[2026-10-26T04:05:46.211]  info: SEND 0x001A  17 bytes : 1A 00 2B 00 03 B3 00 08 24 B3 00 08 24 B3 00 08 24 
+[2026-10-26T04:05:46.211]  info: SEND 0x001A  17 bytes : 1A 00 2C 00 03 B4 00 08 24 B4 00 08 24 B4 00 08 24 
+[2026-10-26T04:05:46.211]  info: SEND 0x001A  17 bytes : 1A 00 2D 00 03 B4 00 08 24 B4 00 08 24 B4 00 08 24 
+[2026-10-26T04:05:46.211]  info: SEND 0x001A  17 bytes : 1A 00 2E 00 03 B4 00 08 24 B4 00 08 24 B4 00 08 24 
+[2026-10-26T04:05:46.211]  info: SEND 0x001A  17 bytes : 1A 00 2F 00 03 B4 00 08 24 B4 00 08 24 B4 00 08 24 
+[2026-10-26T04:05:46.211]  info: SEND 0x001A  25 bytes : 1A 00 30 00 05 B5 00 08 24 B5 00 08 24 B5 00 08 24 B5 00 08 24 B5 00 08 24 
+[2026-10-26T04:05:46.211]  info: SEND 0x001A  25 bytes : 1A 00 31 00 05 B5 00 08 24 B5 00 08 24 B5 00 08 24 B5 00 08 24 B5 00 08 24 
+[2026-10-26T04:05:46.211]  info: SEND 0x001A  25 bytes : 1A 00 32 00 05 B5 00 08 24 B5 00 08 24 B5 00 08 24 B5 00 08 24 B5 00 08 24 
+[2026-10-26T04:05:46.211]  info: SEND 0x001A  25 bytes : 1A 00 33 00 05 B5 00 08 24 B5 00 08 24 B5 00 08 24 B5 00 08 24 B5 00 08 24 
+[2026-10-26T04:05:46.211]  info: SEND 0x001A  25 bytes : 1A 00 34 00 05 B6 00 08 24 B6 00 08 24 B6 00 08 24 B6 00 08 24 B6 00 08 24 
+[2026-10-26T04:05:46.211]  info: SEND 0x001A  25 bytes : 1A 00 35 00 05 B6 00 08 24 B6 00 08 24 B6 00 08 24 B6 00 08 24 B6 00 08 24 
+[2026-10-26T04:05:46.212]  info: SEND 0x001A  25 bytes : 1A 00 36 00 05 B6 00 08 24 B6 00 08 24 B6 00 08 24 B6 00 08 24 B6 00 08 24 
+[2026-10-26T04:05:46.212]  info: SEND 0x001A  25 bytes : 1A 00 37 00 05 B6 00 08 24 B6 00 08 24 B6 00 08 24 B6 00 08 24 B6 00 08 24 
+[2026-10-26T04:05:46.212]  info: SEND 0x001A  25 bytes : 1A 00 38 00 05 B7 00 08 24 B7 00 08 24 B7 00 08 24 B7 00 08 24 B7 00 08 24 
+[2026-10-26T04:05:46.212]  info: SEND 0x001A  25 bytes : 1A 00 39 00 05 B7 00 08 24 B7 00 08 24 B7 00 08 24 B7 00 08 24 B7 00 08 24 
+[2026-10-26T04:05:46.212]  info: SEND 0x001A  25 bytes : 1A 00 3A 00 05 B7 00 08 24 B7 00 08 24 B7 00 08 24 B7 00 08 24 B7 00 08 24 
+[2026-10-26T04:05:46.212]  info: SEND 0x001A  25 bytes : 1A 00 3B 00 05 B7 00 08 24 B7 00 08 24 B7 00 08 24 B7 00 08 24 B7 00 08 24 
+[2026-10-26T04:05:46.212]  info: SEND 0x001A  25 bytes : 1A 00 3C 00 05 B7 00 08 24 B7 00 08 24 B7 00 08 24 B7 00 08 24 B7 00 08 24 
+[2026-10-26T04:05:46.212]  info: SEND 0x001A  25 bytes : 1A 00 3D 00 05 B8 00 08 24 B8 00 08 24 B8 00 08 24 B8 00 08 24 B8 00 08 24 
+[2026-10-26T04:05:46.212]  info: SEND 0x001A  25 bytes : 1A 00 3E 00 05 B8 00 08 24 B8 00 08 24 B8 00 08 24 B8 00 08 24 B8 00 08 24 
+[2026-10-26T04:05:46.212]  info: SEND 0x001A  25 bytes : 1A 00 3F 00 05 B8 00 08 24 B8 00 08 24 B8 00 08 24 B8 00 08 24 B8 00 08 24 
+[2026-10-26T04:05:46.212]  info: SEND 0x001A  25 bytes : 1A 00 40 00 05 B8 00 08 24 B8 00 08 24 B8 00 08 24 B8 00 08 24 B8 00 08 24 
+[2026-10-26T04:05:46.213]  info: SEND 0x001A  25 bytes : 1A 00 41 00 05 B9 00 08 24 B9 00 08 24 B9 00 08 24 B9 00 08 24 B9 00 08 24 
+[2026-10-26T04:05:46.213]  info: SEND 0x001A  25 bytes : 1A 00 42 00 05 B9 00 08 24 B9 00 08 24 B9 00 08 24 B9 00 08 24 B9 00 08 24 
+[2026-10-26T04:05:46.213]  info: SEND 0x001A  25 bytes : 1A 00 43 00 05 B9 00 08 24 B9 00 08 24 B9 00 08 24 B9 00 08 24 B9 00 08 24 
+[2026-10-26T04:05:46.213]  info: SEND 0x001A  25 bytes : 1A 00 44 00 05 B9 00 08 24 B9 00 08 24 B9 00 08 24 B9 00 08 24 B9 00 08 24 
+[2026-10-26T04:05:46.213]  info: SEND 0x001A  25 bytes : 1A 00 45 00 05 B9 00 08 24 B9 00 08 24 B9 00 08 24 B9 00 08 24 B9 00 08 24 
+[2026-10-26T04:05:46.213]  info: SEND 0x001A  25 bytes : 1A 00 46 00 05 BA 00 08 24 BA 00 08 24 BA 00 08 24 BA 00 08 24 BA 00 08 24 
+[2026-10-26T04:05:46.213]  info: SEND 0x001A  25 bytes : 1A 00 47 00 05 BA 00 08 24 BA 00 08 24 BA 00 08 24 BA 00 08 24 BA 00 08 24 
+[2026-10-26T04:05:46.213]  info: SEND 0x001A  25 bytes : 1A 00 48 00 05 BA 00 08 24 BA 00 08 24 BA 00 08 24 BA 00 08 24 BA 00 08 24 
+[2026-10-26T04:05:46.213]  info: SEND 0x001A  25 bytes : 1A 00 49 00 05 BA 00 08 24 BA 00 08 24 BA 00 08 24 BA 00 08 24 BA 00 08 24 
+[2026-10-26T04:05:46.213]  info: SEND 0x001A  25 bytes : 1A 00 4A 00 05 BB 00 08 24 BB 00 08 24 BB 00 08 24 BB 00 08 24 BB 00 08 24 
+[2026-10-26T04:05:46.213]  info: SEND 0x001A  25 bytes : 1A 00 4B 00 05 BB 00 08 24 BB 00 08 24 BB 00 08 24 BB 00 08 24 BB 00 08 24 
+[2026-10-26T04:05:46.213]  info: SEND 0x001A  25 bytes : 1A 00 4C 00 05 BB 00 08 24 BB 00 08 24 BB 00 08 24 BB 00 08 24 BB 00 08 24 
+[2026-10-26T04:05:46.214]  info: SEND 0x001A  25 bytes : 1A 00 4D 00 05 BB 00 08 24 BB 00 08 24 BB 00 08 24 BB 00 08 24 BB 00 08 24 
+[2026-10-26T04:05:46.214]  info: SEND 0x001A  25 bytes : 1A 00 4E 00 05 BC 00 08 24 BC 00 08 24 BC 00 08 24 BC 00 08 24 BC 00 08 24 
+[2026-10-26T04:05:46.214]  info: SEND 0x001A  25 bytes : 1A 00 4F 00 05 BC 00 08 24 BC 00 08 24 BC 00 08 24 BC 00 08 24 BC 00 08 24 
+[2026-10-26T04:05:46.214]  info: SEND 0x001A  25 bytes : 1A 00 50 00 05 BC 00 08 24 BC 00 08 24 BC 00 08 24 BC 00 08 24 BC 00 08 24 
+[2026-10-26T04:05:46.214]  info: SEND 0x001A  25 bytes : 1A 00 51 00 05 BC 00 08 24 BC 00 08 24 BC 00 08 24 BC 00 08 24 BC 00 08 24 
+[2026-10-26T04:05:46.214]  info: SEND 0x001A  25 bytes : 1A 00 52 00 05 BD 00 08 24 BD 00 08 24 BD 00 08 24 BD 00 08 24 BD 00 08 24 
+[2026-10-26T04:05:46.214]  info: SEND 0x001A  25 bytes : 1A 00 53 00 05 BD 00 08 24 BD 00 08 24 BD 00 08 24 BD 00 08 24 BD 00 08 24 
+[2026-10-26T04:05:46.214]  info: SEND 0x001A  25 bytes : 1A 00 54 00 05 BD 00 08 24 BD 00 08 24 BD 00 08 24 BD 00 08 24 BD 00 08 24 
+[2026-10-26T04:05:46.214]  info: SEND 0x001A  25 bytes : 1A 00 55 00 05 BD 00 08 24 BD 00 08 24 BD 00 08 24 BD 00 08 24 BD 00 08 24 
+[2026-10-26T04:05:46.214]  info: SEND 0x001A  25 bytes : 1A 00 56 00 05 BD 00 08 24 BD 00 08 24 BD 00 08 24 BD 00 08 24 BD 00 08 24 
+[2026-10-26T04:05:46.214]  info: SEND 0x001A  25 bytes : 1A 00 57 00 05 BE 00 08 24 BE 00 08 24 BE 00 08 24 BE 00 08 24 BE 00 08 24 
+[2026-10-26T04:05:46.214]  info: SEND 0x001A  25 bytes : 1A 00 58 00 05 BE 00 08 24 BE 00 08 24 BE 00 08 24 BE 00 08 24 BE 00 08 24 
+[2026-10-26T04:05:46.214]  info: SEND 0x001A  25 bytes : 1A 00 59 00 05 BE 00 08 24 BE 00 08 24 BE 00 08 24 BE 00 08 24 BE 00 08 24 
+[2026-10-26T04:05:46.215]  info: SEND 0x001A  25 bytes : 1A 00 5A 00 05 BE 00 08 24 BE 00 08 24 BE 00 08 24 BE 00 08 24 BE 00 08 24 
+[2026-10-26T04:05:46.215]  info: SEND 0x001A  25 bytes : 1A 00 5B 00 05 BF 00 08 24 BF 00 08 24 BF 00 08 24 BF 00 08 24 BF 00 08 24 
+[2026-10-26T04:05:46.215]  info: SEND 0x001A  25 bytes : 1A 00 5C 00 05 BF 00 08 24 BF 00 08 24 BF 00 08 24 BF 00 08 24 BF 00 08 24 
+[2026-10-26T04:05:46.215]  info: SEND 0x001A  25 bytes : 1A 00 5D 00 05 BF 00 08 24 BF 00 08 24 BF 00 08 24 BF 00 08 24 BF 00 08 24 
+[2026-10-26T04:05:46.215]  info: SEND 0x001A  25 bytes : 1A 00 5E 00 05 BF 00 08 24 BF 00 08 24 BF 00 08 24 BF 00 08 24 BF 00 08 24 
+[2026-10-26T04:05:46.215]  info: SEND 0x001A  25 bytes : 1A 00 5F 00 05 BF 00 08 24 BF 00 08 24 BF 00 08 24 BF 00 08 24 BF 00 08 24 
+[2026-10-26T04:05:46.215]  info: SEND 0x001A  25 bytes : 1A 00 60 00 05 C0 00 08 24 C0 00 08 24 C0 00 08 24 C0 00 08 24 C0 00 08 24 
+[2026-10-26T04:05:46.215]  info: SEND 0x001A  25 bytes : 1A 00 61 00 05 C0 00 08 24 C0 00 08 24 C0 00 08 24 C0 00 08 24 C0 00 08 24 
+[2026-10-26T04:05:46.215]  info: SEND 0x001A  25 bytes : 1A 00 62 00 05 C0 00 08 24 C0 00 08 24 C0 00 08 24 C0 00 08 24 C0 00 08 24 
+[2026-10-26T04:05:46.215]  info: SEND 0x001A  25 bytes : 1A 00 63 00 05 C0 00 08 24 C0 00 08 24 C0 00 08 24 C0 00 08 24 C0 00 08 24 
+[2026-10-26T04:05:46.215]  info: SEND 0x001A  17 bytes : 1A 00 64 00 03 91 00 08 24 91 00 08 24 91 00 08 24 
+[2026-10-26T04:05:46.215]  info: SEND 0x001A  17 bytes : 1A 00 65 00 03 92 00 08 24 92 00 08 24 92 00 08 24 
+[2026-10-26T04:05:46.215]  info: SEND 0x001A  17 bytes : 1A 00 66 00 03 93 00 08 24 93 00 08 24 93 00 08 24 
+[2026-10-26T04:05:46.215]  info: SEND 0x001A  17 bytes : 1A 00 67 00 03 94 00 08 24 94 00 08 24 94 00 08 24 
+[2026-10-26T04:05:46.215]  info: SEND 0x001A  17 bytes : 1A 00 68 00 03 95 00 08 24 95 00 08 24 95 00 08 24 
+[2026-10-26T04:05:46.216]  info: SEND 0x001A  17 bytes : 1A 00 69 00 03 96 00 08 24 96 00 08 24 96 00 08 24 
+[2026-10-26T04:05:46.216]  info: SEND 0x001A  17 bytes : 1A 00 6A 00 03 97 00 08 24 97 00 08 24 97 00 08 24 
+[2026-10-26T04:05:46.216]  info: SEND 0x001A  17 bytes : 1A 00 6B 00 03 98 00 08 24 98 00 08 24 98 00 08 24 
+[2026-10-26T04:05:46.216]  info: SEND 0x001A  17 bytes : 1A 00 6C 00 03 9C 00 08 24 9C 00 08 24 9C 00 08 24 
+[2026-10-26T04:05:46.216]  info: SEND 0x001A  17 bytes : 1A 00 6D 00 03 9D 00 08 24 9D 00 08 24 9D 00 08 24 
+[2026-10-26T04:05:46.216]  info: SEND 0x001A  17 bytes : 1A 00 6E 00 03 9E 00 08 24 9E 00 08 24 9E 00 08 24 
+[2026-10-26T04:05:46.216]  info: SEND 0x001A  17 bytes : 1A 00 6F 00 03 9F 00 08 24 9F 00 08 24 9F 00 08 24 
+[2026-10-26T04:05:46.216]  info: SEND 0x001A  17 bytes : 1A 00 70 00 03 A0 00 08 24 A0 00 08 24 A0 00 08 24 
+[2026-10-26T04:05:46.216]  info: SEND 0x001A  17 bytes : 1A 00 71 00 03 A1 00 08 24 A1 00 08 24 A1 00 08 24 
+[2026-10-26T04:05:46.216]  info: SEND 0x001A  17 bytes : 1A 00 72 00 03 A2 00 08 24 A2 00 08 24 A2 00 08 24 
+[2026-10-26T04:05:46.216]  info: SEND 0x001A  25 bytes : 1A 00 73 00 05 A3 00 08 24 A3 00 08 24 A3 00 08 24 A3 00 08 24 A3 00 08 24 
+[2026-10-26T04:05:46.216]  info: SEND 0x001A  25 bytes : 1A 00 74 00 05 A4 00 08 24 A4 00 08 24 A4 00 08 24 A4 00 08 24 A4 00 08 24 
+[2026-10-26T04:05:46.216]  info: SEND 0x001A  25 bytes : 1A 00 75 00 05 A5 00 08 24 A5 00 08 24 A5 00 08 24 A5 00 08 24 A5 00 08 24 
+[2026-10-26T04:05:46.216]  info: SEND 0x001A  25 bytes : 1A 00 76 00 05 A6 00 08 24 A6 00 08 24 A6 00 08 24 A6 00 08 24 A6 00 08 24 
+[2026-10-26T04:05:46.216]  info: SEND 0x001A  25 bytes : 1A 00 77 00 05 A7 00 08 24 A7 00 08 24 A7 00 08 24 A7 00 08 24 A7 00 08 24 
+[2026-10-26T04:05:46.217]  info: SEND 0x001A  25 bytes : 1A 00 78 00 05 A8 00 08 24 A8 00 08 24 A8 00 08 24 A8 00 08 24 A8 00 08 24 
+[2026-10-26T04:05:46.217]  info: SEND 0x001A  25 bytes : 1A 00 79 00 05 A9 00 08 24 A9 00 08 24 A9 00 08 24 A9 00 08 24 A9 00 08 24 
+[2026-10-26T04:05:46.217]  info: SEND 0x001A  25 bytes : 1A 00 7A 00 05 AA 00 08 24 AA 00 08 24 AA 00 08 24 AA 00 08 24 AA 00 08 24 
+[2026-10-26T04:05:46.217]  info: SEND 0x001A  17 bytes : 1A 00 7B 00 03 82 01 08 24 82 01 08 24 82 01 08 24 
+[2026-10-26T04:05:46.217]  info: SEND 0x001A  17 bytes : 1A 00 7C 00 03 82 01 08 24 82 01 08 24 82 01 08 24 
+[2026-10-26T04:05:46.217]  info: SEND 0x001A  17 bytes : 1A 00 7D 00 03 82 01 08 24 82 01 08 24 82 01 08 24 
+[2026-10-26T04:05:46.217]  info: SEND 0x001A  17 bytes : 1A 00 7E 00 03 82 01 08 24 82 01 08 24 82 01 08 24 
+[2026-10-26T04:05:46.217]  info: SEND 0x001A  17 bytes : 1A 00 7F 00 03 C5 00 08 24 C5 00 08 24 C5 00 08 24 
+[2026-10-26T04:05:46.217]  info: SEND 0x001A  17 bytes : 1A 00 80 00 03 C6 00 08 24 C6 00 08 24 C6 00 08 24 
+[2026-10-26T04:05:46.217]  info: SEND 0x001A  17 bytes : 1A 00 81 00 03 C7 00 08 24 C7 00 08 24 C7 00 08 24 
+[2026-10-26T04:05:46.217]  info: SEND 0x001A  17 bytes : 1A 00 82 00 03 C8 00 08 24 C8 00 08 24 C8 00 08 24 
+[2026-10-26T04:05:46.217]  info: SEND 0x001A  17 bytes : 1A 00 83 00 03 C9 00 08 24 C9 00 08 24 C9 00 08 24 
+[2026-10-26T04:05:46.217]  info: SEND 0x001A  17 bytes : 1A 00 84 00 03 CA 00 08 24 CA 00 08 24 CA 00 08 24 
+[2026-10-26T04:05:46.217]  info: SEND 0x001A  17 bytes : 1A 00 85 00 03 CB 00 08 24 CB 00 08 24 CB 00 08 24 
+[2026-10-26T04:05:46.217]  info: SEND 0x001A  17 bytes : 1A 00 86 00 03 CC 00 08 24 CC 00 08 24 CC 00 08 24 
+[2026-10-26T04:05:46.218]  info: SEND 0x001A  17 bytes : 1A 00 87 00 03 CD 00 08 24 CD 00 08 24 CD 00 08 24 
+[2026-10-26T04:05:46.218]  info: SEND 0x001A  17 bytes : 1A 00 88 00 03 CE 00 08 24 CE 00 08 24 CE 00 08 24 
+[2026-10-26T04:05:46.218]  info: SEND 0x001A  17 bytes : 1A 00 89 00 03 CF 00 08 24 CF 00 08 24 CF 00 08 24 
+[2026-10-26T04:05:46.218]  info: SEND 0x001A  17 bytes : 1A 00 8A 00 03 D0 00 08 24 D0 00 08 24 D0 00 08 24 
+[2026-10-26T04:05:46.218]  info: SEND 0x001A  17 bytes : 1A 00 8B 00 03 D1 00 08 24 D1 00 08 24 D1 00 08 24 
+[2026-10-26T04:05:46.218]  info: SEND 0x001A  17 bytes : 1A 00 8C 00 03 D2 00 08 24 D2 00 08 24 D2 00 08 24 
+[2026-10-26T04:05:46.218]  info: SEND 0x001A  17 bytes : 1A 00 8D 00 03 D3 00 08 24 D3 00 08 24 D3 00 08 24 
+[2026-10-26T04:05:46.218]  info: SEND 0x001A  17 bytes : 1A 00 8E 00 03 D9 00 08 24 D9 00 08 24 D9 00 08 24 
+[2026-10-26T04:05:46.218]  info: SEND 0x001A  17 bytes : 1A 00 8F 00 03 DA 00 08 24 DA 00 08 24 DA 00 08 24 
+[2026-10-26T04:05:46.218]  info: SEND 0x001A  17 bytes : 1A 00 90 00 03 DB 00 08 24 DB 00 08 24 DB 00 08 24 
+[2026-10-26T04:05:46.218]  info: SEND 0x001A  17 bytes : 1A 00 91 00 03 DC 00 08 24 DC 00 08 24 DC 00 08 24 
+[2026-10-26T04:05:46.218]  info: SEND 0x001A  17 bytes : 1A 00 92 00 03 DD 00 08 24 DD 00 08 24 DD 00 08 24 
+[2026-10-26T04:05:46.218]  info: SEND 0x001A  17 bytes : 1A 00 93 00 03 DE 00 08 24 DE 00 08 24 DE 00 08 24 
+[2026-10-26T04:05:46.219]  info: SEND 0x001A  17 bytes : 1A 00 94 00 03 DF 00 08 24 DF 00 08 24 DF 00 08 24 
+[2026-10-26T04:05:46.219]  info: SEND 0x001A  17 bytes : 1A 00 95 00 03 E0 00 08 24 E0 00 08 24 E0 00 08 24 
+[2026-10-26T04:05:46.219]  info: SEND 0x001A  17 bytes : 1A 00 96 00 03 E1 00 08 24 E1 00 08 24 E1 00 08 24 
+[2026-10-26T04:05:46.219]  info: SEND 0x001A  17 bytes : 1A 00 97 00 03 E2 00 08 24 E2 00 08 24 E2 00 08 24 
+[2026-10-26T04:05:46.219]  info: SEND 0x001A  17 bytes : 1A 00 98 00 03 E8 00 08 24 E8 00 08 24 E8 00 08 24 
+[2026-10-26T04:05:46.219]  info: SEND 0x001A  17 bytes : 1A 00 99 00 03 E9 00 08 24 E9 00 08 24 E9 00 08 24 
+[2026-10-26T04:05:46.219]  info: SEND 0x001A  17 bytes : 1A 00 9A 00 03 EA 00 08 24 EA 00 08 24 EA 00 08 24 
+[2026-10-26T04:05:46.219]  info: SEND 0x001A  17 bytes : 1A 00 9B 00 03 EB 00 08 24 EB 00 08 24 EB 00 08 24 
+[2026-10-26T04:05:46.219]  info: SEND 0x001A  17 bytes : 1A 00 9C 00 03 FF 00 08 24 FF 00 08 24 FF 00 08 24 
+[2026-10-26T04:05:46.219]  info: SEND 0x001A  17 bytes : 1A 00 9D 00 03 00 01 08 24 00 01 08 24 00 01 08 24 
+[2026-10-26T04:05:46.219]  info: SEND 0x001A  17 bytes : 1A 00 9E 00 03 01 01 08 24 01 01 08 24 01 01 08 24 
+[2026-10-26T04:05:46.219]  info: SEND 0x001A  17 bytes : 1A 00 9F 00 03 FC 00 08 24 FC 00 08 24 FC 00 08 24 
+[2026-10-26T04:05:46.219]  info: SEND 0x001A  17 bytes : 1A 00 A0 00 03 FD 00 08 24 FD 00 08 24 FD 00 08 24 
+[2026-10-26T04:05:46.219]  info: SEND 0x001A  17 bytes : 1A 00 A1 00 03 FE 00 08 24 FE 00 08 24 FE 00 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  17 bytes : 1A 00 A2 00 03 3B 01 08 24 3B 01 08 24 3B 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  17 bytes : 1A 00 A3 00 03 3B 01 08 24 3B 01 08 24 3B 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  17 bytes : 1A 00 A4 00 03 3B 01 08 24 3B 01 08 24 3B 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  17 bytes : 1A 00 A5 00 03 3B 01 08 24 3B 01 08 24 3B 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  17 bytes : 1A 00 A6 00 03 3E 01 08 24 3E 01 08 24 3E 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  17 bytes : 1A 00 A7 00 03 3E 01 08 24 3E 01 08 24 3E 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  17 bytes : 1A 00 A8 00 03 3E 01 08 24 3E 01 08 24 3E 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  17 bytes : 1A 00 A9 00 03 3E 01 08 24 3E 01 08 24 3E 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  25 bytes : 1A 00 AA 00 05 3C 01 08 24 3C 01 08 24 3C 01 08 24 3C 01 08 24 3C 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  25 bytes : 1A 00 AB 00 05 3C 01 08 24 3C 01 08 24 3C 01 08 24 3C 01 08 24 3C 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  25 bytes : 1A 00 AC 00 05 3C 01 08 24 3C 01 08 24 3C 01 08 24 3C 01 08 24 3C 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  25 bytes : 1A 00 AD 00 05 3C 01 08 24 3C 01 08 24 3C 01 08 24 3C 01 08 24 3C 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  25 bytes : 1A 00 AE 00 05 3F 01 08 24 3F 01 08 24 3F 01 08 24 3F 01 08 24 3F 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  25 bytes : 1A 00 AF 00 05 3F 01 08 24 3F 01 08 24 3F 01 08 24 3F 01 08 24 3F 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  25 bytes : 1A 00 B0 00 05 3F 01 08 24 3F 01 08 24 3F 01 08 24 3F 01 08 24 3F 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  25 bytes : 1A 00 B1 00 05 3F 01 08 24 3F 01 08 24 3F 01 08 24 3F 01 08 24 3F 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  25 bytes : 1A 00 B2 00 05 3D 01 08 24 3D 01 08 24 3D 01 08 24 3D 01 08 24 3D 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  25 bytes : 1A 00 B3 00 05 3D 01 08 24 3D 01 08 24 3D 01 08 24 3D 01 08 24 3D 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  25 bytes : 1A 00 B4 00 05 3D 01 08 24 3D 01 08 24 3D 01 08 24 3D 01 08 24 3D 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  25 bytes : 1A 00 B5 00 05 3D 01 08 24 3D 01 08 24 3D 01 08 24 3D 01 08 24 3D 01 08 24 
+[2026-10-26T04:05:46.220]  info: SEND 0x001A  25 bytes : 1A 00 B6 00 05 40 01 08 24 40 01 08 24 40 01 08 24 40 01 08 24 40 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  25 bytes : 1A 00 B7 00 05 40 01 08 24 40 01 08 24 40 01 08 24 40 01 08 24 40 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  25 bytes : 1A 00 B8 00 05 40 01 08 24 40 01 08 24 40 01 08 24 40 01 08 24 40 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  25 bytes : 1A 00 B9 00 05 40 01 08 24 40 01 08 24 40 01 08 24 40 01 08 24 40 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 BA 00 03 2E 01 08 24 2E 01 08 24 2E 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 BB 00 03 2F 01 08 24 2F 01 08 24 2F 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 BC 00 03 30 01 08 24 30 01 08 24 30 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 BD 00 03 31 01 08 24 31 01 08 24 31 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  25 bytes : 1A 00 BE 00 05 32 01 08 24 32 01 08 24 32 01 08 24 32 01 08 24 32 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  25 bytes : 1A 00 BF 00 05 33 01 08 24 33 01 08 24 33 01 08 24 33 01 08 24 33 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 C0 00 03 35 01 08 24 35 01 08 24 35 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 C1 00 03 36 01 08 24 36 01 08 24 36 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 C2 00 03 37 01 08 24 37 01 08 24 37 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 C3 00 03 38 01 08 24 38 01 08 24 38 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 C4 00 03 39 01 08 24 39 01 08 24 39 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 C5 00 03 3A 01 08 24 3A 01 08 24 3A 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 C6 00 03 85 01 08 24 85 01 08 24 85 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 C7 00 03 46 01 08 24 46 01 08 24 46 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 C8 00 03 41 01 08 24 41 01 08 24 41 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 C9 00 03 43 01 08 24 43 01 08 24 43 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 CA 00 03 42 01 08 24 42 01 08 24 42 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 CB 00 03 44 01 08 24 44 01 08 24 44 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 CC 00 03 45 01 08 24 45 01 08 24 45 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 CD 00 03 47 01 08 24 47 01 08 24 47 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 CE 00 03 48 01 08 24 48 01 08 24 48 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 CF 00 03 49 01 08 24 49 01 08 24 49 01 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 D0 00 03 AB 00 08 24 AB 00 08 24 AB 00 08 24 
+[2026-10-26T04:05:46.221]  info: SEND 0x001A  17 bytes : 1A 00 D1 00 03 AD 00 08 24 AD 00 08 24 AD 00 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  17 bytes : 1A 00 D2 00 03 AC 00 08 24 AC 00 08 24 AC 00 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  17 bytes : 1A 00 D3 00 03 AE 00 08 24 AE 00 08 24 AE 00 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  17 bytes : 1A 00 D4 00 03 34 01 08 24 34 01 08 24 34 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  17 bytes : 1A 00 D5 00 03 85 01 08 24 85 01 08 24 85 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  17 bytes : 1A 00 D6 00 03 85 01 08 24 85 01 08 24 85 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  17 bytes : 1A 00 D7 00 03 85 01 08 24 85 01 08 24 85 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  25 bytes : 1A 00 D8 00 05 83 01 08 24 83 01 08 24 83 01 08 24 83 01 08 24 83 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  25 bytes : 1A 00 D9 00 05 83 01 08 24 83 01 08 24 83 01 08 24 83 01 08 24 83 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  25 bytes : 1A 00 DA 00 05 83 01 08 24 83 01 08 24 83 01 08 24 83 01 08 24 83 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  25 bytes : 1A 00 DB 00 05 83 01 08 24 83 01 08 24 83 01 08 24 83 01 08 24 83 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  25 bytes : 1A 00 DC 00 05 86 01 08 24 86 01 08 24 86 01 08 24 86 01 08 24 86 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  25 bytes : 1A 00 DD 00 05 86 01 08 24 86 01 08 24 86 01 08 24 86 01 08 24 86 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  25 bytes : 1A 00 DE 00 05 86 01 08 24 86 01 08 24 86 01 08 24 86 01 08 24 86 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  25 bytes : 1A 00 DF 00 05 86 01 08 24 86 01 08 24 86 01 08 24 86 01 08 24 86 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  25 bytes : 1A 00 E0 00 05 84 01 08 24 84 01 08 24 84 01 08 24 84 01 08 24 84 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  25 bytes : 1A 00 E1 00 05 84 01 08 24 84 01 08 24 84 01 08 24 84 01 08 24 84 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  25 bytes : 1A 00 E2 00 05 84 01 08 24 84 01 08 24 84 01 08 24 84 01 08 24 84 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  25 bytes : 1A 00 E3 00 05 84 01 08 24 84 01 08 24 84 01 08 24 84 01 08 24 84 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  25 bytes : 1A 00 E4 00 05 87 01 08 24 87 01 08 24 87 01 08 24 87 01 08 24 87 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  25 bytes : 1A 00 E5 00 05 87 01 08 24 87 01 08 24 87 01 08 24 87 01 08 24 87 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  25 bytes : 1A 00 E6 00 05 87 01 08 24 87 01 08 24 87 01 08 24 87 01 08 24 87 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  25 bytes : 1A 00 E7 00 05 87 01 08 24 87 01 08 24 87 01 08 24 87 01 08 24 87 01 08 24 
+[2026-10-26T04:05:46.222]  info: SEND 0x001A  17 bytes : 1A 00 E8 00 03 6B 01 08 24 6B 01 08 24 6B 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 E9 00 03 6C 01 08 24 6C 01 08 24 6C 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  25 bytes : 1A 00 EA 00 05 6F 01 08 24 6F 01 08 24 6F 01 08 24 6F 01 08 24 6F 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  25 bytes : 1A 00 EB 00 05 71 01 08 24 71 01 08 24 71 01 08 24 71 01 08 24 71 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 EC 00 03 73 01 08 24 73 01 08 24 73 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 ED 00 03 74 01 08 24 74 01 08 24 74 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 EE 00 03 75 01 08 24 75 01 08 24 75 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 EF 00 03 76 01 08 24 76 01 08 24 76 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 F0 00 03 79 01 08 24 79 01 08 24 79 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 F1 00 03 77 01 08 24 77 01 08 24 77 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 F2 00 03 78 01 08 24 78 01 08 24 78 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 F3 00 03 8D 01 08 24 8D 01 08 24 8D 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 F4 00 03 88 01 08 24 88 01 08 24 88 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 F5 00 03 8A 01 08 24 8A 01 08 24 8A 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 F6 00 03 89 01 08 24 89 01 08 24 89 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 F7 00 03 8B 01 08 24 8B 01 08 24 8B 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 F8 00 03 8C 01 08 24 8C 01 08 24 8C 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 F9 00 03 6D 01 08 24 6D 01 08 24 6D 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 FA 00 03 6E 01 08 24 6E 01 08 24 6E 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  25 bytes : 1A 00 FB 00 05 70 01 08 24 70 01 08 24 70 01 08 24 70 01 08 24 70 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  25 bytes : 1A 00 FC 00 05 72 01 08 24 72 01 08 24 72 01 08 24 72 01 08 24 72 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 FD 00 03 7A 01 08 24 7A 01 08 24 7A 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 FE 00 03 7B 01 08 24 7B 01 08 24 7B 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 FF 00 03 7C 01 08 24 7C 01 08 24 7C 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 00 01 03 7D 01 08 24 7D 01 08 24 7D 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 01 01 03 80 01 08 24 80 01 08 24 80 01 08 24 
+[2026-10-26T04:05:46.223]  info: SEND 0x001A  17 bytes : 1A 00 02 01 03 7E 01 08 24 7E 01 08 24 7E 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 03 01 03 7F 01 08 24 7F 01 08 24 7F 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 04 01 03 81 01 08 24 81 01 08 24 81 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 05 01 03 93 01 08 24 93 01 08 24 93 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 06 01 03 8E 01 08 24 8E 01 08 24 8E 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 07 01 03 90 01 08 24 90 01 08 24 90 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 08 01 03 8F 01 08 24 8F 01 08 24 8F 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 09 01 03 91 01 08 24 91 01 08 24 91 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 0A 01 03 92 01 08 24 92 01 08 24 92 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 0B 01 03 1B 02 08 24 1B 02 08 24 1B 02 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 0C 01 03 1A 02 08 24 1A 02 08 24 1A 02 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 0D 01 03 0B 02 08 24 0B 02 08 24 0B 02 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 0E 01 03 0C 02 08 24 0C 02 08 24 0C 02 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 0F 01 03 0D 02 08 24 0D 02 08 24 0D 02 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 10 01 03 0E 02 08 24 0E 02 08 24 0E 02 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 11 01 03 0F 02 08 24 0F 02 08 24 0F 02 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 12 01 03 54 01 08 24 54 01 08 24 54 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 13 01 03 56 01 08 24 56 01 08 24 56 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 14 01 03 55 01 08 24 55 01 08 24 55 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 15 01 03 5E 01 08 24 5E 01 08 24 5E 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 16 01 03 D9 01 08 24 D9 01 08 24 D9 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 17 01 03 DB 01 08 24 DB 01 08 24 DB 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 18 01 03 DC 01 08 24 DC 01 08 24 DC 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 19 01 03 DD 01 08 24 DD 01 08 24 DD 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 1A 01 03 63 01 08 24 63 01 08 24 63 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 1B 01 03 64 01 08 24 64 01 08 24 64 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 1C 01 03 D0 01 08 24 D0 01 08 24 D0 01 08 24 
+[2026-10-26T04:05:46.224]  info: SEND 0x001A  17 bytes : 1A 00 1D 01 03 D1 01 08 24 D1 01 08 24 D1 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  17 bytes : 1A 00 1E 01 03 67 01 08 24 67 01 08 24 67 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  17 bytes : 1A 00 1F 01 03 68 01 08 24 68 01 08 24 68 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  25 bytes : 1A 00 20 01 05 69 01 08 24 69 01 08 24 69 01 08 24 69 01 08 24 69 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  25 bytes : 1A 00 21 01 05 6A 01 08 24 6A 01 08 24 6A 01 08 24 6A 01 08 24 6A 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  17 bytes : 1A 00 22 01 03 E6 01 08 24 E6 01 08 24 E6 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  17 bytes : 1A 00 23 01 03 E5 01 08 24 E5 01 08 24 E5 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  17 bytes : 1A 00 24 01 03 E7 01 08 24 E7 01 08 24 E7 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  25 bytes : 1A 00 25 01 05 E8 01 08 24 E8 01 08 24 E8 01 08 24 E8 01 08 24 E8 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  25 bytes : 1A 00 26 01 05 E9 01 08 24 E9 01 08 24 E9 01 08 24 E9 01 08 24 E9 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  25 bytes : 1A 00 27 01 05 EA 01 08 24 EA 01 08 24 EA 01 08 24 EA 01 08 24 EA 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  25 bytes : 1A 00 28 01 05 EB 01 08 24 EB 01 08 24 EB 01 08 24 EB 01 08 24 EB 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  25 bytes : 1A 00 29 01 05 DE 01 08 24 DE 01 08 24 DE 01 08 24 DE 01 08 24 DE 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  25 bytes : 1A 00 2A 01 05 DF 01 08 24 DF 01 08 24 DF 01 08 24 DF 01 08 24 DF 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  25 bytes : 1A 00 2B 01 05 E0 01 08 24 E0 01 08 24 E0 01 08 24 E0 01 08 24 E0 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  25 bytes : 1A 00 2C 01 05 E1 01 08 24 E1 01 08 24 E1 01 08 24 E1 01 08 24 E1 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  25 bytes : 1A 00 2D 01 05 E4 01 08 24 E4 01 08 24 E4 01 08 24 E4 01 08 24 E4 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  17 bytes : 1A 00 2E 01 03 0A 02 08 24 0A 02 08 24 0A 02 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  25 bytes : 1A 00 2F 01 05 EC 01 08 24 EC 01 08 24 EC 01 08 24 EC 01 08 24 EC 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  17 bytes : 1A 00 30 01 03 EE 01 08 24 EE 01 08 24 EE 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  17 bytes : 1A 00 31 01 03 EF 01 08 24 EF 01 08 24 EF 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  25 bytes : 1A 00 32 01 05 F0 01 08 24 F0 01 08 24 F0 01 08 24 F0 01 08 24 F0 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  25 bytes : 1A 00 33 01 05 F2 01 08 24 F2 01 08 24 F2 01 08 24 F2 01 08 24 F2 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  25 bytes : 1A 00 34 01 05 F3 01 08 24 F3 01 08 24 F3 01 08 24 F3 01 08 24 F3 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  25 bytes : 1A 00 35 01 05 F4 01 08 24 F4 01 08 24 F4 01 08 24 F4 01 08 24 F4 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  25 bytes : 1A 00 36 01 05 F5 01 08 24 F5 01 08 24 F5 01 08 24 F5 01 08 24 F5 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  17 bytes : 1A 00 37 01 03 F6 01 08 24 F6 01 08 24 F6 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  25 bytes : 1A 00 38 01 05 F7 01 08 24 F7 01 08 24 F7 01 08 24 F7 01 08 24 F7 01 08 24 
+[2026-10-26T04:05:46.225]  info: SEND 0x001A  17 bytes : 1A 00 39 01 03 F9 01 08 24 F9 01 08 24 F9 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  25 bytes : 1A 00 3A 01 05 08 02 08 24 08 02 08 24 08 02 08 24 08 02 08 24 08 02 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 3B 01 03 09 02 08 24 09 02 08 24 09 02 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 3C 01 03 FA 01 08 24 FA 01 08 24 FA 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  25 bytes : 1A 00 3D 01 05 FB 01 08 24 FB 01 08 24 FB 01 08 24 FB 01 08 24 FB 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 3E 01 03 FC 01 08 24 FC 01 08 24 FC 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 3F 01 03 FE 01 08 24 FE 01 08 24 FE 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 40 01 03 FF 01 08 24 FF 01 08 24 FF 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  25 bytes : 1A 00 41 01 05 01 02 08 24 01 02 08 24 01 02 08 24 01 02 08 24 01 02 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 42 01 03 04 02 08 24 04 02 08 24 04 02 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  25 bytes : 1A 00 43 01 05 05 02 08 24 05 02 08 24 05 02 08 24 05 02 08 24 05 02 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  25 bytes : 1A 00 44 01 05 06 02 08 24 06 02 08 24 06 02 08 24 06 02 08 24 06 02 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 45 01 03 BC 01 08 24 BC 01 08 24 BC 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  25 bytes : 1A 00 46 01 05 C0 01 08 24 C0 01 08 24 C0 01 08 24 C0 01 08 24 C0 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 47 01 03 C1 01 08 24 C1 01 08 24 C1 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 48 01 03 C2 01 08 24 C2 01 08 24 C2 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 49 01 03 5C 01 08 24 5C 01 08 24 5C 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 4A 01 03 D2 01 08 24 D2 01 08 24 D2 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 4B 01 03 D3 01 08 24 D3 01 08 24 D3 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 4C 01 03 D4 01 08 24 D4 01 08 24 D4 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 4D 01 03 D5 01 08 24 D5 01 08 24 D5 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 4E 01 03 D6 01 08 24 D6 01 08 24 D6 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 4F 01 03 D7 01 08 24 D7 01 08 24 D7 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  25 bytes : 1A 00 50 01 05 D8 01 08 24 D8 01 08 24 D8 01 08 24 D8 01 08 24 D8 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 51 01 03 DA 01 08 24 DA 01 08 24 DA 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 52 01 03 65 01 08 24 65 01 08 24 65 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 53 01 03 66 01 08 24 66 01 08 24 66 01 08 24 
+[2026-10-26T04:05:46.226]  info: SEND 0x001A  17 bytes : 1A 00 54 01 03 18 02 08 24 18 02 08 24 18 02 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 55 01 03 19 02 08 24 19 02 08 24 19 02 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 56 01 03 1C 02 08 24 1C 02 08 24 1C 02 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 57 01 03 17 02 08 24 17 02 08 24 17 02 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 58 01 03 60 01 08 24 60 01 08 24 60 01 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 59 01 03 5F 01 08 24 5F 01 08 24 5F 01 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 5A 01 03 61 01 08 24 61 01 08 24 61 01 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 5B 01 03 62 01 08 24 62 01 08 24 62 01 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 5C 01 03 52 01 08 24 52 01 08 24 52 01 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 5D 01 03 51 01 08 24 51 01 08 24 51 01 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 5E 01 03 10 02 08 24 10 02 08 24 10 02 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 5F 01 03 53 01 08 24 53 01 08 24 53 01 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 60 01 03 11 02 08 24 11 02 08 24 11 02 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 61 01 03 12 02 08 24 12 02 08 24 12 02 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 62 01 03 13 02 08 24 13 02 08 24 13 02 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 63 01 03 14 02 08 24 14 02 08 24 14 02 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 64 01 03 15 02 08 24 15 02 08 24 15 02 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 65 01 03 16 02 08 24 16 02 08 24 16 02 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 66 01 03 E2 01 08 24 E2 01 08 24 E2 01 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 67 01 03 E3 01 08 24 E3 01 08 24 E3 01 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 68 01 03 ED 01 08 24 ED 01 08 24 ED 01 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 69 01 03 F1 01 08 24 F1 01 08 24 F1 01 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 6A 01 03 F8 01 08 24 F8 01 08 24 F8 01 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 6B 01 03 FD 01 08 24 FD 01 08 24 FD 01 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  25 bytes : 1A 00 6C 01 05 00 02 08 24 00 02 08 24 00 02 08 24 00 02 08 24 00 02 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  17 bytes : 1A 00 6D 01 03 02 02 08 24 02 02 08 24 02 02 08 24 
+[2026-10-26T04:05:46.227]  info: SEND 0x001A  25 bytes : 1A 00 6E 01 05 03 02 08 24 03 02 08 24 03 02 08 24 03 02 08 24 03 02 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  25 bytes : 1A 00 6F 01 05 07 02 08 24 07 02 08 24 07 02 08 24 07 02 08 24 07 02 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  25 bytes : 1A 00 70 01 05 B6 01 08 24 B6 01 08 24 B6 01 08 24 B6 01 08 24 B6 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  25 bytes : 1A 00 71 01 05 B7 01 08 24 B7 01 08 24 B7 01 08 24 B7 01 08 24 B7 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 72 01 03 B8 01 08 24 B8 01 08 24 B8 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 73 01 03 B9 01 08 24 B9 01 08 24 B9 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 74 01 03 BA 01 08 24 BA 01 08 24 BA 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 75 01 03 BB 01 08 24 BB 01 08 24 BB 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 76 01 03 BD 01 08 24 BD 01 08 24 BD 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 77 01 03 BE 01 08 24 BE 01 08 24 BE 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 78 01 03 BF 01 08 24 BF 01 08 24 BF 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 79 01 03 C3 01 08 24 C3 01 08 24 C3 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 7A 01 03 C4 01 08 24 C4 01 08 24 C4 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 7B 01 03 C5 01 08 24 C5 01 08 24 C5 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 7C 01 03 C6 01 08 24 C6 01 08 24 C6 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 7D 01 03 C7 01 08 24 C7 01 08 24 C7 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 7E 01 03 C8 01 08 24 C8 01 08 24 C8 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 7F 01 03 C9 01 08 24 C9 01 08 24 C9 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 80 01 03 CA 01 08 24 CA 01 08 24 CA 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 81 01 03 CB 01 08 24 CB 01 08 24 CB 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 82 01 03 CC 01 08 24 CC 01 08 24 CC 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 83 01 03 CD 01 08 24 CD 01 08 24 CD 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 84 01 03 CE 01 08 24 CE 01 08 24 CE 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001A  17 bytes : 1A 00 85 01 03 CF 01 08 24 CF 01 08 24 CF 01 08 24 
+[2026-10-26T04:05:46.228]  info: SEND 0x001B   2 bytes : 1B 00 
+[2026-10-26T04:05:46.228]  info: SEND 0x000F   8 bytes : 0F 00 01 00 0A 00 00 00 
+[2026-10-26T04:05:46.228]  info: SEND 0x000F   8 bytes : 0F 00 63 00 03 00 00 00 
+[2026-10-26T04:05:46.228]  info: SEND 0x000F   8 bytes : 0F 00 64 00 05 00 00 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x000F   8 bytes : 0F 00 65 00 05 00 05 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x000F   8 bytes : 0F 00 66 00 02 00 02 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x000F   8 bytes : 0F 00 6F 00 01 00 00 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x000F   8 bytes : 0F 00 7C 00 01 00 00 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x000F   8 bytes : 0F 00 7D 00 01 00 00 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x000F   8 bytes : 0F 00 83 00 01 00 00 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x0094 260 bytes : 94 00 00 00 00 00 1F 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 5B 00 5E 00 5D 00 5A 00 5C 00 0B 00 0B 00 0B 00 0B 00 0B 00 00 00 00 00 1F 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 5B 00 5E 00 5D 00 5A 00 5C 00 0B 00 0B 00 0B 00 0B 00 0B 00 00 00 00 00 F3 1C EC 58 59 20 4B 42 84 43 76 82 44 E4 01 E9 EA 07 00 00 00 00 00 00 EA 07 00 00 00 00 00 00 00 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x00F2   6 bytes : F2 00 0D F0 AD BA 
+[2026-10-26T04:05:46.229]  info: SEND 0x0037   8 bytes : 37 00 01 00 00 00 32 32 
+[2026-10-26T04:05:46.229]  info: SEND 0x00B7   9 bytes : B7 00 01 00 00 00 01 00 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x00B6  10 bytes : B6 00 01 00 00 00 02 00 00 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x00DA  75 bytes : DA 00 01 00 00 00 08 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 08 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 
+[2026-10-26T04:05:46.229]  info: SEND 0x00DB   4 bytes : DB 00 00 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x00E9  62 bytes : E9 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x003A 176 bytes : 3A 00 01 00 00 00 2A 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x001F   6 bytes : 1F 00 F6 C3 FE FF 
+[2026-10-26T04:05:46.229]  info: SEND 0x0059  35 bytes : 59 00 01 00 00 00 01 00 00 00 00 00 10 03 00 00 00 00 00 00 00 00 00 05 00 41 00 70 00 70 00 6F 00 6B 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x00B7   9 bytes : B7 00 01 00 00 00 01 00 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x0020  99 bytes : 20 00 01 00 00 00 01 00 00 30 01 05 00 50 CE 45 00 28 8C 45 00 00 00 00 80 3F 00 00 00 00 01 00 00 90 43 00 00 80 3F 00 00 40 41 0D F0 AD BA 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 80 7F 00 00 80 7F 00 00 00 00 00 00 00 00 80 7F 00 00 80 7F 00 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x009F  14 bytes : 9F 00 29 00 00 00 01 00 00 00 19 00 00 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x009F  14 bytes : 9F 00 2A 00 00 00 01 00 00 00 90 01 00 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x00A2  14 bytes : A2 00 2B 00 00 00 01 00 00 00 00 00 00 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x009F  14 bytes : 9F 00 24 00 00 00 01 00 00 00 00 00 00 00 
+[2026-10-26T04:05:46.229]  info: SEND 0x00F0  10 bytes : F0 00 01 00 00 00 00 00 00 00 
+[2026-10-26T04:05:46.230]  info: SEND 0x006E  42 bytes : 6E 00 01 00 00 00 03 00 00 00 00 00 00 00 04 00 00 00 05 00 00 00 06 00 00 00 07 00 00 00 08 00 00 00 00 00 00 00 00 00 00 00 
+[2026-10-26T04:05:46.230]  info: SEND 0x0048   7 bytes : 48 00 01 00 00 00 01 
+[2026-10-26T04:05:46.230]  info: SEND 0x0022  10 bytes : 22 00 01 00 00 00 03 00 00 00 
+[2026-10-26T04:05:46.230]  info: SEND 0x01D3   4 bytes : D3 01 01 00 
+[2026-10-26T04:05:46.230]  info: SEND 0x01CC   7 bytes : CC 01 01 00 01 00 01 
+[2026-10-26T04:05:46.230]  info: SEND 0x01D4   4 bytes : D4 01 01 00 
+[2026-10-26T04:05:46.230]  info: SEND 0x01B3   5 bytes : B3 01 01 00 01 
+[2026-10-26T04:05:46.230]  info: SEND 0x018E   2 bytes : 8E 01 
+[2026-10-26T04:05:46.230]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:05:46.230]  info: RECV 0x800D   2 bytes : 0D 80 
+[2026-10-26T04:05:46.230]  info: SEND 0x000D   6 bytes : 0D 00 14 00 00 00 
+[2026-10-26T04:05:46.714]  info: SEND 0x001E   6 bytes : 1E 00 04 02 00 00 
+[2026-10-26T04:05:47.231]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:05:47.728]  info: SEND 0x001E   6 bytes : 1E 00 03 02 00 00 
+[2026-10-26T04:05:48.238]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:05:48.768]  info: SEND 0x001E   6 bytes : 1E 00 04 02 00 00 
+[2026-10-26T04:05:49.276]  info: SEND 0x001E   6 bytes : 1E 00 04 02 00 00 
+[2026-10-26T04:05:49.759]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:05:50.284]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:05:50.409]  info: SEND 0x000C   2 bytes : 0C 00 
+[2026-10-26T04:05:50.409]  info: SEND 0x000D   6 bytes : 0D 00 14 00 00 00 
+[2026-10-26T04:05:50.410]  info: RECV 0x8009  10 bytes : 09 80 10 00 00 00 00 00 00 00 
+[2026-10-26T04:05:50.795]  info: SEND 0x001E   6 bytes : 1E 00 03 02 00 00 
+[2026-10-26T04:05:51.277]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:05:51.786]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:05:52.300]  info: SEND 0x001E   6 bytes : 1E 00 04 02 00 00 
+[2026-10-26T04:05:52.810]  info: SEND 0x001E   6 bytes : 1E 00 04 02 00 00 
+[2026-10-26T04:05:53.308]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:05:53.815]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:05:54.341]  info: SEND 0x001E   6 bytes : 1E 00 03 02 00 00 
+[2026-10-26T04:05:54.835]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:05:55.348]  info: SEND 0x001E   6 bytes : 1E 00 04 02 00 00 
+[2026-10-26T04:05:55.425]  info: SEND 0x000C   2 bytes : 0C 00 
+[2026-10-26T04:05:55.425]  info: SEND 0x000D   6 bytes : 0D 00 14 00 00 00 
+[2026-10-26T04:05:55.427]  info: RECV 0x8009  10 bytes : 09 80 10 00 00 00 00 00 00 00 
+[2026-10-26T04:05:55.834]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:05:56.348]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:05:56.860]  info: SEND 0x001E   6 bytes : 1E 00 03 02 00 00 
+[2026-10-26T04:05:57.373]  info: SEND 0x001E   6 bytes : 1E 00 04 02 00 00 
+[2026-10-26T04:05:57.872]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:05:58.385]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:05:58.882]  info: SEND 0x001E   6 bytes : 1E 00 04 02 00 00 
+[2026-10-26T04:05:59.423]  info: SEND 0x001E   6 bytes : 1E 00 03 02 00 00 
+[2026-10-26T04:05:59.918]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:06:00.415]  info: SEND 0x000C   2 bytes : 0C 00 
+[2026-10-26T04:06:00.415]  info: SEND 0x000D   6 bytes : 0D 00 14 00 00 00 
+[2026-10-26T04:06:00.415]  info: SEND 0x001E   6 bytes : 1E 00 04 02 00 00 
+[2026-10-26T04:06:00.427]  info: RECV 0x8009  10 bytes : 09 80 10 00 00 00 00 00 00 00 
+[2026-10-26T04:06:00.927]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:06:01.440]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:06:01.933]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:06:02.415]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:06:02.929]  info: SEND 0x001E   6 bytes : 1E 00 04 02 00 00 
+[2026-10-26T04:06:03.441]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:06:03.971]  info: SEND 0x001E   6 bytes : 1E 00 03 02 00 00 
+[2026-10-26T04:06:04.468]  info: SEND 0x001E   6 bytes : 1E 00 04 02 00 00 
+[2026-10-26T04:06:04.996]  info: SEND 0x001E   6 bytes : 1E 00 03 02 00 00 
+[2026-10-26T04:06:05.430]  info: SEND 0x000C   2 bytes : 0C 00 
+[2026-10-26T04:06:05.430]  info: SEND 0x000D   6 bytes : 0D 00 14 00 00 00 
+[2026-10-26T04:06:05.444]  info: RECV 0x8009  10 bytes : 09 80 10 00 00 00 00 00 00 00 
+[2026-10-26T04:06:05.477]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:06:05.990]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:06:06.498]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:06:07.010]  info: SEND 0x001E   6 bytes : 1E 00 04 02 00 00 
+[2026-10-26T04:06:07.504]  info: SEND 0x001E   6 bytes : 1E 00 F4 01 00 00 
+[2026-10-26T04:06:08.033]  info: SEND 0x001E   6 bytes : 1E 00 04 02 00 00 
+[2026-10-26T04:06:08.096]  info: RECV 0x8008   2 bytes : 08 80 
+[2026-10-26T04:06:08.096]  info: GAME_CMSG_DISCONNECT for player 1 (transfer_pending=0)
+[2026-10-26T04:06:08.119] error: Error while reading 0264, err: 10054
+[2026-10-26T04:06:08.119]  info: AUTH RECV <- message header 0x8009 (9) 82 bytes: 09 80 05 00 00 00 05 00 41 00 70 00 70 00 6F 00 6B 00 3E 00 08 00 92 00 
+[2026-10-26T04:06:08.120]  info: AUTH RECV <- message header 0x800E (14) 6 bytes: 0E 80 00 00 00 00 

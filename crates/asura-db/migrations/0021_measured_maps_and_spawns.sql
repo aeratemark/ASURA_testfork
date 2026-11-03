@@ -1,0 +1,250 @@
+-- Every map a live capture measured, and every spawn point it showed.
+--
+-- Sources: recordings/client/feature/character_creation/maps-tour.jsonl and maps-tour2.jsonl, one
+-- 0x019A (map id) and the 0x0196 that follows (blob, x, y) per load; names and outpost/explorable
+-- from the client's own tables, Py4GW_Stealth/py4gw/enums_src/map_enums.py.
+--
+-- A map can be entered from more than one side, so a map has a list of spawns, which is the
+-- reference's own shape (`GmMapsConfig.h`: n_spawnpoints + spawnpoints[10]). Index 0 is the one the
+-- world spawns at (`GameSrv.c:1075`); the rest are kept because the capture recorded them.
+
+INSERT INTO map_config (map_id, map_type, map_file_id, spawn_count, spawn_x, spawn_y, spawn_plane, name)
+VALUES  (108, 1, 52166, 2, -13010, 17286, 0, 'The Scar'),
+  (110, 1, 52821, 1, -5661, 3704, 0, 'Diviner''s Ascent'),
+  (111, 1, 52822, 1, -4826, -12884, 0, 'Vulture Drifts'),
+  (113, 1, 52835, 3, 19314, -374, 0, 'Prophet''s Path'),
+  (114, 1, 52836, 1, -15922, 7327, 0, 'Salt Flats'),
+  (115, 1, 52837, 2, -15096, 3695, 0, 'Skyward Reach'),
+  (119, 1, 52837, 1, -8999, -321, 0, 'Augury Rock mission'),
+  (153, 0, 52836, 1, -19460, 11700, 0, 'Seekers Passage'),
+  (280, 1, 165811, 1, -6036, -2519, 0, 'Isle of the Nameless'),
+  (347, 1, 16428, 1, 3397, -3439, 0, 'The Underworld (explorable area)'),
+  (794, 1, 350586, 1, -7477, -2302, 0, 'Zaishen Menagerie Grounds')
+ON CONFLICT (map_id) DO NOTHING;
+DELETE FROM map_spawn WHERE map_id = 5;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (5, 0, 5362, 7779, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = 5362, spawn_y = 7779, spawn_plane = 0 WHERE map_id = 5;
+DELETE FROM map_spawn WHERE map_id = 29;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (29, 0, 6757.2, -28600.8, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = 6757.2, spawn_y = -28600.8, spawn_plane = 0 WHERE map_id = 29;
+DELETE FROM map_spawn WHERE map_id = 38;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (38, 0, -16006.3, 592.8, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (38, 1, -15990.2, 650.3, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (38, 2, -18707.3, -623.8, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (38, 3, -15897.5, 536.4, 0);
+UPDATE map_config SET spawn_count = 4, spawn_x = -16006.3, spawn_y = 592.8, spawn_plane = 0 WHERE map_id = 38;
+DELETE FROM map_spawn WHERE map_id = 81;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (81, 0, 4760.1, 7035, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = 4760.1, spawn_y = 7035, spawn_plane = 0 WHERE map_id = 81;
+DELETE FROM map_spawn WHERE map_id = 108;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (108, 0, -13010, 17286, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (108, 1, 16445, -22688, 0);
+UPDATE map_config SET spawn_count = 2, spawn_x = -13010, spawn_y = 17286, spawn_plane = 0 WHERE map_id = 108;
+DELETE FROM map_spawn WHERE map_id = 109;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (109, 0, 3012.2, -591.8, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (109, 1, 4553, -2304, 0);
+UPDATE map_config SET spawn_count = 2, spawn_x = 3012.2, spawn_y = -591.8, spawn_plane = 0 WHERE map_id = 109;
+DELETE FROM map_spawn WHERE map_id = 110;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (110, 0, -5661, 3704, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -5661, spawn_y = 3704, spawn_plane = 0 WHERE map_id = 110;
+DELETE FROM map_spawn WHERE map_id = 111;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (111, 0, -4826, -12884, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -4826, spawn_y = -12884, spawn_plane = 0 WHERE map_id = 111;
+DELETE FROM map_spawn WHERE map_id = 113;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (113, 0, 19314, -374, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (113, 1, -14661, -14372, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (113, 2, -17938, 18877, 0);
+UPDATE map_config SET spawn_count = 3, spawn_x = 19314, spawn_y = -374, spawn_plane = 0 WHERE map_id = 113;
+DELETE FROM map_spawn WHERE map_id = 114;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (114, 0, -15922, 7327, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -15922, spawn_y = 7327, spawn_plane = 0 WHERE map_id = 114;
+DELETE FROM map_spawn WHERE map_id = 115;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (115, 0, -15096, 3695, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (115, 1, 19210, 19533, 0);
+UPDATE map_config SET spawn_count = 2, spawn_x = -15096, spawn_y = 3695, spawn_plane = 0 WHERE map_id = 115;
+DELETE FROM map_spawn WHERE map_id = 116;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (116, 0, 11940.1, 9256, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (116, 1, 10321, 8941, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (116, 2, 8497, 7668, 0);
+UPDATE map_config SET spawn_count = 3, spawn_x = 11940.1, spawn_y = 9256, spawn_plane = 0 WHERE map_id = 116;
+DELETE FROM map_spawn WHERE map_id = 117;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (117, 0, 7686, 11065, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (117, 1, 7645.5, 11131.6, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (117, 2, 12646.9, 12833.8, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (117, 3, 2784, 11608, 0);
+UPDATE map_config SET spawn_count = 4, spawn_x = 7686, spawn_y = 11065, spawn_plane = 0 WHERE map_id = 117;
+DELETE FROM map_spawn WHERE map_id = 118;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (118, 0, 15084, 6816, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (118, 1, 14950.8, 6863.3, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (118, 2, 15363, -2302, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (118, 3, 15638.7, 7241.2, 0);
+UPDATE map_config SET spawn_count = 4, spawn_x = 15084, spawn_y = 6816, spawn_plane = 0 WHERE map_id = 118;
+DELETE FROM map_spawn WHERE map_id = 119;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (119, 0, -8999, -321, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -8999, spawn_y = -321, spawn_plane = 0 WHERE map_id = 119;
+DELETE FROM map_spawn WHERE map_id = 120;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (120, 0, -17890, 17395, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (120, 1, -16288, 18040, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (120, 2, -14656, 4449, 0);
+UPDATE map_config SET spawn_count = 3, spawn_x = -17890, spawn_y = 17395, spawn_plane = 0 WHERE map_id = 120;
+DELETE FROM map_spawn WHERE map_id = 152;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (152, 0, -16473, -18541, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (152, 1, -16499.9, -16301, 0);
+UPDATE map_config SET spawn_count = 2, spawn_x = -16473, spawn_y = -18541, spawn_plane = 0 WHERE map_id = 152;
+DELETE FROM map_spawn WHERE map_id = 153;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (153, 0, -19460, 11700, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -19460, spawn_y = 11700, spawn_plane = 0 WHERE map_id = 153;
+DELETE FROM map_spawn WHERE map_id = 154;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (154, 0, -15182, 18797, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (154, 1, -16458, 20381, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (154, 2, -16462, 22315, 0);
+UPDATE map_config SET spawn_count = 3, spawn_x = -15182, spawn_y = 18797, spawn_plane = 0 WHERE map_id = 154;
+DELETE FROM map_spawn WHERE map_id = 188;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (188, 0, 2229, 1691, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (188, 1, 2110.7, 1752.3, 0);
+UPDATE map_config SET spawn_count = 2, spawn_x = 2229, spawn_y = 1691, spawn_plane = 0 WHERE map_id = 188;
+DELETE FROM map_spawn WHERE map_id = 248;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (248, 0, -5474, -4873.9, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (248, 1, -6558.1, -6010.7, 0);
+UPDATE map_config SET spawn_count = 2, spawn_x = -5474, spawn_y = -4873.9, spawn_plane = 0 WHERE map_id = 248;
+DELETE FROM map_spawn WHERE map_id = 280;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (280, 0, -6036, -2519, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -6036, spawn_y = -2519, spawn_plane = 0 WHERE map_id = 280;
+DELETE FROM map_spawn WHERE map_id = 281;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (281, 0, -2030, 4700, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (281, 1, -7247, 4638, 0);
+UPDATE map_config SET spawn_count = 2, spawn_x = -2030, spawn_y = 4700, spawn_plane = 0 WHERE map_id = 281;
+DELETE FROM map_spawn WHERE map_id = 282;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (282, 0, -2034, 1034, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (282, 1, 217, 528, 0);
+UPDATE map_config SET spawn_count = 2, spawn_x = -2034, spawn_y = 1034, spawn_plane = 0 WHERE map_id = 282;
+DELETE FROM map_spawn WHERE map_id = 330;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (330, 0, 3978, -4905, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (330, 1, 2017, -3241, 0);
+UPDATE map_config SET spawn_count = 2, spawn_x = 3978, spawn_y = -4905, spawn_plane = 0 WHERE map_id = 330;
+DELETE FROM map_spawn WHERE map_id = 347;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (347, 0, 3397, -3439, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = 3397, spawn_y = -3439, spawn_plane = 0 WHERE map_id = 347;
+DELETE FROM map_spawn WHERE map_id = 376;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (376, 0, -18618, 17940, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -18618, spawn_y = 17940, spawn_plane = 0 WHERE map_id = 376;
+DELETE FROM map_spawn WHERE map_id = 378;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (378, 0, -22, -735, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -22, spawn_y = -735, spawn_plane = 0 WHERE map_id = 378;
+DELETE FROM map_spawn WHERE map_id = 381;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (381, 0, -1885.3, 2394.2, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -1885.3, spawn_y = 2394.2, spawn_plane = 0 WHERE map_id = 381;
+DELETE FROM map_spawn WHERE map_id = 387;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (387, 0, -2227.8, -1317.8, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -2227.8, spawn_y = -1317.8, spawn_plane = 0 WHERE map_id = 387;
+DELETE FROM map_spawn WHERE map_id = 393;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (393, 0, -12205.8, 361.8, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -12205.8, spawn_y = 361.8, spawn_plane = 0 WHERE map_id = 393;
+DELETE FROM map_spawn WHERE map_id = 396;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (396, 0, 2727, 671, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = 2727, spawn_y = 671, spawn_plane = 0 WHERE map_id = 396;
+DELETE FROM map_spawn WHERE map_id = 403;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (403, 0, -16349, 17888, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -16349, spawn_y = 17888, spawn_plane = 0 WHERE map_id = 403;
+DELETE FROM map_spawn WHERE map_id = 421;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (421, 0, 24398, 15021, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = 24398, spawn_y = 15021, spawn_plane = 0 WHERE map_id = 421;
+DELETE FROM map_spawn WHERE map_id = 424;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (424, 0, -1993.5, 2059.4, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -1993.5, spawn_y = 2059.4, spawn_plane = 0 WHERE map_id = 424;
+DELETE FROM map_spawn WHERE map_id = 425;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (425, 0, -15950, 10325, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -15950, spawn_y = 10325, spawn_plane = 0 WHERE map_id = 425;
+DELETE FROM map_spawn WHERE map_id = 426;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (426, 0, 1881, 490, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = 1881, spawn_y = 490, spawn_plane = 0 WHERE map_id = 426;
+DELETE FROM map_spawn WHERE map_id = 427;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (427, 0, -11345, -13338, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -11345, spawn_y = -13338, spawn_plane = 0 WHERE map_id = 427;
+DELETE FROM map_spawn WHERE map_id = 431;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (431, 0, -4384.7, 5231.4, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -4384.7, spawn_y = 5231.4, spawn_plane = 0 WHERE map_id = 431;
+DELETE FROM map_spawn WHERE map_id = 433;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (433, 0, 2755, 3393, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = 2755, spawn_y = 3393, spawn_plane = 0 WHERE map_id = 433;
+DELETE FROM map_spawn WHERE map_id = 438;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (438, 0, -14493, 6391, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -14493, spawn_y = 6391, spawn_plane = 0 WHERE map_id = 438;
+DELETE FROM map_spawn WHERE map_id = 440;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (440, 0, 225.2, -4167.1, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = 225.2, spawn_y = -4167.1, spawn_plane = 0 WHERE map_id = 440;
+DELETE FROM map_spawn WHERE map_id = 477;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (477, 0, -18614, -10017, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -18614, spawn_y = -10017, spawn_plane = 0 WHERE map_id = 477;
+DELETE FROM map_spawn WHERE map_id = 478;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (478, 0, 3128, 706, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = 3128, spawn_y = 706, spawn_plane = 0 WHERE map_id = 478;
+DELETE FROM map_spawn WHERE map_id = 479;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (479, 0, 25164.2, 6372.2, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (479, 1, 25143.2, 6406.8, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (479, 2, 25107.3, 6425.4, 0);
+UPDATE map_config SET spawn_count = 3, spawn_x = 25164.2, spawn_y = 6372.2, spawn_plane = 0 WHERE map_id = 479;
+DELETE FROM map_spawn WHERE map_id = 480;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (480, 0, -3132.9, 14442, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -3132.9, spawn_y = 14442, spawn_plane = 0 WHERE map_id = 480;
+DELETE FROM map_spawn WHERE map_id = 487;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (487, 0, -20136, 12599, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -20136, spawn_y = 12599, spawn_plane = 0 WHERE map_id = 487;
+DELETE FROM map_spawn WHERE map_id = 489;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (489, 0, -1714, -3430, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -1714, spawn_y = -3430, spawn_plane = 0 WHERE map_id = 489;
+DELETE FROM map_spawn WHERE map_id = 491;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (491, 0, 2446.2, -495.8, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = 2446.2, spawn_y = -495.8, spawn_plane = 0 WHERE map_id = 491;
+DELETE FROM map_spawn WHERE map_id = 492;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (492, 0, 1813, 391, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = 1813, spawn_y = 391, spawn_plane = 0 WHERE map_id = 492;
+DELETE FROM map_spawn WHERE map_id = 493;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (493, 0, -2728, 16217, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -2728, spawn_y = 16217, spawn_plane = 0 WHERE map_id = 493;
+DELETE FROM map_spawn WHERE map_id = 502;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (502, 0, -940.5, 922.4, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -940.5, spawn_y = 922.4, spawn_plane = 0 WHERE map_id = 502;
+DELETE FROM map_spawn WHERE map_id = 544;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (544, 0, 5115.2, -5100.1, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = 5115.2, spawn_y = -5100.1, spawn_plane = 0 WHERE map_id = 544;
+DELETE FROM map_spawn WHERE map_id = 545;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (545, 0, -944.1, -1845.2, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -944.1, spawn_y = -1845.2, spawn_plane = 0 WHERE map_id = 545;
+DELETE FROM map_spawn WHERE map_id = 554;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (554, 0, -3838, -1971, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -3838, spawn_y = -1971, spawn_plane = 0 WHERE map_id = 554;
+DELETE FROM map_spawn WHERE map_id = 642;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (642, 0, -925.8, 3312.2, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -925.8, spawn_y = 3312.2, spawn_plane = 0 WHERE map_id = 642;
+DELETE FROM map_spawn WHERE map_id = 794;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (794, 0, -7477, -2302, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -7477, spawn_y = -2302, spawn_plane = 0 WHERE map_id = 794;
+DELETE FROM map_spawn WHERE map_id = 795;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (795, 0, -7207.9, -4645, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (795, 1, -7343, -4999, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (795, 2, -7815.3, -4737.3, 0);
+UPDATE map_config SET spawn_count = 3, spawn_x = -7207.9, spawn_y = -4645, spawn_plane = 0 WHERE map_id = 795;
+DELETE FROM map_spawn WHERE map_id = 796;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (796, 0, 965.9, 3222.8, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (796, 1, 1046, 3148, 0);
+UPDATE map_config SET spawn_count = 2, spawn_x = 965.9, spawn_y = 3222.8, spawn_plane = 0 WHERE map_id = 796;
+DELETE FROM map_spawn WHERE map_id = 808;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (808, 0, 3988.9, 9433.7, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (808, 1, 3957.7, 9505.1, 0);
+UPDATE map_config SET spawn_count = 2, spawn_x = 3988.9, spawn_y = 9433.7, spawn_plane = 0 WHERE map_id = 808;
+DELETE FROM map_spawn WHERE map_id = 814;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (814, 0, 1267.2, 1149.9, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (814, 1, 1411, 1120, 0);
+UPDATE map_config SET spawn_count = 2, spawn_x = 1267.2, spawn_y = 1149.9, spawn_plane = 0 WHERE map_id = 814;
+DELETE FROM map_spawn WHERE map_id = 818;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (818, 0, -9167.1, 13288.7, 0);
+UPDATE map_config SET spawn_count = 1, spawn_x = -9167.1, spawn_y = 13288.7, spawn_plane = 0 WHERE map_id = 818;
+DELETE FROM map_spawn WHERE map_id = 857;
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (857, 0, 247.7, -2538.8, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (857, 1, 1171.2, 2486.8, 0);
+INSERT INTO map_spawn (map_id, idx, x, y, plane) VALUES (857, 2, 3385.1, 445, 0);
+UPDATE map_config SET spawn_count = 3, spawn_x = 247.7, spawn_y = -2538.8, spawn_plane = 0 WHERE map_id = 857;
+
+-- Record that this migration ran (crates/asura-db/src/migrations.rs; the version is the file number).
+INSERT INTO schema_version (version) VALUES (21) ON CONFLICT (version) DO NOTHING;
