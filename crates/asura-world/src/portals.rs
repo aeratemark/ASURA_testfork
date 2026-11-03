@@ -27,9 +27,11 @@ pub struct Portal {
 
 /// How close a character has to be for a doorway to count as reached, in the map's own units.
 ///
-/// A starting value, measured against nothing: the doorway prop is a few metres wide and a reported
-/// position is the body's centre, so the first walk with the trace on is what corrects this number.
-pub const REACH: f32 = 250.0;
+/// Sized on the portal mesh itself (Gw.dat 0xA825): the green veil is a flat sheet roughly 450-700 units
+/// wide and only ~60 deep, so a walk through the arch passes close to its centre. 150 covers the middle of
+/// the opening without firing in front of or behind it. The first value, 250, fired a step early and sent
+/// characters that had just arrived straight back.
+pub const REACH: f32 = 150.0;
 
 /// The doorways recorded from live crossings: where the character stood when the server changed the map,
 /// and the instance it woke up in. These are measured, not derived - the position is the crossing point

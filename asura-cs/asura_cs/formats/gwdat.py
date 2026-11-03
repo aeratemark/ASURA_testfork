@@ -52,6 +52,10 @@ class GwDat:
         mft_header = self._fh.read(24)
         count = struct.unpack_from("<I", mft_header, 12)[0]
         table = self._fh.read(count * 24)
+        # entry_count includes the MFT header's own slot, so the last "entry" can lie past the end of
+        # the file when the table is the file's last block (as it is after the November 2026 update).
+        # Keep only the whole entries that are there; indices are unchanged.
+        count = min(count, len(table) // 24)
         self.entries = [Entry(*struct.unpack_from("<QIHBBII", table, i * 24)) for i in range(count)]
         toc = self.entries[INDEX_TOC]
         self._fh.seek(toc.offset)
