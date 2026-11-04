@@ -78,7 +78,7 @@ _STR = r"'(?:[^']|'')*'"
 _NUM = r"-?\d+(?:\.\d*)?(?:[eE][-+]?\d+)?"
 _SPAWN = re.compile(rf"\(\s*({_NUM})\s*,\s*({_NUM})\s*,\s*({_NUM})\s*,\s*({_NUM})\s*,\s*({_NUM})\s*\)")
 _STATEMENT = re.compile(r"(INSERT\s+INTO\s+map_config|INSERT\s+INTO\s+map_spawn|INSERT\s+INTO\s+map_portal|"
-                        r"UPDATE\s+map_config|DELETE\s+FROM\s+map_spawn)(.*?);", re.I | re.S)
+                        r"UPDATE\s+map_config|DELETE\s+FROM\s+map_spawn|DELETE\s+FROM\s+map_portal)(.*?);", re.I | re.S)
 _NULLNUM = rf"(?:{_NUM}|NULL)"
 _DOOR = re.compile(rf"\(\s*({_NUM})\s*,\s*({_NUM})\s*,\s*({_NUM})\s*,\s*({_NUM})\s*,\s*({_NULLNUM})\s*,"
                    rf"\s*({_NULLNUM})\s*,\s*({_NULLNUM})\s*,\s*({_STR})\s*\)", re.I)
@@ -170,6 +170,11 @@ class Catalogue:
                 where = re.search(r"WHERE\s+map_id\s*=\s*(\d+)", body, re.I)
                 if where:
                     self.get(int(where.group(1))).spawns.clear()
+            elif verb == "DELETE FROM MAP_PORTAL":
+                # A later migration replacing a map's doorways (0026 does this for pre-Searing).
+                where = re.search(r"WHERE\s+map_id\s*=\s*(\d+)", body, re.I)
+                if where:
+                    self.get(int(where.group(1))).doors.clear()
 
     def _insert_config(self, body: str) -> None:
         cols = re.search(r"\(([^)]*)\)\s*VALUES", body, re.I)
