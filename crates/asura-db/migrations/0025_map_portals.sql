@@ -49,6 +49,13 @@ DELETE FROM map_portal WHERE source = 'measured crossing';
 -- ...and the Barradin -> Green Hills landing point, which was 101 units from the arch, unless edited since.
 UPDATE map_portal SET arrive_x = -8198, arrive_y = 1583
  WHERE map_id = 163 AND to_map = 160 AND arrive_x = -7459 AND arrive_y = 1458;
+-- ...and the Catacombs exit to Green Hills County: it is a sunray effect (model 0x3BB1) at (-8246, 15074),
+-- not the arch first taken for it at (-10295, 15725), so the door and the landing point beside it move.
+UPDATE map_portal SET x = -8246, y = 15074,
+       source = 'sunray exit (model 0x3BB1, not a portal arch, position picked in GWMB), destination derived'
+ WHERE map_id = 145 AND x = -10295 AND y = 15725;
+UPDATE map_portal SET arrive_x = -8098, arrive_y = 15911
+ WHERE map_id = 160 AND to_map = 145 AND arrive_x = -10946 AND arrive_y = 16271;
 
 INSERT INTO map_portal (map_id, idx, x, y, to_map, arrive_x, arrive_y, source) VALUES
     (146, 0, 7378.0, 5429.0, 148, 7739.0, 5900.0, 'portal prop (Gw.dat), destination measured'),  -- Lakeside County -> Ascalon City
@@ -66,7 +73,7 @@ INSERT INTO map_portal (map_id, idx, x, y, to_map, arrive_x, arrive_y, source) V
     (160, 0, 22324.0, 13126.0, 146, -13891.0, 10107.0, 'portal prop (Gw.dat), destination measured'),  -- Green Hills County -> Lakeside County
     (160, 2, -7361.0, 1435.0, 163, -6940.0, 1430.0, 'portal prop (Gw.dat), destination measured'),  -- Green Hills County -> The Barradin Estate
     (160, 4, -6793.0, -16845.0, 161, -19103.0, 19512.0, 'portal prop (Gw.dat), destination measured'),  -- Green Hills County -> Wizard's Folly
-    (160, 6, -3250.0, 9209.0, 145, -10946.0, 16271.0, 'portal prop (Gw.dat), derived: world-frame pairing + path graph'),  -- Green Hills County -> The Catacombs
+    (160, 6, -3250.0, 9209.0, 145, -8098.0, 15911.0, 'portal prop (Gw.dat), derived: world-frame pairing + path graph'),  -- Green Hills County -> The Catacombs
     (163, 0, -7361.0, 1435.0, 160, -8198.0, 1583.0, 'portal prop (Gw.dat), destination measured, landing point moved clear of the arch (path graph)'),  -- The Barradin Estate -> Green Hills County
     (161, 0, 10679.0, 19828.0, 146, -12914.0, -20062.0, 'portal prop (Gw.dat), destination measured'),  -- Wizard's Folly -> Lakeside County
     (161, 2, -19081.0, 20019.0, 160, -6742.0, -16419.0, 'portal prop (Gw.dat), destination measured'),  -- Wizard's Folly -> Green Hills County
@@ -80,7 +87,7 @@ INSERT INTO map_portal (map_id, idx, x, y, to_map, arrive_x, arrive_y, source) V
     (166, 0, 22595.0, 7257.0, 162, 22614.0, 6849.0, 'portal prop (Gw.dat), destination measured'),  -- Fort Ranik -> Regent Valley
     (145, 0, 14904.0, 2095.0, 164, -13151.0, -7080.0, 'portal prop (Gw.dat), destination measured'),  -- The Catacombs -> Ashford Abbey
     (145, 2, 16563.0, 2133.0, 164, -13151.0, -7080.0, 'portal prop (Gw.dat), second Ashford arch, destination as its twin'),  -- The Catacombs -> Ashford Abbey
-    (145, 3, -10295.0, 15725.0, 160, -4049.0, 9500.0, 'portal prop (Gw.dat), derived: world-frame pairing + path graph'),  -- The Catacombs -> Green Hills County
+    (145, 3, -8246.0, 15074.0, 160, -4049.0, 9500.0, 'sunray exit (model 0x3BB1, not a portal arch, position picked in GWMB), destination derived'),  -- The Catacombs -> Green Hills County
     (145, 4, 5961.0, -22656.0, 161, -5757.0, 18102.0, 'portal prop (Gw.dat), derived: world-frame pairing + path graph'),  -- The Catacombs -> Wizard's Folly
     (449, 0, -6751.0, 19576.0, NULL, NULL, NULL, 'portal prop'),
     (449, 1, -6026.0, 16727.0, NULL, NULL, NULL, 'portal prop'),

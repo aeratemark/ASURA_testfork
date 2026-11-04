@@ -24,6 +24,9 @@ from asura_cs.formats.ffna_map import parse_map  # noqa: E402
 from asura_cs.gamedata import GameData, Settings  # noqa: E402
 
 PORTAL_MODELS = {0xA825, 0x858B}
+# Some exits have no arch, only a sunray effect: the Catacombs' exit to Green Hills County is model
+# 0x3BB1 (15281) at (-8246, 15074). Listed separately, as the same effect may also be plain decoration.
+SUNRAY_MODELS = {0x3BB1}
 
 # map_id -> (name, pre-Searing map blob). Maps sharing a blob share one terrain and its portals.
 PRE_SEARING_BLOBS = {
@@ -69,6 +72,8 @@ def main() -> int:
                 "portals": [{"x": round(p.x, 1), "y": round(p.y, 1), "z": round(p.z, 1),
                              "yaw": round(p.yaw, 3),
                              "scale": round(p.scale, 3), "model": p.model_file_id} for p in portals],
+                "sunrays": [{"x": round(p.x, 1), "y": round(p.y, 1), "z": round(p.z, 1), "model": p.model_file_id}
+                            for p in props if p.model_file_id in SUNRAY_MODELS],
                 # In case a map uses another portal mesh: models that appear only a handful of times.
                 "rare_models": sorted(((m, c) for m, c in Counter(p.model_file_id for p in props).items()
                                        if c <= 3), key=lambda mc: mc[1])[:30],
@@ -78,6 +83,8 @@ def main() -> int:
         out[str(map_id)] = {"name": name, "map_file_id": blob, **info}
         print(f"{map_id:4} {name:20} blob {blob:6}  {info['props']:5} props, {len(info['portals'])} portal(s): "
               + ", ".join(f"({p['x']:.0f},{p['y']:.0f})" for p in info["portals"]))
+        if info["sunrays"]:
+            print("      sunrays: " + ", ".join(f"({p['x']:.0f},{p['y']:.0f})" for p in info["sunrays"]))
         if not info["props"]:
             print("      " + "; ".join(info["notes"]))
     dest = Path(__file__).with_name("portals_dump.json")
