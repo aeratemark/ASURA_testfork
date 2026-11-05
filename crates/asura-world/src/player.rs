@@ -59,6 +59,9 @@ pub struct Player {
     pub walker: crate::cartography::Walker,
     /// When the connection began, for the load time the reference reports.
     pub started: Instant,
+    /// The character's title progress as read when the connection was built, the title it shows, and
+    /// which tracks and rank records this connection has been sent (`crate::titles`).
+    pub titles: crate::titles::TitleState,
 }
 
 #[allow(non_snake_case)]
@@ -434,6 +437,8 @@ pub(crate) async fn walked(world: &World, player: &mut Player, trace: bool) {
     }
     if now != before {
         save_explored(world, player).await;
+        // A title earned by exploration follows the grid (`crate::titles`).
+        crate::titles::exploration_changed(world, player).await;
     }
 }
 
@@ -515,16 +520,27 @@ pub async fn handle_request_players(
         Some(replay) if replay.pick.wants(crate::replay::BlockName::Players) => {
             replay.players.clone()
         }
-        _ => player_block(&crate::player::PlayerBlock {
-            name: &player.name,
-            standing: player.standing(),
-            inventory: &player.inventory,
-            started: player.started,
-            player_id: player.player_id,
-            agent_id: player.agent_id,
-            traits: player.traits,
-            unlocked: &unlocked,
-        }),
+        _ => {
+            let mut block = player_block(&crate::player::PlayerBlock {
+                name: &player.name,
+                standing: player.standing(),
+                inventory: &player.inventory,
+                started: player.started,
+                player_id: player.player_id,
+                agent_id: player.agent_id,
+                traits: player.traits,
+                unlocked: &unlocked,
+            });
+            // The title block and this player's own binding, at the places a live load carries them
+            // (`crate::titles`). Nothing when titles are off or the character has no progress.
+            crate::titles::sync_exploration(world, player).await;
+            crate::titles::splice_into_player_block(
+                &mut block,
+                player.player_id,
+                &mut player.titles,
+            );
+            block
+        }
     };
     let others = player.instance.others(player.player_id);
     eprintln!(
@@ -544,6 +560,7 @@ pub async fn handle_request_players(
         name: player.name.clone(),
         standing: player.standing(),
         equipped: player.inventory.equipped_item_ids(),
+        shown_title: player.titles.shown_rank().cloned(),
     };
     if !others.is_empty() {
         // The introduction, then what the others need in order to draw this player:

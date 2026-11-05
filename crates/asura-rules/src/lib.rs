@@ -16,6 +16,9 @@
 //! old a world's heartbeat may be - is configuration (`config/Server/`), handed in as an argument; the
 //! numbers a client defines, like its map kinds, are the wire layer's (D34).
 
+/// Titles: the rung a track is on, what a load and a point change send, and whether a title may be shown.
+pub mod titles;
+
 /// What the client asked for: a map id and the map type it named with it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Requested {

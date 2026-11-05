@@ -349,7 +349,17 @@ pub async fn handle_connection(
         explored,
         walker: cartography::Walker::new(Some(marks)),
         started: Instant::now(),
+        // A creation instance has no character to show progress for yet.
+        titles: if map_type == map_kinds().character_creation {
+            crate::titles::TitleState::default()
+        } else {
+            crate::titles::load(&world.pool, character, transfer.account_id).await
+        },
     };
+    // The rank this character shows, so a player who joins after it is introduced with it.
+    player
+        .instance
+        .show_title(player.player_id, player.titles.shown_rank().cloned());
     if move_trace_on() {
         eprintln!(
             "move[spawn] agent {} starts on map {} at (x={:.1}, y={:.1}, plane={}) with speed {} \

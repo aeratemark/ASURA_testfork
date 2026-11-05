@@ -119,6 +119,12 @@ pub async fn answer(
 
         msg::GAME_CMSG_UNEQUIP_ITEM => item::handle_unequip_item(),
 
+        // The Hero panel's title checkbox: show this title, or show none (`crate::titles`).
+        msg::GAME_CMSG_TITLE_DISPLAY => {
+            titles::handle_display(stream, session, &frame, world, player, trace).await
+        }
+        msg::GAME_CMSG_TITLE_HIDE => titles::handle_hide(world, player).await,
+
         // The client answered one of our pings (`GAME_CMSG_PING_REPLY`, `0x8009`, 10 bytes). Nothing to
         // do: the reference discards it. Named rather than ignored, because a trace that says "ignored"
         // twenty-nine times reads like a bug.
@@ -200,12 +206,14 @@ mod tests {
             (msg::GAME_CMSG_ITEM_MOVE, "GAME_CMSG_ITEM_MOVE"),
             (msg::GAME_CMSG_EQUIP_ITEM, "GAME_CMSG_EQUIP_ITEM"),
             (msg::GAME_CMSG_UNEQUIP_ITEM, "GAME_CMSG_UNEQUIP_ITEM"),
+            (msg::GAME_CMSG_TITLE_DISPLAY, "GAME_CMSG_TITLE_DISPLAY"),
+            (msg::GAME_CMSG_TITLE_HIDE, "GAME_CMSG_TITLE_HIDE"),
             (msg::GAME_CMSG_PING_REPLY, "GAME_CMSG_PING_REPLY"),
             (msg::GAME_CMSG_HEARTBEAT, "GAME_CMSG_HEARTBEAT"),
         ];
         assert_eq!(
             arms.len(),
-            22,
+            24,
             "an arm was added or removed without this table"
         );
         for (header, name) in arms {

@@ -76,3 +76,6 @@ SELECT gen_random_uuid(), sess.account_id, 'Asura Three', 146 FROM sess
 WHERE NOT EXISTS (
     SELECT 1 FROM t_characters c WHERE c.account_id = sess.account_id AND c.name = 'Asura Three'
 );
+
+-- A machine's own logins (real emails) go in tools/seed-local.sql, the same shape as the blocks above.
+-- It is not committed (.gitignore), and `asura-supervisor seed` applies it after this file when present.

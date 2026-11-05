@@ -2,7 +2,7 @@
 
 How this machine runs ASURA, as opposed to what the world contains.
 
-Five files today:
+Six files today:
 
 - `config/services.toml`, one level up: which services start, their arguments, ports, health checks
   and log paths. It is the supervisor's own file.
@@ -23,6 +23,16 @@ Five files today:
   key today - `spawn_scatter`, the radius in map units of the circle a character lands in around a
   random point of the map's own spawn list (250 here; zero stacks everyone on the point). Read by
   `asura-config`, once per process, same precedence as the movement file.
+
+- `config/Server/titles.json`: the title definitions - per title, the values its track message
+  (`0x00F6`) and rank records (`0x00F3`) carry that do not change with play: scope, flags, the coded
+  strings, every rung with the points that reach it, and the rank a player may show it from. An
+  `enabled` switch turns the whole feature off. Coded strings are hex UTF-16 units, at most 7. Read by
+  `asura-config` once per process (`ASURA_TITLES_CONFIG` names another file); a file that breaks one
+  of the client's crash rules is refused whole and titles are off, with the reason on stderr
+  (`docs/40-titles-system-research.md`). Experimental, and here rather than under `config/World/` on
+  the owner's instruction (2026-11-05). Adding a title is adding an entry, copied from a capture of a
+  character that has the title.
 
 What does not belong here: anything that describes the game. A map, a spawn point, a doorway or a
 quest is world content, and lives in a package under `config/World/`

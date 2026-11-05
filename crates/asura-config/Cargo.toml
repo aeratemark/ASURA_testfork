@@ -12,5 +12,8 @@ workspace = true
 [dependencies]
 # The client's `MapType` values, which are the client's vocabulary (D34).
 asura-protocol = { path = "../asura-protocol" }
+# The title definitions are read here and handed out as the rules' own types, so the world never
+# re-shapes them (`config/Server/titles.json`, docs/40-titles-system-research.md).
+asura-rules = { path = "../asura-rules" }
 serde = { workspace = true }
 serde_json = { workspace = true }

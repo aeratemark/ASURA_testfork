@@ -713,9 +713,257 @@ pub fn defaults() -> Result<&'static Defaults, String> {
         .map_err(|err| err.clone())
 }
 
+/// The file that holds the title definitions.
+pub const TITLES_FILE: &str = "config/Server/titles.json";
+
+/// The variable that names a different title file, for an experiment.
+pub const TITLES_VARIABLE: &str = "ASURA_TITLES_CONFIG";
+
+/// The title definitions in force, as the rules take them.
+///
+/// Experimental (`docs/40-titles-system-research.md`): a missing, unreadable, malformed or invalid file is
+/// the feature switched off - logged, never fatal - because a world that sent a title definition the client
+/// cannot draw would kill the client at render time, and a world that sends none is what ran before titles
+/// existed.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Titles {
+    enabled: bool,
+    titles: Vec<asura_rules::titles::Title>,
+}
+
+impl Titles {
+    /// Parse and check the file's text. Any problem `asura_rules::titles::validate` finds refuses the whole
+    /// file: one rank id under two records reaches the client's single rank table either way.
+    pub fn from_json(text: &str) -> Result<Titles, String> {
+        let file: TitlesFile = serde_json::from_str(text).map_err(|err| err.to_string())?;
+        let titles = file
+            .titles
+            .into_iter()
+            .map(TitleEntry::into_rule)
+            .collect::<Result<Vec<_>, String>>()?;
+        let problems = asura_rules::titles::validate(&titles);
+        if !problems.is_empty() {
+            return Err(problems
+                .iter()
+                .map(|problem| format!("title {}: {}", problem.title_id, problem.what))
+                .collect::<Vec<_>>()
+                .join("; "));
+        }
+        Ok(Titles {
+            enabled: file.enabled.value,
+            titles,
+        })
+    }
+
+    /// Whether a load sends titles and display requests are answered.
+    pub fn enabled(&self) -> bool {
+        self.enabled
+    }
+
+    /// The definitions, empty when the feature is off.
+    pub fn definitions(&self) -> &[asura_rules::titles::Title] {
+        if self.enabled {
+            &self.titles
+        } else {
+            &[]
+        }
+    }
+}
+
+/// `config/Server/titles.json` as written.
+#[derive(Debug, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TitlesFile {
+    /// What the file is; for the reader.
+    #[serde(default)]
+    #[allow(dead_code)]
+    doc: Option<String>,
+    /// The switch.
+    enabled: Described<bool>,
+    /// One sentence per key; for the reader.
+    #[serde(default)]
+    #[allow(dead_code)]
+    fields: Option<serde_json::Value>,
+    /// The definitions.
+    titles: Vec<TitleEntry>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum ScopeEntry {
+    Character,
+    Account,
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TitleEntry {
+    title_id: u32,
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    aliases: Vec<String>,
+    scope: ScopeEntry,
+    flags: u32,
+    mode_flags: u32,
+    base_rank_id: u32,
+    progress_template: String,
+    description_template: String,
+    display_from_rank: Option<u32>,
+    ranks: Vec<RankEntry>,
+    maxed: Option<RankEntry>,
+    #[serde(default)]
+    earned_by: Option<EarningEntry>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum EarningEntry {
+    PreSearingExploration,
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RankEntry {
+    rank_id: u32,
+    flags: u32,
+    value: u32,
+    #[serde(default)]
+    minimum: u32,
+    name: String,
+}
+
+/// A coded string as the file writes it: space-separated hex UTF-16 units, `0x` optional.
+fn coded_units(text: &str) -> Result<Vec<u16>, String> {
+    text.split_whitespace()
+        .map(|unit| {
+            let digits = unit.trim_start_matches("0x").trim_start_matches("0X");
+            u16::from_str_radix(digits, 16).map_err(|err| format!("{unit:?}: {err}"))
+        })
+        .collect()
+}
+
+impl RankEntry {
+    fn into_rule(self) -> Result<asura_rules::titles::Rank, String> {
+        Ok(asura_rules::titles::Rank {
+            rank_id: self.rank_id,
+            flags: self.flags,
+            value: self.value,
+            minimum: self.minimum,
+            name: coded_units(&self.name)
+                .map_err(|err| format!("rank {} name: {err}", self.rank_id))?,
+        })
+    }
+}
+
+impl TitleEntry {
+    fn into_rule(self) -> Result<asura_rules::titles::Title, String> {
+        let title_id = self.title_id;
+        let field = |name: &str, text: &str| {
+            coded_units(text).map_err(|err| format!("title {title_id} {name}: {err}"))
+        };
+        Ok(asura_rules::titles::Title {
+            title_id,
+            names: self.name.into_iter().chain(self.aliases).collect(),
+            scope: match self.scope {
+                ScopeEntry::Character => asura_rules::titles::Scope::Character,
+                ScopeEntry::Account => asura_rules::titles::Scope::Account,
+            },
+            flags: self.flags,
+            mode_flags: self.mode_flags,
+            base_rank_id: self.base_rank_id,
+            progress_template: field("progress_template", &self.progress_template)?,
+            description_template: field("description_template", &self.description_template)?,
+            ranks: self
+                .ranks
+                .into_iter()
+                .map(RankEntry::into_rule)
+                .collect::<Result<Vec<_>, String>>()?,
+            maxed: self.maxed.map(RankEntry::into_rule).transpose()?,
+            display_from_rank: self.display_from_rank,
+            earned_by: self.earned_by.map(|earning| match earning {
+                EarningEntry::PreSearingExploration => {
+                    asura_rules::titles::Earning::PreSearingExploration
+                }
+            }),
+        })
+    }
+}
+
+/// The title definitions in force, read once per process. Every failure is the feature off, with the
+/// reason on stderr.
+pub fn titles() -> &'static Titles {
+    static IN_FORCE: OnceLock<Titles> = OnceLock::new();
+    IN_FORCE.get_or_init(|| {
+        let path = match std::env::var(TITLES_VARIABLE) {
+            Ok(value) if !value.trim().is_empty() => value.trim().to_string(),
+            _ => TITLES_FILE.to_string(),
+        };
+        let path = resolve(&path).display().to_string();
+        match std::fs::read_to_string(&path) {
+            Ok(text) => match Titles::from_json(&text) {
+                Ok(titles) => {
+                    eprintln!(
+                        "asura: titles from {path}: {} definition(s), {}",
+                        titles.titles.len(),
+                        if titles.enabled {
+                            "enabled"
+                        } else {
+                            "disabled"
+                        }
+                    );
+                    titles
+                }
+                Err(err) => {
+                    eprintln!("asura: {path} is not a valid title file, titles are off: {err}");
+                    Titles::default()
+                }
+            },
+            Err(err) => {
+                eprintln!("asura: title file {path} is not readable, titles are off: {err}");
+                Titles::default()
+            }
+        }
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const TITLES_COMMITTED: &str = include_str!("../../../config/Server/titles.json");
+
+    #[test]
+    fn the_committed_title_file_parses_and_validates() {
+        let titles = Titles::from_json(TITLES_COMMITTED).expect("the committed file is valid");
+        assert!(titles.enabled());
+        let ldoa = asura_rules::titles::find(titles.definitions(), 21).expect("title 21");
+        assert_eq!(ldoa.ranks[1].rank_id, 177);
+        assert!(ldoa.names.iter().any(|name| name == "ldoa"));
+        assert_eq!(
+            ldoa.ranks[1].name,
+            vec![0x8101, 0x5A05, 0xA50B, 0x8B97, 0x2B8E]
+        );
+        assert_eq!(
+            ldoa.progress_template,
+            vec![0x8101, 0x5A03, 0x9239, 0xB2FE, 0x4878]
+        );
+    }
+
+    #[test]
+    fn a_title_file_with_a_crash_rule_broken_is_refused_whole() {
+        let broken = TITLES_COMMITTED.replace("\"title_id\": 21", "\"title_id\": 48");
+        let err = Titles::from_json(&broken).expect_err("title 48 is past the client's table");
+        assert!(err.contains("title 48"), "{err}");
+    }
+
+    #[test]
+    fn a_disabled_title_file_defines_nothing() {
+        let off = TITLES_COMMITTED.replacen("\"value\": true", "\"value\": false", 1);
+        let titles = Titles::from_json(&off).expect("parses");
+        assert!(!titles.enabled());
+        assert!(titles.definitions().is_empty());
+    }
 
     /// The committed file, parsed the way a service parses it.
     const COMMITTED: &str = include_str!("../../../config/Server/intervals.json");

@@ -396,6 +396,13 @@ fn seed() -> Result<(), String> {
     let tools = config::repo_root().join("tools");
     psql::apply_file(&psql, &url, &tools.join("seed-dev.sql"))?;
     eprintln!("asura-supervisor: seeded the dev identities (tools/seed-dev.sql)");
+    // This machine's own logins, if it has any: the same shape as seed-dev.sql, kept out of git
+    // (`.gitignore`) because a real email does not belong in a public repository.
+    let local = tools.join("seed-local.sql");
+    if local.is_file() {
+        psql::apply_file(&psql, &url, &local)?;
+        eprintln!("asura-supervisor: seeded this machine's own logins (tools/seed-local.sql)");
+    }
     psql::apply_file(&psql, &url, &tools.join("map-config.sql"))?;
     eprintln!("asura-supervisor: seeded the maps (tools/map-config.sql)");
     Ok(())

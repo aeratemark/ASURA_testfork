@@ -26,6 +26,7 @@ name = "asura-config"
 version = "0.1.0"
 dependencies = [
  "asura-protocol",
+ "asura-rules",
  "serde",
  "serde_json",
 ]

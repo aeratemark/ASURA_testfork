@@ -1,107 +1,94 @@
-# A.S.U.R.A. - Automated Server Utility for Remote Authentication
+# A.S.U.R.A. - experimental pre-Searing fork
 
-A private Guild Wars 1 server. **Language: Rust. Database: PostgreSQL.**
+A private Guild Wars 1 server (Rust + PostgreSQL) that only runs pre-Searing. This is an experimental fork:
+things change fast and some features are half-built on purpose.
 
-## The shape of the server
+## Run it
 
-The client talks to the **auth service** (login, session, character list, and the address the client
-dials for its game connection), gets its portal identity from the **web gate**, and is placed into one
-of many **instance servers** that host the maps. Everything durable - accounts, sessions, characters,
-items, the list of running servers - lives in **PostgreSQL**. Each machine runs a **supervisor** that
-starts and watches its local services.
+1. Install Rust and PostgreSQL.
+2. Double-click `run_server.py`. On the Setup tab: **Run all setup steps** the first time; after that
+   **Build** (code changed), **Create tables (schema)** (a new migration), **Add test accounts and maps
+   (seed)** (the seed file changed). Then **Start server** on the Server tab.
+3. Patch the client with `client-patcher/` and log in with an email from `tools/seed-dev.sql`
+   (`user1@example.com` ... `user3@example.com`), or with your own from `tools/seed-local.sql`. The
+   password is not checked.
+
+Logs are in `logs/`. A config file in `config/Server/` is read once at start: restart the server after
+changing one.
+
+## How it fits together
 
 ```
 client --portal login--> web gate  :6601  (who am I?)
 client --login--------> auth       :6112  (key exchange, session, character)
-client --gameplay----> auth       :6112 --relays--> instance server :6113+  (one of many)
-                                                          |
-           sessions | characters | items | server list ---+--> PostgreSQL (the shared truth)
+client --gameplay----> auth :6112 --relays--> world (instance server) :6113+
+                                   everything durable --> PostgreSQL
 ```
 
-Every player is always in an instance. An **outpost** is a shared hub instance; an **explorable** is a
-per-party instance; travel is an instance change, which the client performs by reconnecting. The client
-dials the address it was launched with for both of its connections, so the auth service is the only
-program at that address and it relays the gameplay connection to the instance server it picked.
+| crate | what it does |
+|---|---|
+| `asura-auth` | login, characters, travel decisions; relays the game connection |
+| `asura-world` | the maps: outposts, explorables, movement, items, chat, titles |
+| `asura-webgate` | the portal login the client asks before it logs in |
+| `asura-supervisor` | starts and watches the services (`config/services.toml`) |
+| `asura-protocol` | the client's messages, byte for byte |
+| `asura-rules` | game decisions as pure functions over values handed in |
+| `asura-config` | reads `config/Server/*.json` |
+| `asura-db` | the database, its migrations and queries |
 
-## The components
+## What this fork changed (2026-11-05)
 
-| component | what it is | what it does |
-|---|---|---|
-| **auth service** (`asura-auth`) | one program | the client's login: key exchange, session, character list, character select; looks up an instance server for a travel or refuses it cleanly; relays the game connection to the server it picked |
-| **instance servers** (`asura-world`) | many programs | host maps for players: outposts, explorables, agents, movement, items, chat. Each creates its state at startup and can be replaced by a newer build without touching the players inside it |
-| **web gate** (`asura-webgate`) | one program | the portal login the client asks before it logs in: four `/Spawned/WebGate` endpoints, answered from the database |
-| **supervisor** (`asura-supervisor`) | one program per machine | starts and watches this machine's services from `config/services.toml`: start, stop, status, restart, rolling deploy |
-| **database** (`asura-db`) | PostgreSQL | the shared truth: accounts, sessions, characters, bags and items, plus the list of servers and the player slots they hold |
-| **libraries** (`asura-protocol`, `asura-db`) | Rust code the services share | the client-facing message definitions, and the database access layer every service uses |
+### Titles
 
-Every service reads and writes the database; that is how the services coordinate.
+The Hero panel's Titles tab works, with retail's own data. Design and evidence:
+`docs/40-titles-system-research.md` (section 13 says where every value comes from).
 
-## How it grows
+- **Wire:** `crates/asura-protocol/src/game/title.rs` - the four title messages (`0x00F3` rank record,
+  `0x00F4` shown rank, `0x00F5` point update, `0x00F6` track) and the show request (`0x8058`).
+- **Rules:** `crates/asura-rules/src/titles.rs` - which rank a point count is on, what a load or a point
+  change sends, whether a title may be shown, and checks for the client's crash rules.
+- **Content:** `config/Server/titles.json` - one entry per title, no title in code. Today: Tyrian
+  Cartographer, Drunkard, Survivor, Kind of a Big Deal, Legendary Defender of Ascalon, Sweet Tooth.
+  Rank names are encrypted strings; one that is not captured yet is `0101` (empty).
+- **Storage:** migration `0028_titles.sql` - `t_character_titles`, `t_account_titles`, and
+  `t_characters.display_title` (the title a character shows).
+- **World:** `crates/asura-world/src/titles.rs` - the title block in the load, a shown title in
+  introductions, the Hero panel's show/hide (`0x8058`/`0x8059`), and `add_points`/`set_points`, the calls
+  an earning rule makes.
+- **Cartographer** earns from exploration: the share of pre-Searing's map you have explored (this
+  server's own rule - retail does not count pre-Searing).
+- **`/title <name or id> <points>`** sets a title's points for testing, e.g. `/title ldoa 20`,
+  `/title drunkard 10000`. The answer is in the world log.
 
-- **More instances, anywhere.** An instance server keeps nothing of its own: characters, their
-  positions and items are in the database, and map geometry comes bundled with the build. So an outpost
-  or explorable can be hosted by any running server, and replacing a server is just starting another
-  process - on this machine, on a second machine, or a newer build during an upgrade.
-- **The database decides where a travel goes.** Every instance server tells the database it is alive
-  every few seconds. When a player travels, the auth service picks a server that reported recently and
-  sends them there; if none did, the travel is refused and the player stays where they are. A server
-  that stops reporting stops being picked, and the player slots it had claimed are freed automatically.
-- **Adding a machine** means starting a supervisor on it with its own list in `config/services.toml`.
-  Its outposts and explorables show up in the same database as every other machine's.
-- **An upgrade does not interrupt anyone.** The new build starts beside the old one, new players go to
-  the new one, and the old one shuts down when its last player logs out.
-- **The limits:** the auth service is the only address the client talks to, and gameplay goes through
-  it, so restarting it drops the connections it is carrying; the database is a single piece everything
-  depends on; and the two-machine case was tested as two addresses on one computer, not across a real
-  network.
+### Other changes
 
-## Status
+- **Outposts load as outposts:** `INSTANCE_LOAD_INFO` now sends `is_explorable 0` for a town (it sent 1
+  for every map), as the live server does (`crates/asura-world/src/map.rs`).
+- **Capture window:** `tools/sniff-capture-gui.py` runs `tools/sniff-capture.py` from a window (Start,
+  Stop, a list of the title records found). Needs the 32-bit Python 3.13. `sniff-capture.py` gained
+  `--stop-file` for the Stop button.
+- **Own logins:** `tools/seed-local.sql` (not committed, `.gitignore`) holds a machine's own accounts in
+  `seed-dev.sql`'s shape; `asura-supervisor seed` applies it after `seed-dev.sql` when it exists.
+- **Docs:** doc 40 corrected (the `0x0059` it counted as a title hide is the server's `PLAYER_CREATE`)
+  and extended with every live-client result.
 
-The whole path works against a real client: the patched client (build 39112) logs in through the web
-gate and `asura-auth`, enters an outpost on an instance server, walks, travels between maps, and uses
-its inventory - items, drops, moves, equipment - against the live server. The supervisor starts and
-stops the stack, the database tracks every running service, an upgrade beside the old build was proven
-on one machine, and the auth service was proven to dial a server registered at a second address rather
-than its bind address. The open verification is the same two things done with the client in hand: a
-player standing in an instance during an upgrade, and a client travel to the second address.
+### Open
 
-## Operating systems
+- Titles: rank names still missing for Survivor 2, Sweet Tooth 2, Kind of a Big Deal 3 and 5,
+  Cartographer 2-6, and all of Party Animal; they come from captures. No earning yet for Drunkard,
+  Sweets, Party, Survivor, LDoA or Kind of a Big Deal. Showing a title under your name is being tested.
+- A brand-new account with no character cannot create one (login refuses travel without a selected
+  character, as the reference does); the seed gives every account one character as a workaround.
+- No live capture has a title being ticked or unticked yet, so the server's reply to hiding a title is
+  unknown and nothing is sent.
 
-**The server runs on Windows and Linux.** The supervisor, the auth service, the instance servers and
-the web gate are the same Rust programs on both; the database is PostgreSQL on either; `config/services.toml`
-is the only thing that differs between machines. The same supervisor commands start the stack on both
-operating systems - `docs/17-running-on-linux.md` is the Linux runbook (what runs where, the ports,
-the database, and the supervisor's cross-platform setup commands).
-
-**The game client is Windows-only** - the client rig, its patching and its hooks are Windows work, so a
-Linux machine is a server host.
-
-**The client patcher is in `client-patcher/`** - `patch-gw.py` plus `keys.txt`, the DH parameters that
-match the server's handshake. The stock `Gw.exe` cannot talk to this server; `Gw.custom.exe` is built
-with that folder, and its README has the commands. A plain build leaves every ArenaNet hostname live -
-only the auth and portal addresses come from the client's command line - and redirecting anything else
-is an operator's opt-in pair: the machine's hosts block and a file server. Without both, a repointed
-build cannot connect; `client-patcher/README.md`, "Read this first", is the checklist.
-
-**A Docker bundle lives in `docker/`** (`docker compose -f docker/compose.yml up -d --build`): two
-containers, PostgreSQL and one machine container running the supervisor, with the client reaching the
-same `127.0.0.1:6112` and `6601`. It is the optional second runner; `docs/19-running.md` describes it.
-
-**Linux has not had a live run recorded yet.** It compiles and the runbook is written, but the
-cross-platform claim is by construction, not by measurement; the Linux runbook's evidence section is
-empty on purpose.
-
-## Read in this order
+## Read more
 
 | document | what it settles |
 |---|---|
-| [`AGENTS.md`](AGENTS.md) | **the binding rules** - the objective, the answering gate, the test rule, the encoding rule. The only place a rule is stated |
-| [`docs/HANDOFF.md`](docs/HANDOFF.md) | **the evidence behind those rules** - the incident ledger, what each rule cost, environment status, and where the next session starts |
-| [`MILESTONES.md`](MILESTONES.md) | **the feature list** - one line per feature, and whether a real client proved it |
-| [`docs/19-running.md`](docs/19-running.md) | **how to run it** - what you need once, the one command, what success looks like, troubleshooting |
-| [`docs/17-running-on-linux.md`](docs/17-running-on-linux.md) | **the Linux runbook** - the same supervisor commands on a Linux server host |
-| [`client-patcher/README.md`](client-patcher/README.md) | **the client patcher** - how `Gw.custom.exe` is built, and the keys that match the server |
-| [`docs/02-architecture.md`](docs/02-architecture.md) | the components and travel, in more detail |
-| [`docs/03-protocol.md`](docs/03-protocol.md) | the protocol facts: framing, key exchange, login, travel, the game connection |
-| [`docs/01-scope.md`](docs/01-scope.md) | the boundary: what each service owns and what it explicitly does not |
-| [`docs/roadmap.md`](docs/roadmap.md) | milestones, in the order they can be tested |
+| [`AGENTS.md`](AGENTS.md) | the binding rules for anyone (or any agent) changing this repo |
+| [`docs/HANDOFF.md`](docs/HANDOFF.md) | the evidence behind those rules and where work stands |
+| [`docs/19-running.md`](docs/19-running.md) | how to run it, and troubleshooting |
+| [`docs/40-titles-system-research.md`](docs/40-titles-system-research.md) | the title system |
+| [`client-patcher/README.md`](client-patcher/README.md) | patching the client |
+| [`docs/03-protocol.md`](docs/03-protocol.md) | the protocol |

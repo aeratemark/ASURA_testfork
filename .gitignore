@@ -19,6 +19,8 @@
 !tools/fixtures/*.log
 
 # Local secrets and configuration. The real .env is never committed; the template is.
+# tools/seed-local.sql holds this machine's own logins (real emails); the supervisor seeds it if present.
+/tools/seed-local.sql
 .env
 .env.*
 !.env.example

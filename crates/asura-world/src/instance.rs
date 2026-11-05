@@ -28,6 +28,9 @@ pub struct Slot {
     /// put a tick inside the block: the reference finishes the load with `INSTANCE_LOAD_FINISH`
     /// (`GameSrv_HandleInstanceLoadRequestPlayers`) before it starts announcing the world clock.
     pub loading: bool,
+    /// The title rank this player shows under its name, which a joining player is told in the
+    /// introduction (`crate::titles`). `None` until the connection says otherwise.
+    pub shown_title: Option<asura_rules::titles::Rank>,
 }
 
 /// One hosted map: its description, and everyone standing in it.
@@ -87,6 +90,7 @@ impl Instance {
                 outbox,
                 move_stats: MoveStats::default(),
                 loading: true,
+                shown_title: None,
             },
         );
         (player_id, agent_id)
@@ -101,6 +105,11 @@ impl Instance {
     pub fn is_loaded(&self, player_id: u32) -> bool {
         self.with_slot(player_id, |slot| !slot.loading)
             .unwrap_or(false)
+    }
+
+    /// Set or clear the title rank a player shows, for the introductions that follow.
+    pub fn show_title(&self, player_id: u32, rank: Option<asura_rules::titles::Rank>) {
+        self.with_slot(player_id, |slot| slot.shown_title = rank);
     }
 
     /// Remove a player, and say whether it was there.
@@ -181,6 +190,14 @@ impl Instance {
         {
             let _ = slot.outbox.send(frames.to_vec());
         }
+    }
+
+    /// Push frames to one player's own connection, the way the clock and the walk marks reach it. For a
+    /// caller that holds the player but not its socket (`player::walked`).
+    pub fn send_to(&self, player_id: u32, frames: &[Frame]) {
+        self.with_slot(player_id, |slot| {
+            let _ = slot.outbox.send(frames.to_vec());
+        });
     }
 
     /// Push frames to everyone in the instance.
@@ -308,6 +325,8 @@ pub struct PeerView {
     pub name: String,
     pub standing: Standing,
     pub equipped: [u32; 9],
+    /// The title rank the peer shows, if any.
+    pub shown_title: Option<asura_rules::titles::Rank>,
 }
 
 impl From<&Slot> for PeerView {
@@ -322,6 +341,7 @@ impl From<&Slot> for PeerView {
                 direction: slot.agent.facing,
             },
             equipped: slot.equipped,
+            shown_title: slot.shown_title.clone(),
         }
     }
 }
@@ -332,8 +352,12 @@ impl From<&Slot> for PeerView {
 /// `GmAgent.c` also sends `BroadcastAddPlayerToPlayerParty` rather than the unicast sender, because
 /// the party of a joining player is news to everyone already there. Here it is the same frame either
 /// way.
+///
+/// A peer that shows a title has its rank record and binding (`0x00F3`, `0x00F4`) right before the
+/// agent, where a live load carries them (`recordings/client/feature/maps/pre-searing-load-3.jsonl`
+/// seq 217-221: record, binding, `0x003C`, effects, agent).
 pub fn introduction(peer: &PeerView) -> Vec<Frame> {
-    vec![
+    let mut frames = vec![
         game::player_create(
             peer.player_id,
             peer.agent_id,
@@ -344,17 +368,21 @@ pub fn introduction(peer: &PeerView) -> Vec<Frame> {
         ),
         game::player_update_party_size(peer.player_id, 1),
         game::player_update_party(peer.player_id, peer.player_id),
-        game::world_create_agent(&game::CreateAgent {
-            agent_id: peer.agent_id,
-            model_id: game::CHAR_CLASS_PLAYER_BASE | peer.player_id,
-            agent_type: game::AGENT_TYPE_LIVING,
-            position: peer.standing.position,
-            plane: peer.standing.plane,
-            direction: peer.standing.direction,
-            speed_base: game::PLAYER_SPEED_BASE,
-            player_team_token: PLAYER_TEAM_TOKEN,
-        }),
-    ]
+    ];
+    if let Some(rank) = &peer.shown_title {
+        frames.extend(crate::titles::binding_for_peer(peer.player_id, rank));
+    }
+    frames.push(game::world_create_agent(&game::CreateAgent {
+        agent_id: peer.agent_id,
+        model_id: game::CHAR_CLASS_PLAYER_BASE | peer.player_id,
+        agent_type: game::AGENT_TYPE_LIVING,
+        position: peer.standing.position,
+        plane: peer.standing.plane,
+        direction: peer.standing.direction,
+        speed_base: game::PLAYER_SPEED_BASE,
+        player_team_token: PLAYER_TEAM_TOKEN,
+    }));
+    frames
 }
 
 /// The frames that take one player back out of another's world: `GameSrv_BroadcastPlayerDestroy`

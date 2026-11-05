@@ -40,6 +40,9 @@ pub mod appearance;
 /// Re-exported so `Appearance::...` reads the same as it did when the type lived here.
 pub use appearance::Appearance;
 
+/// The title family's six messages (`0x00F3`-`0x00F6`, `0x8058`, `0x8059`): builders and the one reader.
+pub mod title;
+
 /// `GAME_SMSG_INSTANCE_LOAD_HEAD` (`0x017C`): 6 bytes. The first message a client receives on the
 /// game connection.
 pub const INSTANCE_LOAD_HEAD: u16 = crate::packets::game::GAME_SMSG_INSTANCE_LOAD_HEAD;
@@ -576,9 +579,9 @@ pub fn instance_load_player_name(name: &str) -> crate::client::Frame {
 
 /// `GAME_SMSG_INSTANCE_LOAD_INFO`: which agent the client controls, in which map.
 ///
-/// `is_explorable` is hardcoded to 1 in the reference with the comment `// what to put here?`, and the
-/// reference's behaviour is the floor this project builds on, so it is a parameter here and the
-/// caller passes 1 for now.
+/// `is_explorable` is hardcoded to 1 in the reference with the comment `// what to put here?`. The live
+/// server sends 0 for an outpost and 1 for an explorable, and the world passes the map's own kind
+/// (`asura-world`, `map::load_info_explorable`).
 pub fn instance_load_info(
     agent: u32,
     map_id: u16,
