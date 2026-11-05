@@ -554,6 +554,12 @@ def run_capture(args) -> int:
 
                     if deadline is not None and time.time() >= deadline:
                         break
+                    # The GUI's Stop button (`tools/sniff-capture-gui.py`): a window cannot send this
+                    # console-less process a Ctrl+C, and killing it would leave the handler entries
+                    # patched, so it asks by creating this file and the loop ends the normal way.
+                    if args.stop_file and Path(args.stop_file).exists():
+                        print("--- stop requested")
+                        break
                     time.sleep(args.poll)
             except KeyboardInterrupt:
                 print("\n--- interrupted")
@@ -686,6 +692,8 @@ def main(argv: list[str]) -> int:
                         default=os.environ.get("PY4GW_STEALTH", DEFAULT_PY4GW_ROOT),
                         help="where the client-side injection lives (default: PY4GW_STEALTH "
                              "or the machine's usual location)")
+    parser.add_argument("--stop-file", type=str, default=None,
+                        help="end the capture cleanly once this file exists (the GUI's Stop button)")
     parser.add_argument("--self-test", action="store_true",
                         help="check the sanitizer and the writer without a client or elevation")
     args = parser.parse_args(argv)
