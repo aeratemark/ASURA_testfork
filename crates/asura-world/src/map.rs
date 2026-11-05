@@ -39,7 +39,7 @@ pub fn load_block(
         game::instance_load_info(
             agent_id,
             map.map_id as u16,
-            1, // the reference hardcodes this; see the builder's documentation
+            load_info_explorable(map.map_type),
             DISTRICT_NUMBER,
             0, // language: the reference's default
             0, // is_observer
@@ -63,6 +63,19 @@ pub fn load_block(
     }
     frames.extend(table.frames());
     frames
+}
+
+/// `INSTANCE_LOAD_INFO`'s `is_explorable` for a map of this type: 0 for a town or outpost, 1 for
+/// everything else.
+///
+/// The reference hardcodes 1 (`// what to put here?`); the live server does not. Every
+/// `INSTANCE_LOAD_INFO` in `recordings/client/feature/` carries 0 for an outpost (148 Ascalon City in
+/// `login-to-portal-20261031-003720.jsonl`, 163-166 in `doors-20261031-095754.jsonl`) and 1 for an
+/// explorable (146, 160-162). With 1 for Ascalon City the client treated the town as an explorable and
+/// drew no title under a name, which it does only in towns (owner's live client, 2026-11-05). Only the
+/// outpost value changes: an explorable already sent 1.
+pub fn load_info_explorable(map_type: i32) -> u8 {
+    u8::from(map_type != map_kinds().main_town)
 }
 
 /// `ASURA_LOAD_EXTRA=off`: leave the exploration grid and the instance table out of the unasked block.
