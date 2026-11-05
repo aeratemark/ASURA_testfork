@@ -65,7 +65,8 @@ that stops before `0x8038`.
 # 1. elevated shell: write the machine-wide hosts block
 python client-patcher/hosts-redirect.py enable --file-server
 
-# 2. install the file server that answers the content the client streams from File1
+# 2. install the file server that answers the content the client streams from File1,
+#    and the 21-byte file check - see the section on the file check below
 
 # 3. build the matching client
 python client-patcher/patch-gw.py "F:\GW\GW1\Gw.exe" client-patcher/keys.txt --output "F:\GW\GW1\Gw.custom.exe" --detach
@@ -84,6 +85,28 @@ Exit 0 means the patch bytes match, 1 means a check failed, 2 means an input or 
 SHA-256, the DH keys against `keys.txt`, both mutex patches, every hostname as `ORIGINAL` or
 `LOOPBACK`, and bytes changed outside those regions. A difference from a known-good file is not by
 itself a bad patch.
+
+## The file check, and the numbers that keep moving
+
+Before anything else on a gameplay-world socket the client asks which game files it should have: 21 bytes
+in, 32 bytes out, six `Gw.dat` file ids and a zero (`docs/03-protocol.md` 7). Three things about it belong
+in this folder because they decide whether a patched client can log in.
+
+- **The patch does not answer it.** `patch-gw.py` rewrites the DH constants, the mutex and - only with
+  `--detach` - the seven hostnames. The check is answered on the wire, so what has to be current is the
+  answer, not the executable.
+- **Who answers depends on the build.** A plain build asks ArenaNet and never involves us. A `--detach`
+  build sends the file names to this machine, so whatever listens there answers - the socket layer
+  (`crates/asura-gateway/src/lib.rs`, step 0) or the content file server you installed on that address. If
+  your file server answers the check itself, its seven words need the same refresh as ours.
+- **The seven words are the running client's build**, not a fixed constant: a new `Gw.exe`/`Gw.dat` brings
+  a new set, and a stale set is a question answered in another build's terms. Refreshing it is a
+  measurement - the commands, and what to record beside the set, are in `docs/19-running.md` ("Refreshing
+  the file check's seven words"); the bytes live in `crates/asura-protocol/src/client/filecheck.rs`.
+  Do not shift the old ids by arithmetic.
+- **What it costs.** No answer at all is fatal - the client refuses with "Guild Wars is unable to connect
+  to the ArenaNet network". Whether a stale answer is also fatal is not measured, so treat the set as
+  required.
 
 ## Reference
 

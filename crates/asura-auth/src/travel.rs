@@ -42,33 +42,33 @@ pub const STATUS_NETWORK_ERROR: u32 = 2;
 
 /// How stale a world's heartbeat may be before placement stops offering it.
 ///
-/// The default matches the reaper's threshold in the M2 scenario, so "too old to offer" and "too old
-/// to keep leases" are the same number. `ASURA_WORLD_MAX_AGE_SECS` overrides it.
-pub const DEFAULT_WORLD_MAX_AGE_SECS: f64 = 60.0;
+/// The number comes from `config/Server/intervals.json` (`asura_config`, D33), because the socket layer
+/// routes a client by the same window: one file, read by both, instead of two constants that agree by
+/// hand. `ASURA_WORLD_MAX_AGE_SECS` still overrides it for a one-off experiment.
+pub fn world_max_age_secs() -> f64 {
+    static VALUE: std::sync::OnceLock<f64> = std::sync::OnceLock::new();
+    *VALUE.get_or_init(|| {
+        override_secs().unwrap_or_else(|| asura_config::intervals().world_max_age_secs)
+    })
+}
 
-/// How long a candidate world's port has to answer before it is dropped from consideration.
-///
-/// A loopback world answers in microseconds; a world that has gone silent should not make the client
-/// wait for the operating system's connect timeout. `ASURA_WORLD_PROBE_TIMEOUT_MS` overrides it.
-pub const DEFAULT_PROBE_TIMEOUT: Duration = Duration::from_millis(500);
+/// `ASURA_WORLD_MAX_AGE_SECS`, when it names a positive number.
+fn override_secs() -> Option<f64> {
+    std::env::var(asura_config::MAX_AGE_VARIABLE)
+        .ok()
+        .and_then(|value| value.trim().parse::<f64>().ok())
+        .filter(|seconds| *seconds > 0.0)
+}
 
 /// How many candidates are considered. The first that answers wins; more than a handful is a queue of
 /// dead worlds, and the refusal is the same either way.
 const MAX_CANDIDATES: i64 = 4;
 
-/// The freshness window in force, from `ASURA_WORLD_MAX_AGE_SECS` when it is set.
-pub fn world_max_age_secs() -> f64 {
-    static VALUE: std::sync::OnceLock<f64> = std::sync::OnceLock::new();
-    *VALUE.get_or_init(|| {
-        std::env::var("ASURA_WORLD_MAX_AGE_SECS")
-            .ok()
-            .and_then(|value| value.trim().parse::<f64>().ok())
-            .filter(|seconds| *seconds > 0.0)
-            .unwrap_or(DEFAULT_WORLD_MAX_AGE_SECS)
-    })
-}
-
-/// The probe timeout in force, from `ASURA_WORLD_PROBE_TIMEOUT_MS` when it is set.
+/// How long a candidate world's port has to answer before it is dropped from consideration.
+///
+/// A loopback world answers in microseconds; a world that has gone silent should not make the client
+/// wait for the operating system's connect timeout. From the intervals file (`asura_config`, D33);
+/// `ASURA_WORLD_PROBE_TIMEOUT_MS` still overrides it.
 pub fn probe_timeout() -> Duration {
     static VALUE: std::sync::OnceLock<Duration> = std::sync::OnceLock::new();
     *VALUE.get_or_init(|| {
@@ -77,7 +77,7 @@ pub fn probe_timeout() -> Duration {
             .and_then(|value| value.trim().parse::<u64>().ok())
             .filter(|millis| *millis > 0)
             .map(Duration::from_millis)
-            .unwrap_or(DEFAULT_PROBE_TIMEOUT)
+            .unwrap_or_else(|| asura_config::intervals().probe_timeout())
     })
 }
 
@@ -125,75 +125,76 @@ pub async fn answer(
         return Ok(request_frames(STATUS_NETWORK_ERROR));
     };
 
-    // A character that exists belongs in the map its row names. The client can still name the creation
-    // instance as a destination: its own idea of where it is comes from the travel that made the
-    // character. Entering the creation instance is `map_type 11`; the mistaken request is type 0, and
-    // both were measured on 2026-10-28 - `travel to map 0 (type 11, ...)` to make a character, then
-    // `travel to map 0 (type 0, ...)` after the confirm, with the client on a loading screen that
-    // never ends.
-    //
-    // The map comes from the character's **row** (`characters.map_id`, read through `settings`), not
-    // from its saved position: a position can still name the creation map from before the world
-    // stopped saving that instance, and then the substitution would hand back the map it is trying to
-    // avoid. The numbers are the client's own: it asks for map 0, and it calls the creation instance
-    // type 11 (`crates/asura-db/migrations/0016_creation_instance_again.sql` has the row this reads).
-    const CREATION_MAP: i32 = 0;
-    const MAP_TYPE_CHARACTER_CREATION: u32 = 11;
-    /// MapType_MainTown: the outpost kind the base rule sends a character back to.
-    const MAP_TYPE_MAIN_TOWN: i32 = 0;
-    /// Where a character with no history enters: Ascalon City, the Prophecies starting outpost, which is the
-    /// one `creation::starting_outpost` picks for a campaign character (`0017_starter_outpost.sql`).
-    const DEFAULT_OUTPOST: i32 = 148;
-    let map_id = if map_id == CREATION_MAP && request.map_type != MAP_TYPE_CHARACTER_CREATION {
-        match asura_db::game::settings(pool, character_id).await {
-            Ok(Some(settings)) if i32::from(settings.last_outpost) != CREATION_MAP => {
-                eprintln!(
-                    "auth: the client named the creation instance as a place; placing it in map {} \
-                     instead, which is where the character's row says it is",
-                    settings.last_outpost
-                );
-                i32::from(settings.last_outpost)
-            }
-            _ => map_id,
+    // Where the character enters is a **game rule**, not an auth rule, so the decision is made in
+    // `asura-rules` and this function only supplies the data (`docs/38-layer-decisions.md`, D25). The
+    // reason a placement differs from what the client asked for is logged here, because the rule
+    // itself does no I/O.
+    let settings = match asura_db::game::settings(pool, character_id).await {
+        Ok(settings) => settings,
+        Err(err) => {
+            eprintln!("auth: could not read the character's row for placement: {err}");
+            None
         }
-    } else {
-        map_id
     };
-
-    // **The base rule** (`docs/22-world-model.md`, "Spawn points, and the outpost rule"): entering the game
-    // places the character in the last outpost it visited, even when the client asks for the instance it was
-    // standing in. A client that logged out inside an explorable asks for the explorable; the answer is the
-    // outpost, which is the same shape as the creation-instance substitution above and the behaviour a live
-    // server shows. A disconnect is the exception the owner deferred, and this path cannot see one: a
-    // reconnect after a travel names a map the world has already decided, and a request for an outpost is
-    // answered as asked.
-    let map_id = match asura_db::game::spawn_map(pool, map_id).await {
-        Ok(Some(placed)) if placed.map_type != MAP_TYPE_MAIN_TOWN => {
-            match asura_db::game::settings(pool, character_id).await {
-                Ok(Some(settings)) => {
-                    // A character that has never been placed in an outpost has no last outpost to return
-                    // to, and that is the first entry of a new character: the answer is the default
-                    // outpost rather than the explorable it was asked for.
-                    let remembered = i32::from(settings.last_outpost);
-                    let outpost = if remembered == CREATION_MAP {
-                        DEFAULT_OUTPOST
-                    } else {
-                        remembered
-                    };
-                    if outpost != map_id {
-                        eprintln!(
-                            "auth: map {map_id} is not an outpost (type {}); placing the character in its \
-                             last outpost, map {outpost}, instead",
-                            placed.map_type
-                        );
-                    }
-                    outpost
-                }
-                _ => map_id,
-            }
+    // The two values the rule needs and does not own: where a character with no history enters, and the
+    // map id that means "nothing written yet". Both are `config/Server/defaults.json`
+    // (`docs/38-layer-decisions.md` D34). No file, no value, so the travel is refused rather than
+    // invented, and the log names the file that is missing.
+    let defaults = match asura_config::defaults() {
+        Ok(defaults) => defaults,
+        Err(err) => {
+            eprintln!("auth: travel to map {map_id} refused: {err}");
+            return Ok(request_frames(STATUS_NETWORK_ERROR));
         }
-        _ => map_id,
     };
+    // A character with no row, or a database error reading one, is treated as a character with nothing
+    // written yet - which is the creation map, the value the rows themselves use for "no map".
+    let empty = defaults.creation_map();
+    let character = asura_rules::Character {
+        map_id: settings.as_ref().map_or(empty, |settings| settings.map_id),
+        last_outpost: settings
+            .as_ref()
+            .map_or(empty, |settings| i32::from(settings.last_outpost)),
+    };
+    // The destination's own type, as the catalogue describes it. `None` means the map is not in the
+    // catalogue: the rule leaves the request alone and the registry lookup below refuses it.
+    let destination_type = match asura_db::game::spawn_map(pool, map_id).await {
+        Ok(placed) => placed.map(|map| map.map_type),
+        Err(err) => {
+            eprintln!("auth: could not read map {map_id} for placement: {err}");
+            None
+        }
+    };
+    let (placed_map, substituted) = asura_rules::placement(
+        asura_rules::Requested {
+            map_id,
+            map_type: request.map_type,
+        },
+        character,
+        destination_type,
+        // Both from the defaults file, read above, plus the client's own map kinds.
+        defaults.default_outpost(),
+        empty,
+        defaults.map_kinds(),
+    );
+    match substituted {
+        Some(asura_rules::Substituted::CreationNamedAsPlace(from)) => eprintln!(
+            "auth: the client named the creation instance as a place; placing it in map \
+             {placed_map} instead ({from})"
+        ),
+        Some(asura_rules::Substituted::NotAnOutpost) => eprintln!(
+            "auth: map {map_id} is not an outpost (type {}); placing the character in its last \
+             outpost, map {placed_map}, instead",
+            destination_type.unwrap_or(-1)
+        ),
+        Some(asura_rules::Substituted::NothingToPlace) => eprintln!(
+            "auth: the character's row names no map and no last outpost (map_id {}, last_outpost {}); \
+             using the configured fallback outpost {placed_map}",
+            character.map_id, character.last_outpost
+        ),
+        None => {}
+    }
+    let map_id = placed_map;
     let candidates = placement::find_worlds(pool, map_id, world_max_age_secs(), MAX_CANDIDATES)
         .await
         .map_err(ConnectionError::Database)?;
@@ -286,7 +287,7 @@ pub async fn answer(
                 candidate.world_id as u32,
                 map_id as u32,
                 // What the client dials, which is this service: the game connection arrives at the
-                // auth port and is routed to `address` (`frontdoor`). Advertising the world's own
+                // auth port and is routed to `address` (`relay`). Advertising the world's own
                 // address would be a lie the client cannot act on - measured: it dials the auth
                 // address regardless of what this field says.
                 messages::host_for(advertised),
@@ -328,7 +329,7 @@ mod tests {
     fn the_defaults_are_the_ones_the_documentation_states() {
         // Read through the accessors only when the environment does not override them; the constants
         // are the documented values.
-        assert_eq!(DEFAULT_WORLD_MAX_AGE_SECS, 60.0);
-        assert_eq!(DEFAULT_PROBE_TIMEOUT, Duration::from_millis(500));
+        assert_eq!(world_max_age_secs(), 60.0);
+        assert_eq!(probe_timeout(), Duration::from_millis(500));
     }
 }

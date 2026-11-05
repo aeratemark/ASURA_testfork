@@ -34,7 +34,7 @@ health = { tcp = "127.0.0.1:6601" }
 log = "logs/webgate.log"
 
 [services.auth]
-exe = "target/debug/asura-auth"
+exe = "target/debug/asura-gateway"
 args = ["--bind", "127.0.0.1:6112"]
 port = 6112
 health = { tcp = "127.0.0.1:6112" }

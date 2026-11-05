@@ -130,40 +130,6 @@ pub fn creation_inventory(creation: Creation) -> Inventory {
     Inventory { bags, items }
 }
 
-/// Ascalon City (pre-Searing): where a new character is put when its campaign's starting outpost is
-/// not known. It is a real map this world hosts, so a new character enters a map instead of waiting
-/// on a loading screen for one that does not exist.
-///
-/// **A stand-in, not a measurement.** A campaign not named in [`starting_outpost`] lands here, and
-/// the log says so. An id that came from nowhere is worse than an id that is visibly a stand-in.
-const STARTER_OUTPOST_STANDIN: i32 = 148;
-
-/// The outpost a new character of a campaign starts in.
-///
-/// Two of these are measurements, two are the client's own names matched to campaign numbers this
-/// server has seen in a creation request:
-///
-/// * **Factions, campaign 2, measured**: a live creation was redirected to map 212, blob 156969 at
-///   (-2132, 1054) plane 0 (`recordings/client/feature/character_creation/
-///   character_creation-live-necro_factions.jsonl`, the `0x01A6`, `0x0099` and `0x0196` after the
-///   confirm). The client calls it **Monastery Overlook**.
-/// * **Prophecies, campaign 1**: measured as campaign 1 in the world log (`created character ...
-///   campaign 1 profession 3`); its outpost is Ascalon City pre-Searing, 148, which was already in
-///   the catalogue and is the map every one of those characters has loaded since.
-/// * **Nightfall (campaign 3)** and **Eye of the North (campaign 4)**: their outposts are now in the
-///   catalogue (449 Kamadan Jewel of Istan, 642 Eye of the North outpost) and the campaign numbers are
-///   the client's own ordering, one after Factions. Not yet seen in a creation request - the world log
-///   prints `campaign N` on every creation, so the first Nightfall character tells us if that is right.
-fn starting_outpost(campaign: u8) -> i32 {
-    match campaign {
-        1 => 148, // Prophecies: Ascalon City (pre-Searing)
-        2 => 212, // Factions: Monastery Overlook, measured
-        3 => 449, // Nightfall: Kamadan, Jewel of Istan
-        4 => 642, // Eye of the North outpost
-        _ => STARTER_OUTPOST_STANDIN,
-    }
-}
-
 /// The equipped bag's items for a choice: what the creation screen shows, and therefore what has to be
 /// taken off the client before another set is sent into the same slots.
 fn equipped_items(creation: Creation) -> Vec<db_inventory::Item> {
@@ -257,12 +223,12 @@ pub async fn handle_request_player(
     ));
     frames.push(game::player_update_unlocked_professions(
         agent_id,
-        DEFAULT_UNLOCKED_PROFESSIONS,
+        creation_screen_unlocked_professions(),
     ));
     frames.push(game::skillbar_update(agent_id, &[0; 8], &[0; 8], 1));
     frames.push(game::update_unlocked_skills(&[]));
     frames.push(game::character_update_factions(
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        &game::CharacterProgress::default(),
     ));
     frames.push(game::agent_update_attributes(agent_id, &[0; 42]));
     // `GameSrv_SendPlayerHealthEnergy` (`GmPlayer.c:178-199`): three **int** properties with the
@@ -394,7 +360,7 @@ pub async fn handle_confirm(
     }
     let units = u16::from_le_bytes([body[0], body[1]]) as usize;
     let name = String::from_utf16_lossy(
-        &(0..units.min(20))
+        &(0..units.min(name_max_units()))
             .map(|index| {
                 let at = 2 + index * 2;
                 u16::from_le_bytes([
@@ -404,7 +370,7 @@ pub async fn handle_confirm(
             })
             .collect::<Vec<u16>>(),
     );
-    if name.trim().is_empty() {
+    if !asura_rules::name_is_acceptable(&name) {
         send(
             stream,
             session,
@@ -428,29 +394,76 @@ pub async fn handle_confirm(
         body.get(config_at + 2).copied().unwrap_or(0),
         body.get(config_at + 3).copied().unwrap_or(0),
     ]);
+    // What a new character is worth is the pack's (`config/World/Vanilla/character_defaults.json`):
+    // level, gold and secondary profession are values the world states. The unlocked-profession bitmap is
+    // not among them - it is one bit for the profession the player chose, which the confirm derives.
+    let defaults = match crate::character_defaults::current() {
+        Ok(defaults) => defaults,
+        Err(err) => {
+            eprintln!("world: cannot create {name:?}: {err}");
+            send(
+                stream,
+                session,
+                vec![game::char_creation_error(
+                    GM_ERROR_CHARACTER_NAME_ALREADY_EXIST,
+                )],
+                trace,
+            )
+            .await?;
+            return Ok(true);
+        }
+    };
     let traits = db_game::Traits {
         appearance,
         profession: creation.profession,
         unlocked_professions: 1 << creation.profession,
-        gold: 0,
+        gold: defaults.gold(),
         campaign: creation.campaign,
-        // The creation flow has no secondary profession: the reference sets one only through
-        // `CHAR_CREATION_CHANGE_PROF`, and its confirm leaves the field zero.
-        secondary_profession: 0,
-        level: 1,
+        secondary_profession: defaults.secondary_profession(),
+        level: defaults.level(),
     };
     // Where the character starts, which is not where it was made. A live creation redirects a Factions
     // character to map 212 (`crates/asura-db/migrations/0017_starter_outpost.sql`). Every other
     // campaign is put in Ascalon City, which is the Prophecies starting outpost and is already in the
     // catalogue; the log says when that stand-in was used, so it is never mistaken for a measurement.
-    let outpost = starting_outpost(creation.campaign);
-    if !(1..=4).contains(&creation.campaign) {
+    // Where the character is spawned, by the expansion source the screen chose. It is the world pack's
+    // file (`config/World/Vanilla/character_spawn.json`, `docs/38`, D23, D24), not a match in this file:
+    // one map per expansion source. A source with no map at all (a PvP character) is refused rather
+    // than guessed.
+    let spawns = match crate::spawns::current() {
+        Ok(spawns) => spawns,
+        Err(err) => {
+            eprintln!("world: cannot create {name:?}: {err}");
+            send(
+                stream,
+                session,
+                vec![game::char_creation_error(
+                    GM_ERROR_CHARACTER_NAME_ALREADY_EXIST,
+                )],
+                trace,
+            )
+            .await?;
+            return Ok(true);
+        }
+    };
+    let Some(placed) = spawns.for_campaign(creation.campaign) else {
         eprintln!(
-            "world: campaign {} has no measured starting outpost; {name:?} is put in map {} \
-             (Ascalon City) as a stand-in - add the campaign's own map when it is captured",
-            creation.campaign, STARTER_OUTPOST_STANDIN
+            "world: campaign {} has no spawn map in the pack; refusing to create {name:?} rather than \
+             putting it somewhere nobody has measured",
+            creation.campaign
         );
-    }
+        send(
+            stream,
+            session,
+            vec![game::char_creation_error(
+                GM_ERROR_CHARACTER_NAME_ALREADY_EXIST,
+            )],
+            trace,
+        )
+        .await?;
+        return Ok(true);
+    };
+    let outpost = placed.map_id;
     match db_inventory::create_character(
         &world.pool,
         player.account_id,

@@ -1,4 +1,4 @@
-//! The general service registry (S2): every service kind announces itself like a world server does.
+﻿//! The general service registry (S2): every service kind announces itself like a world server does.
 //!
 //! A row says where a service is (address, port), its build, whether it is alive (`heartbeat_at`)
 //! and what state it is in. The supervisor writes a row for every service it starts; consumers read
@@ -15,11 +15,17 @@ use crate::PgPool;
 /// One service, as consumers see it: where it is, and whether its heartbeat is still fresh.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ServiceRow {
+    /// What kind of service the row describes.
     pub kind: String,
+    /// The name, as the UTF-16 code units the wire carries.
     pub name: String,
+    /// The address clients are told to dial.
     pub address: String,
+    /// The port that goes with it.
     pub port: i32,
+    /// The build string the process reported when it registered.
     pub build: String,
+    /// What the registry says the service is doing.
     pub state: String,
     /// `heartbeat_at` is inside the freshness window.
     pub fresh: bool,
@@ -41,7 +47,7 @@ pub async fn upsert(
     state: &str,
 ) -> sqlx::Result<bool> {
     let done = sqlx::query(
-        "INSERT INTO service (kind, name, address, port, build, state, started_at, heartbeat_at)
+        "INSERT INTO t_service (kind, name, address, port, build, state, started_at, heartbeat_at)
          VALUES ($1, $2, $3, $4, $5, $6, now(), now())
          ON CONFLICT (kind, name) DO UPDATE SET
              address      = EXCLUDED.address,
@@ -64,7 +70,7 @@ pub async fn upsert(
 /// Set a service's state (`ready`, `draining`, `stopped`, ...). Returns false when the row is gone
 /// or was never registered.
 pub async fn set_state(pool: &PgPool, kind: &str, name: &str, state: &str) -> sqlx::Result<bool> {
-    let done = sqlx::query("UPDATE service SET state = $3 WHERE kind = $1 AND name = $2")
+    let done = sqlx::query("UPDATE t_service SET state = $3 WHERE kind = $1 AND name = $2")
         .bind(kind)
         .bind(name)
         .bind(state)
@@ -81,7 +87,7 @@ pub async fn services(pool: &PgPool, max_age_secs: f64) -> sqlx::Result<Vec<Serv
         "SELECT kind, name, address, port, build, state,
                 heartbeat_at > now() - make_interval(secs => $1::float8) AS fresh,
                 EXTRACT(epoch FROM (now() - heartbeat_at))::float8    AS age_secs
-           FROM service
+           FROM t_service
           ORDER BY kind, name",
     )
     .bind(max_age_secs)
@@ -107,7 +113,7 @@ pub async fn services(pool: &PgPool, max_age_secs: f64) -> sqlx::Result<Vec<Serv
 /// Forget a service entirely (a removed entry, or a test cleaning up). Returns false when it was
 /// not registered.
 pub async fn delete(pool: &PgPool, kind: &str, name: &str) -> sqlx::Result<bool> {
-    let done = sqlx::query("DELETE FROM service WHERE kind = $1 AND name = $2")
+    let done = sqlx::query("DELETE FROM t_service WHERE kind = $1 AND name = $2")
         .bind(kind)
         .bind(name)
         .execute(pool)

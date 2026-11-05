@@ -1,7 +1,7 @@
 //! Talk to a running auth service the way the game does, and print what comes back.
 //!
 //! This is the "does it answer?" check that a person can run before pointing the real client at the
-//! service. It uses the reference client in `asura_protocol::client::peer` - the same one the
+//! service. It uses the reference client in `asura_protocol::client::reference_client` - the same one the
 //! end-to-end tests use - so it needs no game, no patch and no captures:
 //!
 //! ```text
@@ -24,7 +24,7 @@ use std::process::ExitCode;
 
 use asura_protocol::client::handshake;
 use asura_protocol::client::messages::{self, RequestResponse};
-use asura_protocol::client::peer::ReferenceClient;
+use asura_protocol::client::reference_client::ReferenceClient;
 use asura_protocol::client::tables;
 use asura_protocol::client::version;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -169,7 +169,10 @@ async fn main() -> ExitCode {
             match frame.header() {
                 tables::AUTH_SMSG_CHARACTER_INFO => {
                     characters += 1;
-                    eprintln!("           character: {}", read_character_name(&frame.body()));
+                    eprintln!(
+                        "           character: {}",
+                        read_character_name(frame.body())
+                    );
                 }
                 tables::AUTH_SMSG_ACCOUNT_SETTINGS => {
                     let data = u32::from_le_bytes([

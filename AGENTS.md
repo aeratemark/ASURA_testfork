@@ -14,7 +14,7 @@ is the source that answers the question; the `then` column is the cross-check.
 
 | the question | first | then | governed by |
 |---|---|---|---|
-| what the **running client** does: its state, its archive, what it sends and receives | **Py4GW Stealth**, by hand - 32-bit Python, elevated, `tools/sniff-capture.py`, `tools/gen-portal-table.py` | a client-side capture under `recordings/client/` | `docs/adr/0013-py4gw-stealth-is-our-link-to-the-client.md` |
+| what the **running client** does: its state, its archive, what it sends and receives, **and its own catalogs** - every map's id, name, region, campaign and blob id | **Py4GW Stealth**, by hand - 32-bit Python, elevated, `tools/sniff-capture.py`, `tools/gen-portal-table.py` | a client-side capture under `recordings/client/` | `docs/adr/0013-py4gw-stealth-is-our-link-to-the-client.md` |
 | what the **client does with** what we send: asserts, codecs, enums, map dimensions | Eden | a crash log read by hand | `docs/adr/0012-eden-is-a-source.md` |
 | what our **server must send**, byte for byte | a wire capture: `recordings/gwps/`, `recordings/asura/` | GWPS's own C source | `docs/03-protocol.md`, `docs/adr/0010-gwps-is-the-floor.md` |
 | what **Rurik** measured, and what is left to port | `docs/20-rurik-gap.md` | Rurik's `studies/` | `docs/adr/0011-rurik-is-a-source.md` |
@@ -24,6 +24,15 @@ is the source that answers the question; the `then` column is the cross-check.
   own open-file, image and `AMET` code, and it reads what the client sends and receives at the handler
   table pointer and the send wrapper the client itself uses. No other source here sees the client
   running, so a question that needs the client running is answered there and not by a document.
+- **Its catalogs are complete, and the naming is already solved.** A map name is not a per-map lookup:
+  the client's own tables name every map - 278 outposts and 378 explorables, id to name and name to id
+  (`name_to_map_id`). Beside them one `AreaInfo` record per map id carries that map's campaign, region,
+  type, party sizes and `Gw.dat` blob id. Py4GW carries both, read-only
+  (`py4gw.enums_src.map_enums`, `py4gw.context.instance_info_context.AreaInfoStruct`; Reforged ships the
+  same tables plus `GetMapInfo(map_id)`). So no map fact is guessed, hand-listed or scraped from a wiki:
+  a name comes from the enum, the rest from the record. Reforged is the client patch this server's keys
+  and mutex patches pair with; Stealth is the read-only link to it. The names are copied into this
+  repository as a reference (`docs/39-map-list.md`), so the table is not read out of a checkout twice.
 - Its packages carry no licence grant, so what crosses back is a measurement in our words with our
   recording named beside it - never a file, an offset, a byte pattern or a table.
 - A wire size comes from a wire capture, never from the sniffer: the sniffer reports the client's message
@@ -159,6 +168,40 @@ What the mode asks for instead: each candidate, its limits axis by axis, one cla
 evidence, the setups the owner has not listed, and the list of what is still not measured. It ends with
 the question that would sharpen it, never with a conclusion.
 
+## 4a. Values are configuration, decisions are code, and a rule reads only
+
+Three kinds of thing, kept apart (`docs/38-layer-decisions.md`, D34, D35):
+
+1. **The client's vocabulary** - `MapType` 0/1/11, message headers, field layouts. The wire layer's,
+   documented there. A file may *state* these values for review and must mark them `immutable`:
+   changing one does not change what the client does, it only stops this server recognising what its
+   own client sends.
+2. **Values that describe the world** - who spawns where, where a character with no history enters, the
+   map catalogue, the cadences this machine runs at. These are **files**, never compiled constants.
+3. **Decisions** - "this destination is not an outpost, so put the character in its last one". These are
+   `asura-rules`, which takes 1 and 2 as arguments, holds no value of its own, reads no file, opens no
+   connection and prints nothing.
+
+The rules that follow from that, and they are binding:
+
+- **No hardcoded value, even when the contract never changes.** A compiled number is invisible and
+  unreachable; it goes in a file so it can be read and reviewed.
+- **Where the files go.** `config/Server/` for what this machine runs on (the intervals, the values a
+  world falls back on - `asura-config` reads them). `config/World/<pack>/` for what the world contains,
+  one JSON per concern, `Vanilla` as the faithful base (`docs/38`, D23, D24).
+- **What a config file holds: values.** One key per value, each with a sentence saying what it means. It
+  holds **no provenance and no reporting**: "measured", "implemented", "unverified" are not
+  configuration. Evidence lives in `docs/` with the recording it names beside it - the file answers
+  *what it is*, the document answers *why we believe it*.
+- **`immutable` is a note to whoever edits the file**, not a check and not a policy: `true` means do not
+  change this value, because it is one of the client's own numbers and changing it breaks what the client
+  expects. It appears only where that is true. A value the server chooses carries no tag, and the owner may
+  change it. Never use `immutable` to mean "we would rather you did not".
+- **Values with no answer say so.** A key whose map has not been established is `null`, and the caller
+  refuses the action with a logged reason instead of choosing on the player's behalf.
+- **A layer's file list is not a licence.** Before adding a number to a constant, ask which of the three
+  kinds it is; two of them are not code.
+
 ## 5. Every file is ASCII
 
 ```powershell
@@ -191,7 +234,8 @@ the question that would sharpen it, never with a conclusion.
 | start everything | `asura-supervisor start` (the one start path on Windows and Linux) |
 | runbook: what to run, what success looks like | `docs/19-running.md` |
 | packet catalogue, framing, field layouts | `crates/asura-protocol/src/packets.rs`, `docs/03-protocol.md` |
-| the login path, both directions | `crates/asura-auth/`, `docs/06-reference-session.md` |
+| the socket layer, and the login path | `crates/asura-gateway/`, `crates/asura-auth/`, `docs/06-reference-session.md` |
+| game rules a protocol answer needs | `crates/asura-rules/`, `docs/38-layer-decisions.md` |
 | world, movement, pathing, inventory | `crates/asura-world/` |
 | database, placement, inventory rows | `crates/asura-db/` |
 | portal HTTP service | `crates/asura-webgate/` |

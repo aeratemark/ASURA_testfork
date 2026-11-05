@@ -1,0 +1,16 @@
+[package]
+name = "asura-config"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "The intervals this machine runs at, read from config/Server/intervals.json"
+
+[lints]
+workspace = true
+
+[dependencies]
+# The client's `MapType` values, which are the client's vocabulary (D34).
+asura-protocol = { path = "../asura-protocol" }
+serde = { workspace = true }
+serde_json = { workspace = true }

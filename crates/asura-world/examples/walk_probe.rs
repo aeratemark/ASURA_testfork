@@ -45,6 +45,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         map_type: 0,
         spawn: (from.x, from.y),
         spawn_plane: from.plane,
+        spawns: Vec::new(),
         name: "probe".to_string(),
         capacity: 1,
     }]);

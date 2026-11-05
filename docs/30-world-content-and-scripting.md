@@ -23,25 +23,78 @@ What the change carries, recorded so it is not discovered later:
 - quests gain suspension. Coroutines let a quest wait mid-flow, so the handler shape proposed below
   is one option rather than the only one.
 
-The owner already has behavior-tree AI in Py4GW Reforged and intends to port that AI to Rust.
+The owner already has behavior-tree AI in Py4GW Reforged. Its game decisions are to be authored
+in external Lua scripts; Rust supplies the behavior execution machinery and world operations.
 BehaviorTree.CPP is the selected execution reference for the Rust node runtime; the HeroAI port
 must handle the differences recorded in `docs/adr/0014-behavior-tree-execution.md`. That port has
 not started. No external project becomes a runtime dependency; the dependency rule still applies.
 
-| Rust simulation owns | Content definitions and Lua describe |
-|---|---|
-| Behavior-tree execution and combat mechanics | Which available behaviors agents use and when they change |
-| Pathfinding, movement, following, and patrol execution | Routes, destinations, checkpoints, and encounter sequences |
-| Agent lifecycle and world state | Which agents and groups appear, where, and under what conditions |
-| Game mechanics, persistence operations, and packet construction | Quest objectives, dialogue, story progression, and service availability |
+## Simulation-wide boundary: mechanics and behavior
 
-Scripts request game actions through a Rust API. They do not implement the combat motor, movement,
-pathfinding, or wire messages. That API and its names are not defined yet. Adding Lua does not
-supply mechanics that Rust has not implemented.
+The owner's distinction applies to the entire game simulation, not only skills. External
+scripts define game behavior: what happens, when, to whom, under which conditions, and what
+happens next. The server implements mechanics: the supported operations that execute those
+rules and change authoritative world state. Scripting is the primary place to author game
+behavior, not an optional layer for choosing among complete hardcoded implementations.
+
+Scripts can contain conditions, calculations, sequences, and event reactions. The boundary is
+not simply data versus code: a script describes and requests behavior using supported server
+operations; the server executes those operations. The server also enforces the constraints of
+its mechanics. A script cannot create an operation the server does not provide.
+
+| Domain | External scripts define behavior | Server mechanics execute |
+|---|---|---|
+| NPCs and AI | Who to attack, heal, follow, avoid, or help; priorities and conditions | World queries, behavior execution, and supported actor actions |
+| Movement | Where and when to move, patrol routes, chase and retreat decisions | Pathfinding, movement, collision, and position updates |
+| Combat and skills | Target rules, costs and timings, effects, reactions, and skill functionality | Resource accounting, cast scheduling, projectiles, damage/effect operations, and death state |
+| Quests and missions | Objectives, prerequisites, progression, branches, success, and failure | Quest-state storage, event delivery, and supported state/reward operations |
+| Spawns and encounters | Which actors appear, where, when, and how encounters progress | Actor creation/removal, placement, and lifecycle operations |
+| Loot and rewards | What is awarded or dropped, to whom, under which rules | Supported random draws, item creation, inventory/currency changes, and persistence |
+| Dialogue and interactions | What an NPC says, offered choices, conditions, and consequences | Interaction delivery, supported client messages, and world operations |
+| Maps and instances | Encounter setup, entry reactions, scripted transitions, and completion rules | Map loading, instance lifecycle, placement, travel, and geometry operations |
+
+These rows describe responsibilities, not existing APIs or claims that these mechanics have
+already been implemented. The same boundary applies to other game behavior beyond this list.
+For example, a script can declare an ambush after a quest checkpoint and a reward after the
+ambushers die; the server must provide the checkpoint events, spawning, death events, and
+reward operations. If the server offers no flight mechanic, scripts cannot make actors fly.
+
+Rust retains the execution machinery, authoritative world state, persistence operations, and
+packet construction. The selected Rust behavior-tree runtime executes behavior; it does not
+require game-specific decisions to be hardcoded in Rust. Existing HeroAI decisions are behavior
+to expose through the external scripting boundary, while the runtime remains a server mechanic.
+The exact connection between scripts and that runtime is still open.
+
+This simulation-wide distinction was clarified by the owner on 2026-11-02. The API, its names,
+script formats, and event contract remain unselected. This records the intended boundary and
+authorizes no runtime implementation. Skill examples and the Rurik review are in
+[35-skill-mechanics-and-behavior.md](35-skill-mechanics-and-behavior.md).
 
 The packet-stream objective remains binding for reproduction of the base game. The owner's wish
 to support more complex custom content is a future capability, not permission to change existing
 game behavior or invent protocol messages.
+
+## HeroAI and custom skill behavior
+
+HeroAI's skill knowledge and game decisions are behavioral configuration supplied in external
+Lua: skill selection, use conditions, target rules, priorities, combinations, resource-
+management decisions, coordination, and build-specific tactics. A profile's author edits this
+configuration, including for custom skills, without modifying or rebuilding Rust when the
+required mechanics already exist. A skill's behavior configuration and HeroAI's rules for using
+it are separate entries, both supplied by the selected profile.
+
+The division is fixed (owner, 2026-11-02): **Rust owns the technical layer** - the behavior-tree
+runtime and its tick, node kinds and execution semantics, per-agent tree state, halting and
+reset, actor-relative queries, wrapped actions and calls, budgets, and error policy. **Lua is the
+configuration layer**: it declares the behavioral configuration and constructs the tree from
+Rust-provided node kinds and wrapped leaves. Lua does not tick, does not hold running node state,
+and does not execute per-tick logic. Tree construction is configuration; execution is a Rust
+mechanic. The Lua binding shape and the configuration format remain open.
+
+A later acceptance case must add a custom skill using existing mechanics, define its behavior
+and HeroAI usage in a copied profile, and demonstrate the NPC using it without editing or
+rebuilding Rust. The original profile must remain unchanged. A new unsupported mechanic still
+requires engine work; an unfamiliar skill alone is not a reason to hardcode its behavior.
 
 ## Behavior-tree class review (2026-11-01)
 
@@ -103,9 +156,9 @@ composition, not proof that client automation leaves implement authoritative ser
   and its blackboard are mutable (`BehaviorTree.py:127`, `:436`, `:593`, `:672`, `:1308`, `:1555`).
   Sharing immutable definitions is a possible Rust representation; sharing these mutable node
   objects between agents would mix their progress. The representation is not selected yet.
-- Rust behavior execution and Lua event handlers remain separate responsibilities. A quest can
-  request an available escort or follow behavior and react to its outcome; Lua need not run the
-  movement or combat tree. This is the proposed integration, not an existing API.
+- Lua configures game-specific behavior, including escort/follow decisions and combat-tree
+  structure; Rust executes the generic runtime and requested mechanics. Quest configuration can
+  reuse scripted behaviors and react to outcomes. The configuration format is not selected.
 - The instance scheduler decides which agents run and when. The class only processes a tick when
   called (`BehaviorTree.py:2054`); neither its running state nor its wait nodes automatically park
   work until an event. Turning polling into event subscriptions would be a separate design change.

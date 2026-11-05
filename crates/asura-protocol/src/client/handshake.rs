@@ -60,10 +60,18 @@ pub const SERVER_PRIVATE_DECIMAL: &str = "49550138388004424775633228450229609984
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HandshakeError {
     /// Fewer bytes than a whole client seed. Read more.
-    Incomplete { needed: usize },
+    Incomplete {
+        /// How many bytes a whole seed needs.
+        needed: usize,
+    },
     /// A whole client seed whose header is not [`CLIENT_SEED_HEADER`] - GWPS returns
     /// `ERR_BAD_USER_DATA` and drops the connection, without guessing what was meant.
-    UnexpectedHeader { got: u16, expected: u16 },
+    UnexpectedHeader {
+        /// The seed header the bytes carried.
+        got: u16,
+        /// The header this protocol requires.
+        expected: u16,
+    },
     /// The shared secret came out zero, which would mean the exchange exchanged nothing. See the
     /// module documentation: this is a deliberate deviation, not a reproduction.
     DegenerateSecret,

@@ -51,17 +51,26 @@ pub enum FrameError {
     /// `needed` is the whole frame size once the header has been read, or [`HEADER_LEN`] while
     /// even the header is incomplete (GWPS's `ERR_NOT_ENOUGH_DATA` / `ERR_WOULDBLOCK` distinction
     /// collapses into this one signal, because both mean "wait").
-    Incomplete { needed: usize },
+    Incomplete {
+        /// The whole frame size once the header is read, or the header size while it is not.
+        needed: usize,
+    },
     /// A header that is not in the auth table. GWPS logs the bytes and closes the connection
     /// rather than guess; so does this.
-    UnknownHeader { header: u16 },
+    UnknownHeader {
+        /// The header that is in no auth-table row.
+        header: u16,
+    },
     /// The body is not the size this header requires.
     ///
     /// Only [`Frame::encode_validated`] can raise this: a received frame's size came from the
     /// table, so it cannot disagree with it. On the sending side this is the `007` trap.
     SizeMismatch {
+        /// The header whose size was checked.
         header: u16,
+        /// The body size actually built.
         got: usize,
+        /// The size the table requires for that header.
         expected: usize,
     },
 }
@@ -173,7 +182,9 @@ impl Frame {
     /// working one until the client reports `007` (`docs/03-protocol.md`, section 6).
     pub fn encode_validated(&self) -> Result<Vec<u8>, FrameError> {
         match self.expected_size() {
-            None => Err(FrameError::UnknownHeader { header: self.header() }),
+            None => Err(FrameError::UnknownHeader {
+                header: self.header(),
+            }),
             Some(expected) if expected != self.len() => Err(FrameError::SizeMismatch {
                 header: self.header(),
                 got: self.len(),
@@ -205,7 +216,12 @@ impl Frame {
             return Err(FrameError::Incomplete { needed: expected });
         }
 
-        Ok((Frame { bytes: bytes[..expected].to_vec() }, expected))
+        Ok((
+            Frame {
+                bytes: bytes[..expected].to_vec(),
+            },
+            expected,
+        ))
     }
 
     /// Take one client-to-server message off the front of `bytes`, and say how many bytes it used.
@@ -228,7 +244,12 @@ impl Frame {
         let entry = tables::entry(header).ok_or(FrameError::UnknownHeader { header })?;
         let shapes: Vec<Shape> = entry.fields.iter().map(shape_of).collect();
         let position = walk(bytes, header, &shapes)?;
-        Ok((Frame { bytes: bytes[..position].to_vec() }, position))
+        Ok((
+            Frame {
+                bytes: bytes[..position].to_vec(),
+            },
+            position,
+        ))
     }
 
     /// Take one game message off the front of `bytes`, and say how many bytes it used.
@@ -253,7 +274,12 @@ impl Frame {
             game_tables::fields(header, from_client).ok_or(FrameError::UnknownHeader { header })?;
         let shapes: Vec<Shape> = fields.iter().map(shape_of).collect();
         let position = walk(bytes, header, &shapes)?;
-        Ok((Frame { bytes: bytes[..position].to_vec() }, position))
+        Ok((
+            Frame {
+                bytes: bytes[..position].to_vec(),
+            },
+            position,
+        ))
     }
 }
 

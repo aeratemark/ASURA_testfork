@@ -8,10 +8,18 @@ our client and is under experiment (`docs/adr/0005-gwps-reference-only.md`).
 
 | component | how many | what it does | state |
 |---|---|---|---|
-| **auth service** (`asura-auth`) | 1 (+ standby) | login, key exchange, sessions, character list/select; tells the client which world to join | sessions in memory, accounts in `auth` |
+| **socket layer** (`asura-gateway`) | 1 per auth address | accepts every client connection, answers the file check, reads the four classification bytes, and hands the socket to the auth conversation or to a world | no state; it is the program that listens on 6112 (`config/services.toml`, `[services.auth]`) |
+| **auth service** (`asura-auth`) | a library inside the socket layer | login, key exchange, sessions, character list/select; tells the client which world to join | sessions in memory, accounts in `auth` |
+| **rules** (`asura-rules`) | a library, called by any service | the game rules a protocol answer needs, as pure functions over data the caller read: where a character enters the game | none - no I/O, no state |
 | **world server** (`asura-world`) | many | maps, players, instances, placement, character persistence | instances in memory; nothing that survives a restart |
 | **database** (`asura-db`) | 1 (+ standby) | the shared truth and the coordination channel | everything |
 | **content service** | 1+ | game assets (`Gw.dat` streaming) | outside ASURA |
+
+The first three are separate because their jobs are separate (`docs/38-layer-decisions.md`, D25,
+D26). A client opens two connections to the same address, so something has to classify before any
+service speaks: that is the socket layer, and it is why the auth service has no listener of its own.
+A rule that a protocol answer needs - "where does this character enter" - is neither protocol nor
+storage, so it lives in `asura-rules` and the service supplies the data.
 
 Correspondence with AzerothCore, so that any structural question can be answered by reading their
 tree: `authservice` -> auth service; `worldserver` (a realm) -> world server; `realmlist` + realm flags ->
@@ -22,7 +30,7 @@ pool. Full table in `docs/adr/0006-azerothcore-is-the-reference.md`.
 The auth service never runs a map. It **is** in the gameplay data path for every gameplay session,
 and that is a consequence of the client, not of this design: the client dials the address the game
 was launched with for its gameplay connection (measured), so the socket lands on the auth service,
-which relays it to the world that hosts the instance (`crates/asura-auth/src/frontdoor.rs`,
+which relays it to the world that hosts the instance (`crates/asura-gateway/src/relay.rs`,
 `copy_bidirectional`). The reference did the same thing through its control channel, inside one
 process; across a process boundary a socket cannot be handed over cleanly, so the relay is a byte
 copy. World servers are interchangeable and disposable. The database is the only thing both kinds
@@ -67,25 +75,25 @@ CREATE TABLE world_pool (                       -- capacity, per world, per map
 );
 ```
 
-A world server inserts or updates its `world` row at startup (`draining = false`) and keeps
+A world server inserts or updates its `t_world` row at startup (`draining = false`) and keeps
 `heartbeat_at` current; it does not mark itself draining or offline on exit - a world that stops is
 discovered by its heartbeat going stale, and the reaper frees its leases. The auth service reads
-`world` to answer "where is this player's map?" - the registry is data, so it survives restarts, and
+`t_world` to answer "where is this player's map?" - the registry is data, so it survives restarts, and
 no handshake is needed to keep it honest.
 
-The general service registry sits beside `world`: a `service` table (migration 0010, S2) holding a
+The general service registry sits beside `world`: a `t_service` table (migration 0010, S2) holding a
 row per service kind - kind, name, address, port, build, state, `heartbeat_at`. The supervisor
 writes a row for every service it starts and refreshes it every 5 s, so consumers read the catalog
-instead of hard-coding addresses; worlds keep their own `world` rows as the load-bearing registry,
+instead of hard-coding addresses; worlds keep their own `t_world` rows as the load-bearing registry,
 and the catalog writes theirs beside it (`crates/asura-db/src/catalog.rs`).
 
-`world_pool` is what makes allocation safe across processes: it is the prebuilt capacity, and only
+`t_world_pool` is what makes allocation safe across processes: it is the prebuilt capacity, and only
 one process can win a given row.
 
 ### The lease ledger
 
-`world_pool.leased` is a counter, and a counter cannot say *which* lease to free. Beside it sits
-`lease`, one row per reserved slot (`crates/asura-db/migrations/0002_leases.sql`):
+`t_world_pool.leased` is a counter, and a counter cannot say *which* lease to free. Beside it sits
+`t_lease`, one row per reserved slot (`crates/asura-db/migrations/0002_leases.sql`):
 
 - it is what the reaper deletes for a world that stops heartbeating, so the counter drops by exactly
   the slots that world held;

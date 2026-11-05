@@ -12,23 +12,32 @@
 
 use crate::*;
 
-/// How often the world's clock is sent.
+/// The cadence this world runs at: the tick, the ping and the value a ping is answered with.
 ///
-/// Measured from the live capture (`recordings/client/feature/movement/movement-sniff.log`): a `0x001E` every ~100 ms, carrying the
-/// real elapsed milliseconds since the previous one (median 81 ms). The frame is the reference's own
-/// 6-byte `GameSrv_UpdateWorldSimulationTick` (`GameMsg.h:521`); only the cadence is the measurement, and
-/// the reference's floor is 500 ms.
-pub const TICK_INTERVAL: Duration = Duration::from_millis(100);
+/// They are read from `config/Server/intervals.json` once per process (`asura_config`, D33), because they
+/// were constants in three crates and nothing listed them: the tick is measured from the live client
+/// (`recordings/client/feature/movement/movement-sniff.log`: a `0x001E` every ~100 ms, median 81 ms,
+/// where the reference's floor is 500 ms), the ping interval is the reference's
+/// `GAME_SRV_TIME_BETWEEN_PING_MS`, and the ping value is GWPS's 20, which our client has never been
+/// asked about.
+pub fn intervals() -> &'static asura_config::Intervals {
+    asura_config::intervals()
+}
 
-/// How often the server asks the client whether it is still there. The reference's constant is 5000 ms
-/// (`GAME_SRV_TIME_BETWEEN_PING_MS`).
-pub const PING_INTERVAL: Duration = Duration::from_secs(5);
+/// How often the world's clock is sent, as this machine's file states it.
+pub fn tick_interval() -> Duration {
+    intervals().tick()
+}
 
-/// How often the connection compares the server-side walk with the instance's doorways.
-pub const DOORWAY_CHECK: Duration = Duration::from_millis(150);
+/// How often the server asks the client whether it is still there.
+pub fn ping_interval() -> Duration {
+    intervals().ping()
+}
 
-/// The ping value the reference answers with. It is a constant, not a measurement: GWPS sends `20`.
-pub const PING_VALUE: u32 = 20;
+/// The ping value the server answers with.
+pub fn ping_value() -> u32 {
+    intervals().ping_value
+}
 
 /// Accept gameplay connections until the listener fails.
 pub async fn serve(listener: TcpListener, world: Arc<World>, trace: bool) -> io::Result<()> {
@@ -250,21 +259,24 @@ pub async fn handle_connection(
         }
     }
 
-    // Where the character stands: where it left, if it left from this map.
+    // Where the character stands: a random point of an outpost's own spawn list, or - for every
+    // other map - where it left, if it left from this map (`Standing::arrival`).
     let saved = db_game::position(&world.pool, character)
         .await
         .map_err(GameError::Database)?;
-    let standing = Standing::resume(&map, saved);
+    let standing = Standing::arrival(&map, saved)?;
 
     eprintln!(
         "world: {name:?} joined map {} (file id {}) on world {}, standing at ({:.1}, {:.1}) plane \
-         {} with {} bag(s) and {} item(s)",
+         {} facing ({:.2}, {:.2}) with {} bag(s) and {} item(s)",
         map.map_id,
         map.map_file_id,
         world.world_id,
         standing.position.0,
         standing.position.1,
         standing.plane,
+        standing.direction.0,
+        standing.direction.1,
         inventory.bags.len(),
         inventory.items.len()
     );
@@ -291,8 +303,27 @@ pub async fn handle_connection(
     // The map as a running object, not a row: the instance keeps who is in it, owns each player's
     // agent, and starts its clock the first time somebody joins (`Instance::run`).
     let instance = world.instances.for_map(&map);
+    let marks = cartography::spawn_marker(outbox.clone());
     let (player_id, agent_id) = instance.join(name.clone(), standing, equipped, outbox);
     let map_type = map.map_type;
+    // What this character has explored of the continent it is arriving on. A row whose dims no
+    // longer match the grid this server would send is treated as absent rather than reshaped:
+    // drawing it would reveal the map in the wrong places with nothing to say so (migration 0027).
+    let grid = cartography::grid_for(map.map_id);
+    let stored = db_cartography::explored(
+        &world.pool,
+        character,
+        cartography::continent_for(map.map_id),
+    )
+    .await
+    .map_err(GameError::Database)?;
+    let explored = stored
+        .filter(|row| row.is_self_consistent())
+        .and_then(|row| {
+            cartography::Grid::from_packed((row.dims_x as u32, row.dims_y as u32), &row.blocks)
+        })
+        .filter(|saved| saved.dims() == grid)
+        .unwrap_or_else(|| cartography::Grid::empty(grid));
     let mut player = Player {
         character,
         player_id,
@@ -303,9 +334,10 @@ pub async fn handle_connection(
         session_id: transfer.session_id,
         account_id: transfer.account_id,
         moved: false,
+        last_step: None,
         // A creation instance is its own map type (`MapType_CharacterCreation`, 11): a connection that
         // arrived in one is there to make a character, and one that arrived in anything else cannot.
-        creation: if map_type == MAP_TYPE_CHARACTER_CREATION {
+        creation: if map_type == map_kinds().character_creation {
             Some(Creation::start())
         } else {
             None
@@ -314,6 +346,8 @@ pub async fn handle_connection(
             .await
             .map_err(GameError::Database)?
             .unwrap_or_default(),
+        explored,
+        walker: cartography::Walker::new(Some(marks)),
         started: Instant::now(),
     };
     if move_trace_on() {
@@ -337,13 +371,33 @@ pub async fn handle_connection(
     // the server sends `INSTANCE_LOAD_HEAD` and `CHAR_CREATION_START` and then nothing until the
     // client asks for the player block (`0x8089`, answered in `creation.rs`). The map-load head, the
     // player name and the load info belong to the map path and are not sent here.
+    // The saved cells travel in the init on the ordinary path only when
+    // `config/Server/cartography.json` says so. The working default is the empty init plus the paced
+    // mark replay, because every sparse stored init measured on 2026-11-05 was refused with `007`
+    // before the client asked to spawn. A load that is sent the saved grid and never reaches the
+    // spawn request is remembered as a refusal, so the next load uses the empty grid.
+    let carried = player.creation.is_none()
+        && world.replay.is_none()
+        && cartography::init_carries_stored()
+        && !cartography::init_refused(player.character.as_u128());
+    player.walker.init_carried = carried;
+    let init_grid = if carried {
+        player.explored.clone()
+    } else {
+        cartography::Grid::empty(player.explored.dims())
+    };
     let block = match &world.replay {
         Some(replay) if replay.pick.wants(crate::replay::BlockName::Load) => replay.load.clone(),
         _ if player.creation.is_some() => vec![
             game::instance_load_head_default(),
             game::char_creation_start(),
         ],
-        _ => load_block(&player.instance.map, player.GetName(), player.GetAgentID()),
+        _ => load_block(
+            &player.instance.map,
+            player.GetName(),
+            player.GetAgentID(),
+            &init_grid,
+        ),
     };
     send(&mut stream, &mut session, block, trace).await?;
 
@@ -366,6 +420,11 @@ pub async fn handle_connection(
     // player leaves it. Written *before* the lease goes back, and best-effort: a failed save must not
     // turn an ordinary logout into an error, and losing a position is cheaper than refusing a player
     // its way out.
+    //
+    // **Unless it travelled.** A travel does not preserve a position - only a disconnect does - so a
+    // redirected connection writes nothing: the destination's arrival must not read a coordinate
+    // from the map the client is leaving, and a portal crossing has already written the landing it
+    // needs when the crossing started (`travel::begin_transfer`).
     let stood = player.standing();
     let left = stood.position;
     let left_plane = stood.plane;
@@ -387,7 +446,7 @@ pub async fn handle_connection(
     // arrives in the creation map without making a character is one whose client still believes it is
     // there. Saving this map would overwrite the outpost with the instance and strand the character -
     // measured 2026-10-28: every character that entered map 0 came back to map 0 on the next login.
-    if player.instance.map.map_type != MAP_TYPE_CHARACTER_CREATION {
+    if !player.moved && player.instance.map.map_type != map_kinds().character_creation {
         if let Err(err) = db_game::record_position(
             &world.pool,
             player.character,
@@ -400,6 +459,23 @@ pub async fn handle_connection(
         {
             eprintln!("world: could not save the position of the leaving player: {err}");
         }
+    }
+
+    // A load that was sent the saved grid and closed before the client asked to spawn is what a
+    // refused init stream looks like from here. Remember it, so this character's next load is sent
+    // the empty grid: one `007`, then the working path, never a lockout.
+    if player.walker.init_carried && !player.walker.loaded {
+        cartography::note_init_refused(player.character.as_u128());
+        eprintln!(
+            "world: cartography: {}'s load ended before it spawned; its next load gets the empty grid",
+            player.GetName()
+        );
+    }
+    // The exploration grid, beside the position and for the same reason: it is this character's
+    // progress, and this session is where it changed. Saved even when the player was moved, because
+    // exploration is not a place. A creation instance is excluded for the same reason the position is.
+    if player.instance.map.map_type != map_kinds().character_creation {
+        player::save_explored(world, &player).await;
     }
 
     // The player left. The slot goes back to the pool now rather than when a reaper notices: the
@@ -419,8 +495,16 @@ pub async fn handle_connection(
         eprintln!("world: could not release the lease of the leaving player: {err}");
     }
     eprintln!(
-        "world: {:?} left map {} from ({:.1}, {:.1}) plane {left_plane}, saved",
-        player.name, player.instance.map.map_id, left.0, left.1
+        "world: {:?} left map {} from ({:.1}, {:.1}) plane {left_plane}, {}",
+        player.name,
+        player.instance.map.map_id,
+        left.0,
+        left.1,
+        if player.moved {
+            "not saved (the connection was redirected to another map)"
+        } else {
+            "saved"
+        }
     );
     if move_trace_on() {
         eprintln!(
@@ -456,13 +540,12 @@ pub async fn run(
     // request and its players request, while this world sent 49 of them into exactly that window. The
     // client is inside its loading screen there and does not read, so every tick written at it is work
     // queued for the moment it comes back - a clock inside a load is a clock it was not built to take.
-    let mut ping = tokio::time::interval(PING_INTERVAL);
-    // Doorways. Since movement became server-side (`0x803E` starts a walk the instance tick carries out),
-    // the client sends no position reports while it walks, so the reports alone never reach a door. This
-    // clock looks at the stretch the tick walked since the last look and hands it to the same crossing
-    // test a report would (`travel::portal_crossed`).
-    let mut doors = tokio::time::interval(DOORWAY_CHECK);
-    doors.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    let mut ping = tokio::time::interval(ping_interval());
+    // The walking reveal, on the world-tick cadence. A server-side walk is advanced by the instance
+    // tick and sends no position reports until it ends, so the reports alone would reveal nothing
+    // until the arrival. This polls the server's own copy of the position and does nothing else:
+    // the doorway test keeps its own trigger in the movement arms.
+    let mut walk = tokio::time::interval(tick_interval());
     let mut walked_from = player.standing().position;
     let mut buffer = [0u8; 8192];
 
@@ -497,7 +580,7 @@ pub async fn run(
                                 eprintln!(
                                     "world <- {:#06X} ({used} bytes): {}",
                                     frame.header(),
-                                    hex_preview(&frame.encode())
+                                    crate::capture::hex_preview(&frame.encode())
                                 );
                             }
                             if !answer(stream, session, frame, world, player, trace).await? {
@@ -514,30 +597,16 @@ pub async fn run(
                 send(stream, session, vec![game::ping_request()], trace).await?;
             }
 
-            _ = doors.tick() => {
+            _ = walk.tick() => {
                 let here = player.standing().position;
                 if here != walked_from {
-                    let from = std::mem::replace(&mut walked_from, here);
-                    crate::travel::portal_crossed(stream, session, world, player, from, here, trace).await?;
+                    walked_from = here;
+                    player::walked(world, player, trace).await;
                 }
             }
         }
     }
     Ok(())
-}
-
-/// The first bytes of a message, as hex, for the trace.
-///
-/// When a client dies mid-load, the only evidence left is what it sent and what it was sent. A header
-/// and a size say which message; the first bytes say whether its contents were what the reference
-/// would have written.
-pub fn hex_preview(bytes: &[u8]) -> String {
-    bytes
-        .iter()
-        .take(24)
-        .map(|byte| format!("{byte:02X}"))
-        .collect::<Vec<_>>()
-        .join(" ")
 }
 
 /// Scramble and write frames.
@@ -573,6 +642,6 @@ pub async fn handle_ping_request(
     session: &mut Session,
     trace: bool,
 ) -> Result<bool, GameError> {
-    send(stream, session, vec![game::ping_reply(PING_VALUE)], trace).await?;
+    send(stream, session, vec![game::ping_reply(ping_value())], trace).await?;
     Ok(true)
 }

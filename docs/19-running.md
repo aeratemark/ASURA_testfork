@@ -31,9 +31,9 @@ What that one command does, in order:
 3. builds the services (fast when up to date);
 4. seeds the dev identities and the map catalogue (the rows a fresh database needs);
 5. starts the services in their dependency order - the order a service's `depends_on` names, and
-   alphabetical among services that declare none, which today is all three: auth `127.0.0.1:6112`,
-   web gate `127.0.0.1:6601`, world `8001` on `6113` (`crates/asura-supervisor/src/config.rs:192-200`,
-   `config/services.toml`);
+   alphabetical among services that declare none, which today is all three: the socket layer on
+   `127.0.0.1:6112` (`asura-gateway`, service name `auth`), web gate `127.0.0.1:6601`, world `8001` on
+   `6113` (`crates/asura-supervisor/src/config.rs:192-200`, `config/services.toml`);
 6. registers every service it started in the database's `service` table, and keeps the rows fresh;
 7. watches them until Ctrl+C or `stop` - a crashed service is retried at most 5 times, 2 s apart, then reported FAILED (it never restarts forever).
 
@@ -123,6 +123,91 @@ the client completes the auth handshake, receives the session info, then closes 
 `python client-patcher/hosts-redirect.py status`; the block is machine-wide and removed with
 `hosts-redirect.py disable`. `client-patcher/README.md`, "Read this first", is the same checklist with
 the commands.
+
+## Refreshing the file check's seven words
+
+The reply that answers "which game files should I have" carries six `Gw.dat` file ids and a zero, and they
+belong to the client build (`docs/03-protocol.md` 7, `docs/38` D30). A new client brings a new set, and
+the server keeps answering with the old one until somebody replaces it. Do this once per client build.
+
+**Do not shift the old ids by arithmetic.** The two sets on record differ by `0x100` on every id that
+differs, which is what one rebuild looked like; it is not a rule about the next one.
+
+### 1. Read the answer a live client accepted (exact, needs admin, one login)
+
+Do it in the default configuration - `python client-patcher/hosts-redirect.py status` says `disabled` - so
+the client asks ArenaNet and gets a real answer rather than ours.
+
+```powershell
+# elevated shell, from the repository root
+pktmon filter add filecheck -t TCP -p 6112
+pktmon start --capture --pkt-size 0 --file-name C:\temp\filecheck.etl
+```
+
+Now launch the client and log in as far as the character list, then:
+
+```powershell
+pktmon stop
+pktmon etl2pcap C:\temp\filecheck.etl --out C:\temp\filecheck.pcapng
+pktmon filter remove
+```
+
+Find the reply in the capture. With `tshark` installed:
+
+```powershell
+tshark -r C:\temp\filecheck.pcapng -Y "tcp.port == 6112" -x | Select-String 'f1 02 20 00'
+```
+
+With nothing installed, search the file for the header and print the seven words after it - the capture is
+plain packet bytes, so a byte search finds it:
+
+```powershell
+$bytes = [IO.File]::ReadAllBytes("C:\temp\filecheck.pcapng")
+for ($i = 0; $i -le $bytes.Length - 32; $i++) {
+  if ($bytes[$i] -eq 0xF1 -and $bytes[$i+1] -eq 0x02 -and $bytes[$i+2] -eq 0x20 -and $bytes[$i+3] -eq 0x00) {
+    "at ${i}: " + ((0..6 | ForEach-Object { [BitConverter]::ToUInt32($bytes, $i + 4 + 4 * $_) }) -join ' ')
+  }
+}
+```
+
+A real match prints six nonzero ids in tight consecutive order and one zero, e.g. `391339 391348 344988
+391350 391351 0 391349`. Anything else is a coincidence in the file, not the reply.
+
+Record the build beside the set, so the next person can tell whether it is still current:
+
+```powershell
+Get-FileHash F:\GW\GW1\Gw.exe, F:\GW\GW1\Gw.dat -Algorithm SHA256
+```
+
+### 2. Check a set against the archive (no admin, no client)
+
+`crates/asura-world/src/gwdat.rs` reads `Gw.dat`'s file table, and the example prints what it finds:
+
+```powershell
+cargo run -p asura-world --example gwdat-census -- F:\GW\GW1\Gw.dat 0x5F8AB
+```
+
+Run it for all six. It says whether the id is in that archive and how big its entry is. This cannot
+produce the set - the archive does not know which six files the check names - but it rejects a set taken
+from another build, which is exactly what a shifted id looks like.
+
+### 3. Ask the running client (not built yet)
+
+Py4GW Stealth reads the client through its own image and archive code, so it can be asked what the client
+expects with no capture and no admin. Nobody has done it: it needs that package's file-client API, and
+`tools/sniff-capture.py` will not show the check - the sniffer records messages at the client's handler
+table, and this request is a bare blob that arrives before any message.
+
+### Where the answer goes
+
+`crates/asura-protocol/src/client/filecheck.rs`, `FILE_CHECK_RESPONSE`, with the build and the date in the
+comment above it. The gateway writes those bytes at `crates/asura-gateway/src/lib.rs`, step 0. That address
+also serves the content the client streams; this server answers the check and nothing else, which is why a
+redirected build still needs a content file server installed (`client-patcher/README.md`).
+
+Whether a stale set is refused is not measured. The one run where a server of ours answered left the
+client's other file sockets on ArenaNet, so it may never have compared our words. No answer at all is
+fatal, and that one is measured.
 
 ## Linux
 

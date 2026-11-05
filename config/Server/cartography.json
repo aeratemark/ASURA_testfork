@@ -1,0 +1,7 @@
+{
+  "doc": "Whether the exploration init carries the character's saved cells. False is the working path: the init sends the empty grid and the stored cells are replayed as 0x008C marks. True is the vanilla shape and stays an experiment until a sparse stored grid has loaded on the client.",
+  "stored_init": {
+    "value": false,
+    "doc": "Send the character's stored exploration grid in the 0x008B/0x008A init instead of the empty grid."
+  }
+}

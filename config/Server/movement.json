@@ -1,0 +1,6 @@
+{
+  "max_allowed_correction": {
+    "value": 250,
+    "doc": "How far, in game units, a client may place itself when it cancels a walk (0x0047 LAST_POS_BEFORE_MOVE_CANCELED) and still be believed. A correction farther than this from where the server thought the agent stood is ignored: the agent stops where the server believes it is and nothing goes on the wire, so the client is never ordered backwards. This is the reference's MAXIMUM_ALLOWED_CORRECTION (GmAgent.c:547-563), whose own value is 100; this machine runs it at 150 (owner's decision, 2026-11-04). Raise it if a stop after a long run is still being ignored - the live server accepted 292.9 and 319.7 units in recordings/client/feature/movement/movement-sniff.log, seq 1381 and 1550."
+  }
+}

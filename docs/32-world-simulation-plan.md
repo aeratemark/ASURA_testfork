@@ -46,7 +46,8 @@ services, enemy groups, combat, main and secondary quests, chains, escorts, comp
 story-dependent encounters. These are the direction of the roadmap, not a demand to implement
 all of them in Phase 1.
 
-The AI work is a port of HeroAI's decision logic to authoritative Rust state and actions.
+The AI work expresses HeroAI's decision logic in external Lua scripts that use authoritative
+Rust state queries, actions, and execution machinery.
 It is not a port of client support structures: no shared memory, GLOBAL_CACHE, account slots,
 client input queues, or injected client environment. Their replacement is assumed, not a
 feasibility objection to the combat policy.
@@ -70,7 +71,7 @@ that implements this isolation remain unresolved; decide them before dependent w
 
 | Item | Status | What the implementer must do |
 |---|---|---|
-| Rust owns simulation, movement, pathfinding, combat, and AI execution | Chosen | Build on the existing Rust world |
+| Rust provides and executes simulation mechanics; external Lua scripts define game behavior across all domains | Chosen | Apply the boundary in docs/30-world-content-and-scripting.md; Rust retains authoritative state and behavior-tree execution |
 | Lua is the content scripting language | Chosen | Do not reopen Rhai versus Lua |
 | BehaviorTree.CPP defines behavior-tree execution rules | Chosen | Follow ADR 0014; implement in Rust |
 | HeroAI supplies combat decision logic to port | Chosen direction | Preserve decisions while mapping them to server state and actions |
@@ -265,6 +266,19 @@ Exercise capacity refusal and stale-assignment handling in the affected path.
 No new phasing system, cross-world social system, or instance-migration service is included.
 Do not mark party sharing complete if only the solo allocation path exists.
 
+## Shared prerequisite - Lua before scripted simulation behavior
+
+Embed Lua and establish the minimum script/server contract before the first phase that executes
+scripted game behavior. Phase 3's NPC behavior, Phase 4's skill definitions, and Phase 5's HeroAI
+must use this integration; Phase 6 extends it for quests rather than introducing Lua for the
+first time. Build Rust mechanics as needed, but do not fill the dependency gap by hardcoding
+behavior that belongs in scripts.
+
+Resolve the relevant state queries, supported actions, event/callback ordering, actor/instance
+scope, execution limits, and error handling before their dependent scripts. Load behavior from
+the selected profile under docs/34-self-contained-profiles.md. The exact API and formats remain
+open; this prerequisite does not select a coroutine model, reload policy, or tree syntax.
+
 ## Phase 3 - NPCs owned by the instance
 
 ### Goal and work
@@ -303,11 +317,15 @@ completed patrol.
 
 Build a small real combat loop before connecting general HeroAI decisions to it. Maintain
 health, resources, effects, targets, attacks/casts, completion times, and death in Rust.
-Player requests, NPC decisions, and later Lua requests use the same relevant world operations.
+Player requests and Lua-authored NPC/skill behavior use the same relevant world operations.
+The shared Lua prerequisite must be available before executing these scripted behaviors.
 
-Choose the first evidenced attack and small set of skills. Implement their legality checks,
-resource use, timing, result, state updates, and outgoing messages. Build load and update values
-from the same state. Replace the affected stand-ins as their owning systems arrive.
+Choose the first evidenced attack and small set of skills. Implement server mechanics for
+legality checks, resource use, timing, result execution, state updates, and outgoing messages.
+Declare each skill's behavior in external scripts, following the owner's distinction in
+`docs/35-skill-mechanics-and-behavior.md`; the scripting contract is still open, so do not silently
+replace it with hardcoded skill behavior. Build load and update values from the same state.
+Replace the affected stand-ins as their owning systems arrive.
 
 ### Ask before unresolved rules
 
@@ -330,10 +348,13 @@ unrequested balance controls or configure packet constants through the manager.
 
 ### Goal and work
 
-Port the decision logic reviewed in docs/31-heroai-server-feasibility.md against explicit server
-actor state and actions. Follow the pinned execution reference and mapping procedure in ADR 0014.
+Express the decision logic reviewed in docs/31-heroai-server-feasibility.md in external Lua
+scripts against explicit server actor state queries and actions. Rust provides mechanics and
+execution machinery. Follow the pinned execution reference and mapping procedure in ADR 0014.
 The intended reuse is skill selection, targeting, conditions, and coordination policy, not the
-client runtime.
+client runtime. Skill knowledge, use conditions, priorities, combinations, resource-management
+decisions, targeting, coordination, and build-specific tactics belong in profile-owned Lua.
+Game-specific tree composition must also be externally authorable.
 
 Start with the generic path and selected skillbars whose actions are implemented. Identify
 specialized build dispatch that the real selection uses; report unsupported branches explicitly.
@@ -361,22 +382,28 @@ the affected decision and node-lifecycle checks recorded. Client-visible behavio
 are checked on the selected encounter. Unsupported skills and builds are listed, not replaced
 by success stubs. Client shared-memory/cache replacement is not listed as an unsolved obstacle.
 
-A Rust port alone does not establish 20,000-agent capacity. The owner has not selected a global
+Demonstrate a custom skill implemented with existing mechanics and its HeroAI usage rules in a
+copied profile through Lua edits alone, with no Rust change/rebuild or change to the original
+profile. Unsupported mechanics remain explicit engine work.
+
+A Lua migration with a Rust runtime alone does not establish 20,000-agent capacity. The owner has not selected a global
 AI frequency or authorized changing reaction speed to reach that figure.
 
 ## Phase 6 - Lua through a complete quest
 
 ### Goal and work
 
-Embed the chosen Lua runtime and expose the existing Rust actions needed by one selected quest.
-Decide the scripting contract before implementing handlers: event source/order, scope, when
-requested actions apply, and behavior after a handler fails. Use simulation events rather than
-reimplementing combat in Lua.
+Extend the Lua integration already required by scripted NPCs, skills, and HeroAI with the Rust
+operations needed by one selected quest. Settle the quest-specific event source/order, scope,
+when requested actions apply, and behavior after a handler fails before implementing handlers.
+Lua defines quest behavior; supported world mechanics execute in Rust.
 
 The first path is quest giver -> acceptance -> selected destination or enemy objective ->
 completion -> persistence. Add escort/follow sequencing after that path works.
 Ordinary objectives and their relationships belong in the selected content representation;
-Lua coordinates the exceptional sequence using world operations.
+Lua defines the quest decisions and sequences using world operations, including ordinary and
+exceptional progression. Data can supply objective parameters; it does not move game-specific
+quest behavior into Rust.
 
 ### Ask before unresolved scripting and quest policies
 
@@ -439,6 +466,7 @@ the existence of a type, table, packet builder, or manager button does not prove
 |---|---|---|
 | 1 | Edit the selected maps' spawns/portal arrivals through the manager | Planned |
 | 2 | Independent solo copies and the selected party-sharing policy | Planned |
+| Shared prerequisite | Profile-owned Lua behavior executes through Rust operations before scripted NPC/skill/AI work | Planned |
 | 3 | A configured NPC walking its route | Planned |
 | 4 | A player and NPC resolving the selected combat actions | Planned |
 | 5 | NPC skill and target decisions driven by ported HeroAI policy | Planned |

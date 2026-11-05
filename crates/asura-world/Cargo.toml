@@ -6,10 +6,23 @@ rust-version.workspace = true
 license.workspace = true
 description = "A world server: maps, instances, placement, and character persistence"
 
+[features]
+# The diagnostic instruments: the server-side capture and the reference replayer. Off by default,
+# because a build that serves players carries neither (docs/38-layer-decisions.md, D32).
+harness = []
+
 [dependencies]
 asura-protocol = { path = "../asura-protocol" }
 asura-db = { path = "../asura-db" }
+# The map kinds placement decides by: layer 3 owns the numbers, this crate reads them (D27).
+asura-rules = { path = "../asura-rules" }
+# The cadence this server runs at: tick, ping and the probe/freshness windows come from
+# config/Server/intervals.json, one file for every program that reads them (D33).
+asura-config = { path = "../asura-config" }
 tokio = { workspace = true }
+# The world pack is data (`config/World/Vanilla/`): its files are JSON, read at start-up (D23, D24).
+serde = { workspace = true }
+serde_json = { workspace = true }
 # The game connection's key exchange needs 20 bytes of real randomness per connection, from the
 # operating system (docs/adr/0009-crypto-primitives.md).
 getrandom = { workspace = true }
@@ -19,3 +32,8 @@ tokio = { workspace = true }
 # The end-to-end test drives both services in one process: a client logs in to the auth service, is
 # told where to go, and connects to the world server. That is the only test that proves the handoff.
 asura-auth = { path = "../asura-auth" }
+# The end-to-end test starts the stack the way the supervisor does: through the socket layer.
+asura-gateway = { path = "../asura-gateway" }
+# The tests speak the protocol through the fake client, which the wire layer compiles only on request
+# (`docs/38-layer-decisions.md`, D13).
+asura-protocol = { path = "../asura-protocol", features = ["test-client"] }

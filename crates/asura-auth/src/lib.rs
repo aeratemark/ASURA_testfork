@@ -33,22 +33,17 @@ use asura_db::account as db_account;
 use asura_db::game as db_game;
 use asura_db::login as db_login;
 use asura_db::PgPool;
-use asura_protocol::client::filecheck;
 use asura_protocol::client::handshake::{self, CLIENT_SEED_LEN, MASTER_SECRET_LEN};
 use asura_protocol::client::messages::{self, PortalAccountLogin, RequestResponse, STATUS_OK};
 use asura_protocol::client::tables;
 use asura_protocol::client::version::{self, VersionError, AUTH_CMSG_VERSION_LEN};
 use asura_protocol::client::{Frame, FrameError};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::TcpStream;
 use uuid::Uuid;
 
 /// Answering `AUTH_CMSG_REQUEST_GAME_INSTANCE`: which world, and whether there is one at all.
 pub mod travel;
-
-/// The game connection's front door: a client that was told where to play connects *here*, and this
-/// service routes it to the world it named.
-pub mod frontdoor;
 
 /// How long a connection may sit without sending anything before it is dropped.
 ///
@@ -90,11 +85,6 @@ const READ_CHUNK: usize = 4096;
 pub enum ConnectionError {
     /// The socket failed.
     Io(io::Error),
-    /// The first four bytes name no connection type this service knows.
-    UnknownConnection(VersionError),
-    /// A well-formed connection that belongs to a different program: a world server, not the auth
-    /// service.
-    NotAnAuthConnection { kind: version::ConnectionKind },
     /// The first message was not a version message.
     BadVersion(VersionError),
     /// The key exchange did not complete.
@@ -107,28 +97,18 @@ pub enum ConnectionError {
     Idle,
     /// The database failed.
     Database(asura_db::DatabaseError),
-    /// A game connection could not be routed to the world that client named. The client's socket is
-    /// closed without a message, which is what the reference does when it cannot place a connection.
-    GameRoute(String),
 }
 
 impl core::fmt::Display for ConnectionError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             ConnectionError::Io(err) => write!(f, "socket: {err}"),
-            ConnectionError::UnknownConnection(err) => {
-                write!(f, "no connection type in the first bytes: {err}")
-            }
-            ConnectionError::NotAnAuthConnection { kind } => {
-                write!(f, "a {kind:?} connection does not belong on the auth port")
-            }
             ConnectionError::BadVersion(err) => write!(f, "version: {err}"),
             ConnectionError::Handshake(err) => write!(f, "key exchange: {err}"),
             ConnectionError::Framing(err) => write!(f, "framing: {err}"),
             ConnectionError::Message(err) => write!(f, "message: {err}"),
             ConnectionError::Idle => write!(f, "connection was idle"),
             ConnectionError::Database(err) => write!(f, "database: {err}"),
-            ConnectionError::GameRoute(reason) => write!(f, "game connection not routed: {reason}"),
         }
     }
 }
@@ -167,105 +147,17 @@ pub use asura_protocol::Trace;
 /// Each connection is handled in its own task; a failure closes that connection and nothing else.
 /// The service is restartable by design: it holds no state that a restart has to recover
 /// (`docs/02-architecture.md`, "Startup order").
-pub async fn serve(listener: TcpListener, pool: PgPool, trace: Trace) -> io::Result<()> {
-    let address = listener.local_addr()?;
-    // What a client is told to dial for its game connection. It is this service's own address,
-    // because that is where a real client dials - measured, not assumed: a client answered
-    // `GAME_SERVER_INFO` naming port 6113 by connecting to this port anyway, exactly as it does
-    // against the reference, whose info message names its own auth address.
-    let advertised = advertised_address(address);
-    eprintln!("asura-auth: listening on {address}");
-    if advertised != address {
-        eprintln!("asura-auth: advertising {advertised} to clients for game connections");
-    }
-    if trace.on() {
-        eprintln!("asura-auth: per-message trace on (ASURA_TRACE)");
-    }
-
-    loop {
-        let (stream, peer) = listener.accept().await?;
-        let pool = pool.clone();
-        tokio::spawn(async move {
-            match handle_connection(stream, &pool, trace, advertised).await {
-                Ok(()) => {
-                    if trace.on() {
-                        eprintln!("auth: {peer} closed");
-                    }
-                }
-                Err(err) => eprintln!("auth: {peer}: {err}"),
-            }
-        });
-    }
-}
-
-/// The address to hand a client for its game connection: `ASURA_AUTH_PUBLIC` when it is set, otherwise
-/// the address this service is bound to.
-///
-/// A server behind a NAT is the reason this is configurable: it listens on a private address and is
-/// reached at a public one, and the client needs the second.
-fn advertised_address(bind: SocketAddr) -> SocketAddr {
-    match std::env::var("ASURA_AUTH_PUBLIC") {
-        Ok(value) if !value.trim().is_empty() => match value.trim().parse() {
-            Ok(address) => address,
-            Err(err) => {
-                eprintln!(
-                    "auth: ASURA_AUTH_PUBLIC {value:?} is not an address ({err}); using {bind}"
-                );
-                bind
-            }
-        },
-        _ => bind,
-    }
-}
-
-/// Drive one connection from the first byte to the close.
-pub async fn handle_connection(
+pub async fn converse(
     mut stream: TcpStream,
+    mut buffer: Vec<u8>,
     pool: &PgPool,
     trace: Trace,
     advertised: SocketAddr,
 ) -> Result<(), ConnectionError> {
-    let mut buffer = Vec::with_capacity(READ_CHUNK);
-
-    // ---- 0. the file check ------------------------------------------------------------------
-    // Before anything else: the file check. The reference answers it in its `AwaitHello` state, before
-    // the version message, and keeps waiting ("the client repeats the check, and anything that follows
-    // it is a normal handshake"). A service that does not answer it closes a socket the client is
-    // waiting on, and the client shows nothing but "Connecting".
-    //
-    // One read, not a fixed-size one: the client may send the check and the version message together,
-    // and requiring 21 bytes up front would block on a client that sends the version message first.
-    read_until(&mut stream, &mut buffer, 1).await?;
-    while filecheck::starts_with_request(&buffer) {
-        buffer.drain(..filecheck::FILE_CHECK_REQUEST.len());
-        stream
-            .write_all(&filecheck::FILE_CHECK_RESPONSE)
-            .await
-            .map_err(ConnectionError::Io)?;
-        if trace.on() {
-            eprintln!("auth <- file check, answered 32 bytes");
-        }
-        if buffer.is_empty() {
-            read_until(&mut stream, &mut buffer, 1).await?;
-        }
-    }
-
-    // ---- 1. what kind of connection is this? ------------------------------------------------
-    // Four bytes arrive first and are *kept*: they are the beginning of the version message, not a
-    // message of their own.
-    read_until(&mut stream, &mut buffer, 4).await?;
-    let kind = version::classify(&buffer).map_err(ConnectionError::UnknownConnection)?;
-    if kind == version::ConnectionKind::Game {
-        // The client's gameplay connection arrives here, at the auth address it was told to use. The
-        // reference hands the socket to a game server over its control channel; this service routes
-        // the bytes to the world the client named instead (`frontdoor`).
-        return frontdoor::route(stream, std::mem::take(&mut buffer), pool, trace.on()).await;
-    }
-    if kind != version::ConnectionKind::Auth {
-        // A control connection belongs to another program. Refusing it by name is the whole point of
-        // classifying before anything else.
-        return Err(ConnectionError::NotAnAuthConnection { kind });
-    }
+    // The four classification bytes are already in `buffer` and are the beginning of the version
+    // message: the socket layer read them, decided this is a login connection, and handed the socket
+    // over (`asura-gateway`, `docs/38-layer-decisions.md`, D26). The file check was answered there too,
+    // because it carries no identity.
 
     // ---- 2. the version message -------------------------------------------------------------
     read_until(&mut stream, &mut buffer, AUTH_CMSG_VERSION_LEN).await?;
@@ -430,8 +322,8 @@ async fn dispatch(
                 return Ok(true);
             };
 
-            let name =
-                messages::decode_change_character(&frame.body()).map_err(ConnectionError::Message)?;
+            let name = messages::decode_change_character(frame.body())
+                .map_err(ConnectionError::Message)?;
             let characters = db_login::characters(pool, account)
                 .await
                 .map_err(ConnectionError::Database)?;
@@ -489,7 +381,7 @@ async fn dispatch(
             if trace.on() {
                 eprintln!(
                     "auth <- access key, {} key unit(s) (the reference logs it and keeps nothing)",
-                    access_key_len(&frame.body())
+                    access_key_len(frame.body())
                 );
             }
             send_frames(
@@ -515,7 +407,7 @@ async fn dispatch(
             let status = match session.account {
                 None => messages::STATUS_NETWORK_ERROR,
                 Some(account) => {
-                    let name = messages::decode_change_character(&frame.body())
+                    let name = messages::decode_change_character(frame.body())
                         .map_err(ConnectionError::Message)?;
                     let characters = db_login::characters(pool, account)
                         .await
@@ -585,7 +477,7 @@ async fn dispatch(
         // nothing. A write that fails is logged and swallowed: the login already succeeded, and a
         // refusal now would only make the client ask again.
         tables::AUTH_CMSG_ACCEPT_EULA => {
-            let version = messages::decode_eula(&frame.body()).map_err(ConnectionError::Message)?;
+            let version = messages::decode_eula(frame.body()).map_err(ConnectionError::Message)?;
             if let Some(account) = session.account {
                 match db_account::record_eula(pool, account, i16::from(version)).await {
                     // Printed, not traced: "this account accepted the EULA" is an event, and the
@@ -602,7 +494,7 @@ async fn dispatch(
         // (`travel::answer`): the info message with an address, then the success response. The one
         // rule it exists to keep is that the client is never sent to a port nothing answers on.
         tables::AUTH_CMSG_REQUEST_GAME_INSTANCE => {
-            let request = messages::GameInstanceRequest::decode(&frame.body())
+            let request = messages::GameInstanceRequest::decode(frame.body())
                 .map_err(ConnectionError::Message)?;
             let replies = travel::answer(
                 pool,
@@ -769,7 +661,12 @@ async fn answer_login(
         // where the client gets the appearance, level, campaign and armour it draws at character select.
         let settings = match db_game::settings(pool, character.id).await {
             Ok(Some(settings)) => messages::character_settings(&messages::CharacterSettings {
-                last_outpost: settings.last_outpost,
+                // The blob's `last_outpost` is the reference's `DbCharacter.last_outpost`: **the map the
+                // character is in**, which this schema keeps as `characters.map_id`. It is not our own
+                // `characters.last_outpost` column (migration `0024`), which remembers the outpost the
+                // login rule places a character in. The two differ the moment a character has never
+                // been placed in an outpost, and then the client draws it as map 0 with no data.
+                last_outpost: u16::try_from(settings.map_id).unwrap_or(0),
                 appearance: settings.appearance,
                 campaign: settings.campaign,
                 level: settings.level,
@@ -806,7 +703,21 @@ async fn answer_login(
             .map_err(ConnectionError::Message)?,
         );
     }
-    replies.push(messages::account_settings(login.request));
+    // The settings blob is configuration (`config/Server/account_settings.json`): the client's own
+    // payload, answered with the bytes the file states. A file that cannot be read refuses the reply
+    // rather than sending a shorter message.
+    let account_settings = match asura_config::account_settings() {
+        Ok(settings) => settings.bytes(),
+        Err(err) => Err(err),
+    };
+    let account_settings = match account_settings {
+        Ok(bytes) => bytes,
+        Err(err) => {
+            eprintln!("auth: the account settings blob is not usable: {err}");
+            return Ok(replies);
+        }
+    };
+    replies.push(messages::account_settings(login.request, &account_settings));
     replies.push(messages::friend_stream_end(login.request));
     replies.push(messages::account_info(
         login.request,

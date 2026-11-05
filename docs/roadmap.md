@@ -127,7 +127,7 @@ pings for as long as the client stays.**
 
 The auth service is also the game connection's front door: a real client dials the auth address
 whatever `GAME_SERVER_INFO` names (measured - it ignored the port in that message), so the auth routes
-the socket to the world it named (`crates/asura-auth/src/frontdoor.rs`).
+the socket to the world it named (`crates/asura-gateway/src/relay.rs`).
 
 `crates/asura-world/tests/load.rs` proves the load over a socket - a placed client is loaded into its
 map, a token nobody issued is closed without a word, a transfer naming a different character is
@@ -223,7 +223,7 @@ and the packet-parity stages. None is marked implemented merely by recording thi
 
 | milestone | outcome |
 |---|---|
-| S1 | Rust owns simulation; Lua is selected for content scripting (Rhai was selected first and replaced, 2026-11-01). The owner intends to port the existing behavior-tree AI to Rust. Event-driven scripting is proposed; implementation and open decisions are recorded in `docs/30-world-content-and-scripting.md` |
+| S1 | Rust provides simulation mechanics and execution; external Lua scripts hold the game's decisions and rules across the simulation (Rhai was selected first and replaced, 2026-11-01). Existing HeroAI decisions are behavior to express in Lua, using Rust world operations and execution machinery. Event-driven scripting is proposed; implementation and open decisions are recorded in `docs/30-world-content-and-scripting.md` |
 | S2 | the world server builds and runs from this repository, with its own maps and player load/save |
 | S3 | the simulation reads what it needs from the database through `asura-db`, with no shortcuts and no private SQL |
 | S4 | instance teardown: an empty explorable is cleared and returned to its pool, and memory does not grow across a session |

@@ -46,7 +46,7 @@ async fn a_row_is_registered_refreshed_and_marked_stale() {
     assert_eq!(row.build, "asura/test2");
 
     // A dead service is one whose heartbeat went stale: it must not read as fresh.
-    sqlx::query("UPDATE service SET heartbeat_at = now() - interval '10 minutes' WHERE kind = $1 AND name = $2")
+    sqlx::query("UPDATE t_service SET heartbeat_at = now() - interval '10 minutes' WHERE kind = $1 AND name = $2")
         .bind(KIND)
         .bind(NAME)
         .execute(&pool)

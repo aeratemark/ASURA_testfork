@@ -7,7 +7,7 @@
 //! (`docs/HANDOFF.md`, "The objective"), so a packet's identity is a copied fact, not a design:
 //! each row carries the header, the reference's index, its size, its name and its field layout,
 //! and those columns are never edited here. What *is* maintained here is what a session learns
-//! about a packet: its [`Status`] and its evidence.
+//! about a packet: its [`Status`](crate::packets::Status) and its evidence.
 //!
 //! ## The two columns that are facts
 //!
@@ -18,8 +18,8 @@
 //!
 //! ## The two columns a session edits
 //!
-//! * [`Status`] says how far a packet is known: unnamed, named, observed, emitted, handled, or
-//!   inferred. It is the project's progress number, and [`progress`] counts it.
+//! * [`Status`](crate::packets::Status) says how far a packet is known: unnamed, named, observed, emitted, handled, or
+//!   inferred. It is the project's progress number, and [`progress`](crate::packets::progress) counts it.
 //! * `evidence` names where the claim comes from: a capture under `recordings/`, a section of
 //!   `docs/03-protocol.md`, a `file:line`. A name or a function that is a guess says so, and the
 //!   evidence is the thing that makes it a fact.
@@ -133,6 +133,7 @@ pub enum FieldKind {
 /// One field: its kind and, for the kinds that carry a count or a length, that number.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Field {
+    /// What the field holds and how it is counted.
     pub kind: FieldKind,
     /// `field.length` in the reference: the unit capacity, the blob size, or 0 when unused.
     pub length: u16,
@@ -618,10 +619,10 @@ pub static PACKETS: &[Packet] = &[
     Packet { conn: Conn::Game, header: 0x005B, index:  91, size:     6, name: None, from_client: false, status: Status::Unnamed, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 91 }, Field { kind: FieldKind::Dword, length: 0 }] },
     Packet { conn: Conn::Game, header: 0x005C, index:  92, size:    14, name: None, from_client: false, status: Status::Unnamed, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 92 }, Field { kind: FieldKind::AgentId, length: 0 }, Field { kind: FieldKind::AgentId, length: 0 }, Field { kind: FieldKind::Dword, length: 0 }] },
     Packet { conn: Conn::Game, header: 0x005D, index:  93, size:   250, name: Some("GAME_SMSG_CHAT_MESSAGE_CORE"), from_client: false, status: Status::Emitted, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 93 }, Field { kind: FieldKind::String16, length: 122 }] },
-    Packet { conn: Conn::Game, header: 0x005E, index:  94, size:     5, name: Some("GAME_SMSG_CHAT_MESSAGE_SERVER"), from_client: false, status: Status::Emitted, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 94 }, Field { kind: FieldKind::Word, length: 0 }, Field { kind: FieldKind::Byte, length: 0 }] },
+    Packet { conn: Conn::Game, header: 0x005E, index:  94, size:     5, name: Some("GAME_SMSG_CHAT_MESSAGE_SERVER"), from_client: false, status: Status::Emitted, evidence: &["the live wire carries the subject player as a u16 and the channel as a u8, 5 bytes; the two-dword table form was read as 5 bytes plus the start of another message and dropped the connection after the line rendered"], fields: &[Field { kind: FieldKind::MsgHeader, length: 94 }, Field { kind: FieldKind::Word, length: 0 }, Field { kind: FieldKind::Byte, length: 0 }] },
     Packet { conn: Conn::Game, header: 0x005F, index:  95, size:    28, name: Some("GAME_SMSG_CHAT_MESSAGE_NPC"), from_client: false, status: Status::Known, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 95 }, Field { kind: FieldKind::AgentId, length: 0 }, Field { kind: FieldKind::Dword, length: 0 }, Field { kind: FieldKind::String16, length: 8 }] },
     Packet { conn: Conn::Game, header: 0x0060, index:  96, size:    86, name: Some("GAME_SMSG_CHAT_MESSAGE_GLOBAL"), from_client: false, status: Status::Known, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 96 }, Field { kind: FieldKind::Dword, length: 0 }, Field { kind: FieldKind::String16, length: 32 }, Field { kind: FieldKind::String16, length: 6 }] },
-    Packet { conn: Conn::Game, header: 0x0061, index:  97, size:     5, name: Some("GAME_SMSG_CHAT_MESSAGE_LOCAL"), from_client: false, status: Status::Emitted, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 97 }, Field { kind: FieldKind::Word, length: 0 }, Field { kind: FieldKind::Byte, length: 0 }] },
+    Packet { conn: Conn::Game, header: 0x0061, index:  97, size:     5, name: Some("GAME_SMSG_CHAT_MESSAGE_LOCAL"), from_client: false, status: Status::Emitted, evidence: &["the live wire carries the speaker as a u16 and the channel as a u8, 5 bytes; the two-dword table form was read as 5 bytes plus the start of another message and dropped the connection after the line rendered"], fields: &[Field { kind: FieldKind::MsgHeader, length: 97 }, Field { kind: FieldKind::Word, length: 0 }, Field { kind: FieldKind::Byte, length: 0 }] },
     Packet { conn: Conn::Game, header: 0x0062, index:  98, size:    10, name: Some("GAME_SMSG_HERO_BEHAVIOR"), from_client: false, status: Status::Known, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 98 }, Field { kind: FieldKind::AgentId, length: 0 }, Field { kind: FieldKind::Dword, length: 0 }] },
     Packet { conn: Conn::Game, header: 0x0063, index:  99, size:    10, name: None, from_client: false, status: Status::Unnamed, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 99 }, Field { kind: FieldKind::AgentId, length: 0 }, Field { kind: FieldKind::AgentId, length: 0 }] },
     Packet { conn: Conn::Game, header: 0x0064, index: 100, size:     8, name: Some("GAME_SMSG_HERO_SKILL_STATUS"), from_client: false, status: Status::Known, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 100 }, Field { kind: FieldKind::AgentId, length: 0 }, Field { kind: FieldKind::Byte, length: 0 }, Field { kind: FieldKind::Byte, length: 0 }] },
@@ -1768,7 +1769,7 @@ pub mod game {
     /// `GAME_SMSG_CHAT_MESSAGE_CORE` (declared maximum 250 bytes; header `0x005D`).
     pub const GAME_SMSG_CHAT_MESSAGE_CORE: u16 = 0x005D;
 
-    /// `GAME_SMSG_CHAT_MESSAGE_SERVER` (5 bytes on the live wire; header `0x005E`).
+    /// `GAME_SMSG_CHAT_MESSAGE_SERVER` (declared maximum 10 bytes; header `0x005E`).
     pub const GAME_SMSG_CHAT_MESSAGE_SERVER: u16 = 0x005E;
 
     /// `GAME_SMSG_CHAT_MESSAGE_NPC` (declared maximum 28 bytes; header `0x005F`).
@@ -1777,7 +1778,7 @@ pub mod game {
     /// `GAME_SMSG_CHAT_MESSAGE_GLOBAL` (declared maximum 86 bytes; header `0x0060`).
     pub const GAME_SMSG_CHAT_MESSAGE_GLOBAL: u16 = 0x0060;
 
-    /// `GAME_SMSG_CHAT_MESSAGE_LOCAL` (5 bytes on the live wire; header `0x0061`).
+    /// `GAME_SMSG_CHAT_MESSAGE_LOCAL` (declared maximum 10 bytes; header `0x0061`).
     pub const GAME_SMSG_CHAT_MESSAGE_LOCAL: u16 = 0x0061;
 
     /// `GAME_SMSG_HERO_BEHAVIOR` (declared maximum 10 bytes; header `0x0062`).
@@ -2379,9 +2380,9 @@ pub mod game {
     pub const GAME_CMSG_COMPUTER_INFO: u16 = 0x800A;
     /// `GAME_CMSG_COMPUTER_HASH` (`0x800B`).
     pub const GAME_CMSG_COMPUTER_HASH: u16 = 0x800B;
-    /// `GAME_CMSG_INSTANCE_QUERY` (`0x8093`).
     /// `GAME_SMSG_PLAYER_UPDATE_FLAGS` (`0x003C`).
     pub const GAME_SMSG_PLAYER_UPDATE_FLAGS: u16 = 0x003C;
+    /// `GAME_CMSG_INSTANCE_QUERY` (`0x8093`).
     pub const GAME_CMSG_INSTANCE_QUERY: u16 = 0x8093;
 }
 

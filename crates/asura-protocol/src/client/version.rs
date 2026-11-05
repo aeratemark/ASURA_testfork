@@ -1,7 +1,7 @@
 //! The first message on every connection: what kind of connection is this?
 //!
 //! Before any framing, before the key exchange, the client sends a bare little-endian `u32` that
-//! identifies the connection. It is **not** a [`super::frame::Frame`]: it has no two-byte header and
+//! identifies the connection. It is **not** a [`Frame`](crate::client::frame::Frame): it has no two-byte header and
 //! no table size, and decoding it as one would read `0x0400` as a message header. GWPS decides on
 //! exactly this value and routes the socket (`AuthSrv.c`, `Connection_ReadVersion`); ASURA must
 //! make the same decision or nothing later can be right.
@@ -55,12 +55,21 @@ impl ConnectionKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VersionError {
     /// Fewer than four bytes: read more. This is normal on a fresh TCP read.
-    Incomplete { needed: usize },
+    Incomplete {
+        /// How many bytes the read needs.
+        needed: usize,
+    },
     /// Four bytes that name no connection type. GWPS logs the bytes and closes, because guessing
     /// what a client meant is how a port drifts.
-    Unknown { header: u32 },
+    Unknown {
+        /// The four bytes received.
+        header: u32,
+    },
     /// The right header, but the message has not fully arrived yet.
-    BodyIncomplete { needed: usize },
+    BodyIncomplete {
+        /// How many bytes the whole message needs.
+        needed: usize,
+    },
 }
 
 impl core::fmt::Display for VersionError {
@@ -92,9 +101,15 @@ impl std::error::Error for VersionError {}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameVersionError {
     /// The message has not fully arrived yet.
-    Incomplete { needed: usize },
+    Incomplete {
+        /// How many bytes the whole message needs.
+        needed: usize,
+    },
     /// The header names a connection that is not a game connection.
-    NotAGameVersion { header: u32 },
+    NotAGameVersion {
+        /// The header, which names auth or control rather than a game connection.
+        header: u32,
+    },
 }
 
 impl core::fmt::Display for GameVersionError {
@@ -131,6 +146,7 @@ pub fn classify(bytes: &[u8]) -> Result<ConnectionKind, VersionError> {
 /// The auth version message, kept for the packet trace and for nothing else.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AuthVersion {
+    /// The version word the client sent.
     pub version: u32,
     /// `h0008` in the reference. Observed as 1; never validated there, and not validated here.
     pub h0008: u32,

@@ -9,11 +9,21 @@ description = "The auth service: login, key exchange, sessions, and telling the 
 [dependencies]
 asura-protocol = { path = "../asura-protocol" }
 asura-db = { path = "../asura-db" }
+# The game rule that decides where a character enters (`docs/38-layer-decisions.md`, D25).
+asura-rules = { path = "../asura-rules" }
+# The intervals this service waits on come from config/Server/intervals.json (D33).
+asura-config = { path = "../asura-config" }
 tokio = { workspace = true }
 uuid = { workspace = true }
 getrandom = { workspace = true }
 
 [dev-dependencies]
-# The end-to-end test drives the real listener over a loopback socket, using the reference client in
-# `asura-protocol::client::peer`. No game client is involved.
+# `examples/probe.rs` and `examples/login.rs` speak the protocol directly through the fake client,
+# which is compiled only on request (`docs/38-layer-decisions.md`, D13). The end-to-end tests drive the
+# socket layer, so they live there (`crates/asura-gateway/tests/`): a dev-dependency on it here would
+# make the two crates depend on each other.
 tokio = { workspace = true }
+asura-protocol = { path = "../asura-protocol", features = ["test-client"] }
+
+[lints]
+workspace = true

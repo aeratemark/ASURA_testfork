@@ -87,7 +87,10 @@ pub fn flush() {
     };
     let mut writer = capture.writer.lock().unwrap_or_else(|err| err.into_inner());
     let _ = writer.flush();
-    let mut last_flush = capture.last_flush.lock().unwrap_or_else(|err| err.into_inner());
+    let mut last_flush = capture
+        .last_flush
+        .lock()
+        .unwrap_or_else(|err| err.into_inner());
     *last_flush = Instant::now();
 }
 
@@ -107,7 +110,10 @@ pub fn record(direction: &str, header: u16, bytes: &[u8]) {
     );
     // Flushed on a time bound, not per record: see `FLUSH_EVERY`. The buffer flushes itself when it
     // fills, so a burst is still one write per 8 KB rather than one per message.
-    let mut last_flush = capture.last_flush.lock().unwrap_or_else(|err| err.into_inner());
+    let mut last_flush = capture
+        .last_flush
+        .lock()
+        .unwrap_or_else(|err| err.into_inner());
     if last_flush.elapsed() >= FLUSH_EVERY {
         let _ = writer.flush();
         *last_flush = Instant::now();
@@ -170,4 +176,20 @@ mod tests {
             lines[1], lines[2]
         );
     }
+}
+
+// ---- a short hex preview for a log line ------------------------------------------------------
+
+/// The first bytes of a message, as hex, for the trace.
+///
+/// When a client dies mid-load, the only evidence left is what it sent and what it was sent. A header
+/// and a size say which message; the first bytes say whether its contents were what the reference
+/// would have written.
+pub fn hex_preview(bytes: &[u8]) -> String {
+    bytes
+        .iter()
+        .take(24)
+        .map(|byte| format!("{byte:02X}"))
+        .collect::<Vec<_>>()
+        .join(" ")
 }

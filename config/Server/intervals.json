@@ -1,0 +1,10 @@
+{
+  "note": "The intervals this server runs at, in milliseconds and seconds. tick_interval_ms is measured from the live client (recordings/client/feature/movement/movement-sniff.log: a 0x001E every ~100 ms, median 81). ping_interval_secs is the reference's GAME_SRV_TIME_BETWEEN_PING_MS. ping_value is GWPS's 20 and has not been verified against our client. world_probe_timeout_ms is how long login waits for a world's port. world_max_age_secs is how old a world's heartbeat may be before it counts as gone; the login path and the socket layer both read it, so the two agree by construction. cartography_mark_interval_ms is the measured-safe gap between 0x008C marks. cartography_replay_delay_ms keeps the first replay mark out of the frame that finishes the load. An environment variable (ASURA_INTERVALS for the file, and the per-number variables documented in docs/19) overrides this file for a one-off experiment.",
+  "tick_interval_ms": 100,
+  "ping_interval_secs": 5,
+  "ping_value": 20,
+  "world_probe_timeout_ms": 500,
+  "world_max_age_secs": 60,
+  "cartography_mark_interval_ms": 1,
+  "cartography_replay_delay_ms": 5
+}

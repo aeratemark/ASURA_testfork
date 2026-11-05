@@ -18,14 +18,18 @@
 //!   change nor the record of it. `tools/` use `psql -1` for the same reason.
 
 use crate::{
-    PgPool, SCHEMA_V1, SCHEMA_V10, SCHEMA_V11, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5,
-    SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V9,
+    PgPool, SCHEMA_V1, SCHEMA_V10, SCHEMA_V11, SCHEMA_V12, SCHEMA_V13, SCHEMA_V14, SCHEMA_V15,
+    SCHEMA_V16, SCHEMA_V17, SCHEMA_V18, SCHEMA_V19, SCHEMA_V2, SCHEMA_V20, SCHEMA_V21, SCHEMA_V22,
+    SCHEMA_V23, SCHEMA_V24, SCHEMA_V25, SCHEMA_V26, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6,
+    SCHEMA_V7, SCHEMA_V8, SCHEMA_V9,
 };
 
 /// One migration: a version number (its file's number) and its statements.
 #[derive(Debug, Clone, Copy)]
 pub struct Migration {
+    /// The migration number, as recorded in `schema_version`.
     pub version: i32,
+    /// The migration`s own SQL, compiled in.
     pub sql: &'static str,
 }
 
@@ -76,10 +80,70 @@ pub const MIGRATIONS: &[Migration] = &[
         version: 11,
         sql: SCHEMA_V11,
     },
+    Migration {
+        version: 12,
+        sql: SCHEMA_V12,
+    },
+    Migration {
+        version: 13,
+        sql: SCHEMA_V13,
+    },
+    Migration {
+        version: 14,
+        sql: SCHEMA_V14,
+    },
+    Migration {
+        version: 15,
+        sql: SCHEMA_V15,
+    },
+    Migration {
+        version: 16,
+        sql: SCHEMA_V16,
+    },
+    Migration {
+        version: 17,
+        sql: SCHEMA_V17,
+    },
+    Migration {
+        version: 18,
+        sql: SCHEMA_V18,
+    },
+    Migration {
+        version: 19,
+        sql: SCHEMA_V19,
+    },
+    Migration {
+        version: 20,
+        sql: SCHEMA_V20,
+    },
+    Migration {
+        version: 21,
+        sql: SCHEMA_V21,
+    },
+    Migration {
+        version: 22,
+        sql: SCHEMA_V22,
+    },
+    Migration {
+        version: 23,
+        sql: SCHEMA_V23,
+    },
+    Migration {
+        version: 24,
+        sql: SCHEMA_V24,
+    },
+    Migration {
+        version: 25,
+        sql: SCHEMA_V25,
+    },
+    Migration {
+        version: 26,
+        sql: SCHEMA_V26,
+    },
 ];
 
 /// The newest version this build knows about. A database reporting less is behind the code.
-pub const LATEST_VERSION: i32 = 11;
+pub const LATEST_VERSION: i32 = 26;
 
 /// What [`apply_pending`] did.
 #[derive(Debug, Clone, PartialEq, Eq)]

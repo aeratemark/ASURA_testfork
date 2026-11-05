@@ -1,0 +1,29 @@
+[package]
+name = "asura-gateway"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "The socket layer: accepts every client connection and decides which service answers it"
+
+[lints]
+workspace = true
+
+[dependencies]
+asura-protocol = { path = "../asura-protocol" }
+asura-db = { path = "../asura-db" }
+# The auth conversation is a library call: the gateway classifies a connection and hands it over
+# (`docs/38-layer-decisions.md`, D26).
+asura-auth = { path = "../asura-auth" }
+# The world freshness window is a rule shared with the login path, so this layer asks the rules crate
+# rather than keeping a second copy of the number (`docs/38-layer-decisions.md`, D29).
+asura-rules = { path = "../asura-rules" }
+# The freshness window it routes by is the same number the login path reads (D33).
+asura-config = { path = "../asura-config" }
+tokio = { workspace = true }
+getrandom = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+asura-protocol = { path = "../asura-protocol", features = ["test-client"] }
+tokio = { workspace = true }

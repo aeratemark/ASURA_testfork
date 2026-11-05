@@ -18,6 +18,7 @@ use crate::{PgPool, Uuid};
 /// an explorable area, and where a character stands in it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SpawnMap {
+    /// The map the row is about.
     pub map_id: i32,
     /// 0 for an outpost/town, 1 for an explorable area (the reference's `MapType`).
     pub map_type: i32,
@@ -27,6 +28,7 @@ pub struct SpawnMap {
     /// The spawn coordinate, as the client's world coordinates. Verified against a live client in the
     /// reference rig for the development maps (`GmMapsConfig.c`).
     pub spawn_x: f32,
+    /// The spawn coordinate the map row carries.
     pub spawn_y: f32,
     /// The plane inside the map blob, not a height: 0 for every pre-Searing map measured so far.
     pub spawn_plane: i16,
@@ -55,7 +57,7 @@ fn spawn_map_from_row(row: MapRow) -> SpawnMap {
 pub async fn spawn_map(pool: &PgPool, map_id: i32) -> sqlx::Result<Option<SpawnMap>> {
     let row: Option<MapRow> = sqlx::query_as(
         "SELECT map_id, map_type, map_file_id, spawn_x, spawn_y, spawn_plane, name
-           FROM map_config WHERE map_id = $1",
+           FROM t_map_config WHERE map_id = $1",
     )
     .bind(map_id)
     .fetch_optional(pool)
@@ -68,7 +70,7 @@ pub async fn spawn_map(pool: &PgPool, map_id: i32) -> sqlx::Result<Option<SpawnM
 /// capture's, kept because a map entered from a different portal has more than one.
 pub async fn spawn_points(pool: &PgPool, map_id: i32) -> sqlx::Result<Vec<(f32, f32, i16)>> {
     sqlx::query_as::<_, (f32, f32, i16)>(
-        "SELECT x, y, plane FROM map_spawn WHERE map_id = $1 ORDER BY idx",
+        "SELECT x, y, plane FROM t_map_spawn WHERE map_id = $1 ORDER BY idx",
     )
     .bind(map_id)
     .fetch_all(pool)
@@ -85,7 +87,7 @@ pub type PortalRow = (i32, f32, f32, Option<i32>, Option<f32>, Option<f32>);
 /// world then keeps its compiled doorway table, which is the behaviour it had before the table existed.
 pub async fn map_portals(pool: &PgPool) -> sqlx::Result<Vec<PortalRow>> {
     sqlx::query_as::<_, PortalRow>(
-        "SELECT map_id, x, y, to_map, arrive_x, arrive_y FROM map_portal ORDER BY map_id, idx",
+        "SELECT map_id, x, y, to_map, arrive_x, arrive_y FROM t_map_portal ORDER BY map_id, idx",
     )
     .fetch_all(pool)
     .await
@@ -98,14 +100,14 @@ pub async fn map_portals(pool: &PgPool) -> sqlx::Result<Vec<PortalRow>> {
 /// single-map test), never by default - a world hosting one map answers `/tp` with "not hosted" for the
 /// rest, and `/maps` prints one alias.
 pub async fn configured_map_ids(pool: &PgPool) -> sqlx::Result<Vec<i32>> {
-    sqlx::query_scalar("SELECT map_id FROM map_config ORDER BY map_id")
+    sqlx::query_scalar("SELECT map_id FROM t_map_config ORDER BY map_id")
         .fetch_all(pool)
         .await
 }
 
 /// A character's name, as the client should see it in the map.
 pub async fn character_name(pool: &PgPool, character: Uuid) -> sqlx::Result<Option<String>> {
-    sqlx::query_scalar("SELECT name FROM characters WHERE id = $1")
+    sqlx::query_scalar("SELECT name FROM t_characters WHERE id = $1")
         .bind(character)
         .fetch_optional(pool)
         .await
@@ -120,9 +122,13 @@ pub async fn character_name(pool: &PgPool, character: Uuid) -> sqlx::Result<Opti
 /// everyone - a real liberty, recorded in `docs/09-parity-audit.md` #9.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Traits {
+    /// The packed appearance word, as `CREATE_NAMED_ITEM` and the load block carry it.
     pub appearance: u32,
+    /// The profession the item was made for, or 0.
     pub profession: u8,
+    /// The professions this account may pick, as the reference packs them.
     pub unlocked_professions: u32,
+    /// The character`s gold, as `UPDATE_GOLD_STORAGE` reports it.
     pub gold: u32,
     /// `Campaign` (`GmChar.h`): 0 none (a pvp character), 1 Prophecies, 2 Factions, 3 Nightfall,
     /// 4 Eye of the North. The character settings blob carries four bits of it.
@@ -156,7 +162,7 @@ pub async fn traits(pool: &PgPool, character: Uuid) -> sqlx::Result<Option<Trait
     let row: Option<(i64, i32, i64, i32, i32, i32, i32)> = sqlx::query_as(
         "SELECT appearance, primary_profession, unlocked_professions, gold, campaign::int,
                 secondary_profession::int, level::int
-           FROM characters WHERE id = $1",
+           FROM t_characters WHERE id = $1",
     )
     .bind(character)
     .fetch_optional(pool)
@@ -193,35 +199,81 @@ pub struct ArmourPiece {
 pub struct Settings {
     /// The map the character was last in (`last_outpost` in the reference's row).
     pub last_outpost: u16,
+    /// The row's own `characters.map_id`: the map the character is in, before the outpost rule runs.
+    /// A creation confirm writes the starter outpost here, which is why the auth service reads it.
+    pub map_id: i32,
     /// The packed `Appearance` word, exactly as `create_character` stored it.
     pub appearance: u32,
+    /// 0 none, 1 Prophecies, 2 Factions, 3 Nightfall, 4 Eye of the North.
     pub campaign: u8,
+    /// The character`s level, from `characters.level`.
     pub level: u8,
+    /// Whether the character was created for PvP.
     pub is_pvp: bool,
+    /// The secondary profession, four bits on the wire.
     pub secondary_profession: u8,
+    /// 0 none, 1 show, 2 hide.
     pub helm_status: u8,
     /// Up to five pieces, in the reference's order: body, legs, head, boots, gloves. A piece the character
     /// is not wearing is absent, not zero-filled -- `number_of_pieces` is the count.
     pub pieces: Vec<ArmourPiece>,
 }
 
+/// One `characters` row, as [`settings`] reads it: the columns the settings block is built from.
+struct CharacterRow {
+    last_outpost: i32,
+    map_id: i32,
+    appearance: i64,
+    campaign: i32,
+    level: i32,
+    is_pvp: bool,
+    secondary_profession: i32,
+    helm_status: i32,
+}
+
+// Decoded by column name, which is why the query casts every narrow column to `int`: one row type for
+// the settings block, and a column renamed in the SQL fails here rather than in a client assertion.
+// Hand-written because the crate does not enable sqlx's derive macros - see `Cargo.toml`.
+impl<'r> sqlx::FromRow<'r, sqlx::postgres::PgRow> for CharacterRow {
+    fn from_row(row: &'r sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
+        use sqlx::Row;
+        Ok(CharacterRow {
+            last_outpost: row.try_get("last_outpost")?,
+            map_id: row.try_get("map_id")?,
+            appearance: row.try_get("appearance")?,
+            campaign: row.try_get("campaign")?,
+            level: row.try_get("level")?,
+            is_pvp: row.try_get("is_pvp")?,
+            secondary_profession: row.try_get("secondary_profession")?,
+            helm_status: row.try_get("helm_status")?,
+        })
+    }
+}
 /// The settings of one character, or `None` if there is no such row.
 pub async fn settings(pool: &PgPool, character: Uuid) -> sqlx::Result<Option<Settings>> {
     // The casts are not decoration: `smallint` and `integer` decode into different Rust types, and a
     // database that has one of each (a development database that has had migrations applied by hand) is
     // not worth a runtime error. Everything comes back as `int` and is narrowed below.
-    // One row, decoded in one go. The tuple is wide because the row is, and a struct for it would be used
-    // once and named nowhere else.
-    #[allow(clippy::type_complexity)]
-    let row: Option<(i32, i32, i64, i32, i32, bool, i32, i32)> = sqlx::query_as(
+    // One row, decoded in one go. Named fields rather than an eight-wide tuple, so a column added in
+    // the wrong order is a compile error instead of a swapped value (`docs/38-layer-decisions.md`, D16).
+    let row: Option<CharacterRow> = sqlx::query_as(
         "SELECT last_outpost::int, map_id, appearance, campaign::int, level::int, is_pvp,
                 secondary_profession::int, helm_status::int
-           FROM characters WHERE id = $1",
+           FROM t_characters WHERE id = $1",
     )
     .bind(character)
     .fetch_optional(pool)
     .await?;
-    let Some((last_outpost, _map_id, appearance, campaign, level, is_pvp, secondary, helm)) = row
+    let Some(CharacterRow {
+        last_outpost,
+        map_id: row_map_id,
+        appearance,
+        campaign,
+        level,
+        is_pvp,
+        secondary_profession: secondary,
+        helm_status: helm,
+    }) = row
     else {
         return Ok(None);
     };
@@ -244,6 +296,7 @@ pub async fn settings(pool: &PgPool, character: Uuid) -> sqlx::Result<Option<Set
         // The outpost the character was last *placed* in. It is not `map_id`, which records the map it was
         // last in - explorables included (docs/22-world-model.md, the outpost rule).
         last_outpost: u16::try_from(last_outpost).unwrap_or(0),
+        map_id: row_map_id,
         appearance: appearance as u32,
         campaign: campaign as u8,
         level: level as u8,
@@ -259,7 +312,9 @@ pub async fn settings(pool: &PgPool, character: Uuid) -> sqlx::Result<Option<Set
 pub struct Position {
     /// The map the position belongs to. A position is only usable on the map it was taken in.
     pub map_id: i32,
+    /// The coordinate the client reports.
     pub x: f32,
+    /// The coordinate that goes with it.
     pub y: f32,
     /// The plane inside the map blob, the client's third coordinate.
     pub plane: i16,
@@ -273,7 +328,7 @@ pub struct Position {
 /// range), so a caller must not be handed it as if it were a position.
 pub async fn position(pool: &PgPool, character: Uuid) -> sqlx::Result<Option<Position>> {
     let row: Option<(i32, f32, f32, Option<i16>)> =
-        sqlx::query_as("SELECT map_id, pos_x, pos_y, pos_plane FROM characters WHERE id = $1")
+        sqlx::query_as("SELECT map_id, pos_x, pos_y, pos_plane FROM t_characters WHERE id = $1")
             .bind(character)
             .fetch_optional(pool)
             .await?;
@@ -301,7 +356,7 @@ pub async fn record_position(
     plane: i16,
 ) -> sqlx::Result<bool> {
     let done = sqlx::query(
-        "UPDATE characters
+        "UPDATE t_characters
             SET map_id = $2, pos_x = $3, pos_y = $4, pos_plane = $5, updated_at = now()
           WHERE id = $1",
     )
@@ -315,6 +370,26 @@ pub async fn record_position(
     Ok(done.rows_affected() > 0)
 }
 
+/// Forget where a character stood, so the next arrival cannot resume it.
+///
+/// A travel does not preserve a position - only a disconnect does (`docs/22-world-model.md`, the
+/// owner's rule of 2026-11-05) - so a travel that is not a portal walk calls this before the
+/// redirect: the destination then stands where its own spawn list says instead of where the
+/// character last was. `pos_plane IS NULL` is what "never saved" means
+/// ([`position`]), so clearing it reads back as a character that has never been played. `map_id` is
+/// left alone: it is the map the character is in, which the arrival itself records.
+pub async fn forget_position(pool: &PgPool, character: Uuid) -> sqlx::Result<bool> {
+    let done = sqlx::query(
+        "UPDATE t_characters
+            SET pos_plane = NULL, updated_at = now()
+          WHERE id = $1",
+    )
+    .bind(character)
+    .execute(pool)
+    .await?;
+    Ok(done.rows_affected() > 0)
+}
+
 /// Record the last **outpost** a character was placed in.
 ///
 /// The owner's base rule (docs/22-world-model.md, "Spawn points, and the outpost rule"): a character that
@@ -322,7 +397,7 @@ pub async fn record_position(
 /// `characters.last_outpost` is that memory, and it is written only when the placement is an outpost, so a
 /// travel into an explorable cannot overwrite it.
 pub async fn remember_outpost(pool: &PgPool, character: Uuid, map_id: i32) -> sqlx::Result<bool> {
-    let done = sqlx::query("UPDATE characters SET last_outpost = $2 WHERE id = $1")
+    let done = sqlx::query("UPDATE t_characters SET last_outpost = $2 WHERE id = $1")
         .bind(character)
         .bind(map_id as i16)
         .execute(pool)
@@ -336,7 +411,7 @@ pub async fn remember_outpost(pool: &PgPool, character: Uuid, map_id: i32) -> sq
 /// `Ok(true)` means this call is the one that unlocked it.
 pub async fn unlock_instance(pool: &PgPool, character: Uuid, map_id: i32) -> sqlx::Result<bool> {
     let done = sqlx::query(
-        "INSERT INTO instance_unlock (character_id, map_id) VALUES ($1, $2)
+        "INSERT INTO t_instance_unlock (character_id, map_id) VALUES ($1, $2)
          ON CONFLICT (character_id, map_id) DO NOTHING",
     )
     .bind(character)
@@ -352,7 +427,7 @@ pub async fn unlock_instance(pool: &PgPool, character: Uuid, map_id: i32) -> sql
 /// the client's, not the database's.
 pub async fn unlocked_instances(pool: &PgPool, character: Uuid) -> sqlx::Result<Vec<i32>> {
     let rows: Vec<(i32,)> = sqlx::query_as(
-        "SELECT map_id FROM instance_unlock WHERE character_id = $1 ORDER BY unlocked_at, map_id",
+        "SELECT map_id FROM t_instance_unlock WHERE character_id = $1 ORDER BY unlocked_at, map_id",
     )
     .bind(character)
     .fetch_all(pool)
@@ -364,7 +439,7 @@ pub async fn unlocked_instances(pool: &PgPool, character: Uuid) -> sqlx::Result<
 pub async fn all_maps(pool: &PgPool) -> sqlx::Result<Vec<SpawnMap>> {
     let rows: Vec<MapRow> = sqlx::query_as(
         "SELECT map_id, map_type, map_file_id, spawn_x, spawn_y, spawn_plane, name
-           FROM map_config ORDER BY map_id",
+           FROM t_map_config ORDER BY map_id",
     )
     .fetch_all(pool)
     .await?;

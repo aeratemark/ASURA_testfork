@@ -16,7 +16,7 @@ use std::process::ExitCode;
 
 use asura_protocol::client::handshake;
 use asura_protocol::client::messages::PortalAccountLogin;
-use asura_protocol::client::peer::ReferenceClient;
+use asura_protocol::client::reference_client::ReferenceClient;
 use asura_protocol::client::tables;
 use asura_protocol::client::Frame;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -84,7 +84,7 @@ async fn main() -> ExitCode {
         character_name: String::new(),
         kind: "Portal".to_string(),
     }
-    .frame()
+    .try_to_frame()
     .expect("builds");
     let mut login_bytes = login.encode();
     client.seal_raw(&mut login_bytes);
@@ -126,7 +126,7 @@ async fn main() -> ExitCode {
                 frame.header(),
                 name,
                 frame.len(),
-                hex(&frame.body())
+                hex(frame.body())
             );
             printed += 1;
         }

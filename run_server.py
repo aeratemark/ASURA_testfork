@@ -40,8 +40,8 @@ CONFIG_FILE = ROOT / "config" / "services.toml"
 ENV_FILE = ROOT / ".env"
 LOG_DIR = ROOT / "logs"
 SUPERVISOR_EXE = ROOT / "target" / "debug" / ("asura-supervisor" + EXE_SUFFIX)
-BUILD_PACKAGES = ["asura-supervisor", "asura-auth", "asura-world", "asura-webgate"]
-SERVICE_BINARIES = ["asura-auth", "asura-world", "asura-webgate"]
+BUILD_PACKAGES = ["asura-supervisor", "asura-gateway", "asura-world", "asura-webgate"]
+SERVICE_BINARIES = ["asura-gateway", "asura-world", "asura-webgate"]
 
 DEFAULT_CONFIG = {
     "role": "asura",

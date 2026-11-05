@@ -8,8 +8,17 @@ explaining it, it is defined here.
 **ASURA** - the project. *Automated Server Utility for Remote Authentication.* Not a program: the
 whole server stack, made of the components below.
 
-**auth service** (`asura-auth`) - the program that answers the client's login: key exchange,
-session, character list, character select. It owns identity, and it never runs a map.
+**Socket layer** (`asura-gateway`) - the program that listens on the address a client dials. It accepts
+both of a client's connections, answers the file check, reads the four bytes that name the connection
+kind, and hands the socket to the auth conversation or relays it to a world. It holds no state.
+
+**auth service** (`asura-auth`) - the login conversation: key exchange, session, character list,
+character select. It owns identity, it never runs a map, and since `docs/38-layer-decisions.md` D26 it
+is a library the socket layer calls rather than a program with a listener of its own.
+
+**Rules** (`asura-rules`) - the game rules a protocol answer needs, as pure functions over data the
+caller has already read: where a character enters the game, for now. No sockets, no database, no
+printing (`docs/38`, D25).
 
 **World server** (`asura-world`) - this project's program that runs maps for players, in Rust. The one
 in `crates/asura-world` is the whole of it: connection, load block, movement, travel, chat, items. It

@@ -27,12 +27,12 @@ use asura_db::game as db_game;
 use asura_db::inventory as db_inventory;
 use asura_db::login as db;
 use asura_db::{placement, PgPool, Uuid};
-use asura_protocol::client::game::GameVersion;
+use asura_protocol::client::game_version::GameVersion;
 use asura_protocol::client::handshake;
-use asura_protocol::client::peer::ReferenceClient;
+use asura_protocol::client::reference_client::ReferenceClient;
 use asura_protocol::client::Frame;
 use asura_protocol::game;
-use asura_world::{serve, MapEntry, World, MAP_TYPE_CHARACTER_CREATION};
+use asura_world::{serve, MapEntry, World};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
@@ -164,6 +164,9 @@ impl Harness {
                 map_type,
                 spawn: (6602.0, 4485.0),
                 spawn_plane: 0,
+                // The harness states no spawn list, so its arrivals keep the persistence rule; the
+                // random outpost entry is tested by `an_outpost_arrival_is_a_random_point_of_its_list`.
+                spawns: Vec::new(),
                 name: "Lakeside County".to_string(),
                 capacity: 2,
             },
@@ -173,6 +176,7 @@ impl Harness {
                 map_type: 0,
                 spawn: (1.0, 2.0),
                 spawn_plane: 0,
+                spawns: Vec::new(),
                 name: "Ascalon City".to_string(),
                 capacity: 2,
             },
@@ -364,7 +368,12 @@ async fn read_until_count(
 ) -> Vec<Frame> {
     let mut frames: Vec<Frame> = Vec::new();
     let mut buffer = [0u8; 8192];
-    while frames.iter().filter(|frame| frame.header() == header).count() < count {
+    while frames
+        .iter()
+        .filter(|frame| frame.header() == header)
+        .count()
+        < count
+    {
         let read = tokio::time::timeout(TIMEOUT, stream.read(&mut buffer))
             .await
             .expect("read before the timeout")
@@ -560,12 +569,22 @@ async fn a_placed_client_is_loaded_into_its_map() {
         .expect("a spawn point");
     assert_eq!(spawn.len(), 26);
     assert_eq!(
-        u32::from_le_bytes([spawn.body()[0], spawn.body()[1], spawn.body()[2], spawn.body()[3]]),
+        u32::from_le_bytes([
+            spawn.body()[0],
+            spawn.body()[1],
+            spawn.body()[2],
+            spawn.body()[3]
+        ]),
         0x1B97D,
         "the map blob the client must stream"
     );
     assert_eq!(
-        f32::from_le_bytes([spawn.body()[4], spawn.body()[5], spawn.body()[6], spawn.body()[7]]),
+        f32::from_le_bytes([
+            spawn.body()[4],
+            spawn.body()[5],
+            spawn.body()[6],
+            spawn.body()[7]
+        ]),
         6602.0,
         "and where to stand, from the map's own config"
     );
@@ -618,8 +637,13 @@ async fn a_placed_client_is_loaded_into_its_map() {
         .find(|frame| frame.header() == game::PING_REPLY)
         .expect("a ping reply");
     assert_eq!(
-        u32::from_le_bytes([reply.body()[0], reply.body()[1], reply.body()[2], reply.body()[3]]),
-        asura_world::PING_VALUE
+        u32::from_le_bytes([
+            reply.body()[0],
+            reply.body()[1],
+            reply.body()[2],
+            reply.body()[3]
+        ]),
+        asura_world::connection::ping_value()
     );
 
     // ---- leaving releases the slot ----------------------------------------------------------
@@ -852,7 +876,12 @@ async fn an_item_can_be_moved_between_slots_and_the_server_agrees() {
         .find(|frame| frame.header() == game::ITEM_MOVE_TO_LOCATION)
         .expect("an accepted move is echoed");
     assert_eq!(
-        u32::from_le_bytes([echo.body()[2], echo.body()[3], echo.body()[4], echo.body()[5]]),
+        u32::from_le_bytes([
+            echo.body()[2],
+            echo.body()[3],
+            echo.body()[4],
+            echo.body()[5]
+        ]),
         cupcake.id as u32
     );
     assert_eq!(
@@ -939,7 +968,12 @@ async fn an_item_can_be_taken_off_and_worn_again() {
         .find(|frame| frame.header() == game::UPDATE_AGENT_VISUAL_EQUIPMENT)
         .expect("the visual equipment");
     assert_eq!(
-        u32::from_le_bytes([worn.body()[4], worn.body()[5], worn.body()[6], worn.body()[7]]),
+        u32::from_le_bytes([
+            worn.body()[4],
+            worn.body()[5],
+            worn.body()[6],
+            worn.body()[7]
+        ]),
         worn_ids[0],
         "the weapon slot holds the item the equipped bag says it does"
     );
@@ -1109,7 +1143,7 @@ async fn the_default_map_list_is_the_whole_catalogue_and_tp_reaches_it() {
             .await
             .expect("read the map")
             .unwrap_or_else(|| panic!("map {map_id} is in the catalogue"));
-        if configured.map_type != MAP_TYPE_CHARACTER_CREATION {
+        if configured.map_type != asura_world::map_kinds().character_creation {
             assert!(configured.map_file_id > 0, "map {map_id} has a blob");
         }
         maps.push(MapEntry {
@@ -1118,6 +1152,9 @@ async fn the_default_map_list_is_the_whole_catalogue_and_tp_reaches_it() {
             map_type: configured.map_type,
             spawn: (configured.spawn_x, configured.spawn_y),
             spawn_plane: configured.spawn_plane as u16,
+            spawns: asura_world::map_spawns::for_map(*map_id)
+                .map(<[_]>::to_vec)
+                .unwrap_or_default(),
             name: configured.name.clone(),
             capacity: 8,
         });
@@ -1135,7 +1172,7 @@ async fn the_default_map_list_is_the_whole_catalogue_and_tp_reaches_it() {
     // instance gets none: it is not a place (`chat::maps_answer`).
     let hosted_without_alias = maps
         .iter()
-        .filter(|map| map.map_type != MAP_TYPE_CHARACTER_CREATION)
+        .filter(|map| map.map_type != asura_world::map_kinds().character_creation)
         .filter(|map| {
             !asura_world::travel_targets::TRAVEL_TARGETS
                 .iter()
@@ -1307,8 +1344,18 @@ async fn a_character_comes_back_where_it_left() {
         .iter()
         .find(|frame| frame.header() == game::INSTANCE_LOAD_SPAWN_POINT)
         .expect("a spawn point");
-    let x = f32::from_le_bytes([spawn.body()[4], spawn.body()[5], spawn.body()[6], spawn.body()[7]]);
-    let y = f32::from_le_bytes([spawn.body()[8], spawn.body()[9], spawn.body()[10], spawn.body()[11]]);
+    let x = f32::from_le_bytes([
+        spawn.body()[4],
+        spawn.body()[5],
+        spawn.body()[6],
+        spawn.body()[7],
+    ]);
+    let y = f32::from_le_bytes([
+        spawn.body()[8],
+        spawn.body()[9],
+        spawn.body()[10],
+        spawn.body()[11],
+    ]);
     assert_eq!(
         (x, y),
         walked,
@@ -1442,7 +1489,12 @@ async fn a_second_player_is_introduced_to_the_first_and_withdrawn_again() {
         .iter()
         .filter(|frame| frame.header() == game::PLAYER_CREATE)
         .map(|frame| {
-            u32::from_le_bytes([frame.body()[0], frame.body()[1], frame.body()[2], frame.body()[3]])
+            u32::from_le_bytes([
+                frame.body()[0],
+                frame.body()[1],
+                frame.body()[2],
+                frame.body()[3],
+            ])
         })
         .collect();
     assert_eq!(players.len(), 2, "two players: this one and the other");
@@ -1847,14 +1899,35 @@ async fn the_world_map_request_travels_to_the_instance_it_names() {
     harness.stop();
 }
 
+/// How far an arrival stands from the nearest of the destination map's own spawn points. A spawn is
+/// scattered over the `spawn_scatter` circle around one of them (`config/Server/spawns.json`,
+/// `Standing::at_spawn`), and a map the pack states no list for is answered by its catalogue
+/// coordinate.
+fn distance_to_nearest_spawn(
+    destination: i32,
+    configured: &db_game::SpawnMap,
+    x: f32,
+    y: f32,
+) -> f32 {
+    let mut points: Vec<(f32, f32)> = asura_world::map_spawns::for_map(destination)
+        .map(|list| list.iter().map(|spawn| (spawn.x, spawn.y)).collect())
+        .unwrap_or_default();
+    if points.is_empty() {
+        points.push((configured.spawn_x, configured.spawn_y));
+    }
+    points.iter().fold(f32::INFINITY, |nearest, (px, py)| {
+        (px - x).hypot(py - y).min(nearest)
+    })
+}
+
 /// `--on-demand`: a travel to a map this world was **not** started with.
 ///
 /// The reference pre-spawns one server per configured map so a travel never constructs anything, and
 /// this world preloads every hosted map for the same reason. Whether the real client *requires* the
 /// destination to exist before the hop is the open question the `--on-demand` switch exists to
 /// answer (`docs/03-protocol.md`). This test pins the server half: the transfer names a map the world
-/// was not started with, its map entry and pool row appear at travel time, and the reconnect lands in
-/// the destination's own spawn point (the `map_config` row, not the source's).
+/// was not started with, its map entry and pool row appear at travel time, and the reconnect lands on
+/// the destination's own spawn list (never on the source map's coordinate).
 #[tokio::test]
 async fn a_travel_to_an_unhosted_map_is_loaded_on_demand() {
     if skip() {
@@ -1892,6 +1965,7 @@ async fn a_travel_to_an_unhosted_map_is_loaded_on_demand() {
         map_type: 0,
         spawn: (6602.0, 4485.0),
         spawn_plane: 0,
+        spawns: Vec::new(),
         name: "Lakeside County".to_string(),
         capacity: 2,
     }];
@@ -2057,10 +2131,19 @@ async fn a_travel_to_an_unhosted_map_is_loaded_on_demand() {
         spawned.body()[10],
         spawned.body()[11],
     ]);
-    assert_eq!(
+    // The demand-loaded destination answers with its own spawn data, scattered over a 250-unit circle
+    // around one of its own spawn points - never the source map's coordinate. What must never happen
+    // is the source map's coordinate.
+    assert_ne!(
         (x, y),
-        (configured.spawn_x, configured.spawn_y),
-        "the demand-loaded destination's own spawn point"
+        (6602.0f32, 4485.0f32),
+        "the source map's spawn point is not the destination's"
+    );
+    let nearest = distance_to_nearest_spawn(destination, &configured, x, y);
+    assert!(
+        nearest <= asura_world::spawn_scatter() + 0.5,
+        "the arrival ({x}, {y}) is {nearest} units from the destination's nearest spawn point, \
+         outside the 250-unit scatter circle"
     );
     assert_eq!(
         u32::from_le_bytes([
@@ -2122,6 +2205,7 @@ async fn a_connection_to_an_unhosted_map_is_loaded_on_demand() {
         map_type: 0,
         spawn: (6602.0, 4485.0),
         spawn_plane: 0,
+        spawns: Vec::new(),
         name: "Lakeside County".to_string(),
         capacity: 2,
     }];
@@ -2223,10 +2307,18 @@ async fn a_connection_to_an_unhosted_map_is_loaded_on_demand() {
         spawned.body()[10],
         spawned.body()[11],
     ]);
-    assert_eq!(
+    // The demand-loaded map answers with its own spawn data, never the source map's coordinate; the
+    // same rule as the travel test above.
+    assert_ne!(
         (x, y),
-        (configured.spawn_x, configured.spawn_y),
-        "the demand-loaded map's own spawn point"
+        (6602.0f32, 4485.0f32),
+        "the source map's spawn point is not the destination's"
+    );
+    let nearest = distance_to_nearest_spawn(destination, &configured, x, y);
+    assert!(
+        nearest <= asura_world::spawn_scatter() + 0.5,
+        "the arrival ({x}, {y}) is {nearest} units from the destination's nearest spawn point, \
+         outside the 250-unit scatter circle"
     );
 
     drop(stream);
@@ -2235,7 +2327,6 @@ async fn a_connection_to_an_unhosted_map_is_loaded_on_demand() {
         .expect("remove the world");
     server.abort();
 }
-
 /// T6: a character can be made in a character-creation instance.
 ///
 /// The reference's four messages (`GameSrv_HandleCharCreation*`), in order: the player-data block, the PvP
@@ -2278,8 +2369,18 @@ async fn a_character_is_created_in_a_creation_instance() {
         .filter(|frame| frame.header() == game::AGENT_PROPERTY_UPDATE_INT)
         .map(|frame| {
             (
-                u32::from_le_bytes([frame.body()[0], frame.body()[1], frame.body()[2], frame.body()[3]]),
-                u32::from_le_bytes([frame.body()[8], frame.body()[9], frame.body()[10], frame.body()[11]]),
+                u32::from_le_bytes([
+                    frame.body()[0],
+                    frame.body()[1],
+                    frame.body()[2],
+                    frame.body()[3],
+                ]),
+                u32::from_le_bytes([
+                    frame.body()[8],
+                    frame.body()[9],
+                    frame.body()[10],
+                    frame.body()[11],
+                ]),
             )
         })
         .collect();

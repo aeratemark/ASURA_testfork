@@ -12,7 +12,7 @@
 | piece | runs on | listens |
 |---|---|---|
 | `asura-webgate` | the server host | 6601 |
-| `asura-auth` | the server host | 6112 |
+| `asura-gateway` | the server host | 6112 |
 | `asura-world` (one process per world) | the server host, or another machine | 6113 (and its registered public address) |
 | PostgreSQL | the server host, or another machine | 5432 |
 | the game client | a Windows machine | connects to the gate and the auth address |

@@ -20,13 +20,14 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use asura_auth::{serve as serve_auth, Trace};
+use asura_auth::Trace;
 use asura_db::login as db;
 use asura_db::{placement, PgPool, Uuid};
-use asura_protocol::client::game::GameVersion;
+use asura_gateway::serve as serve_auth;
+use asura_protocol::client::game_version::GameVersion;
 use asura_protocol::client::handshake;
 use asura_protocol::client::messages::{self, RequestResponse};
-use asura_protocol::client::peer::ReferenceClient;
+use asura_protocol::client::reference_client::ReferenceClient;
 use asura_protocol::client::{tables, Frame};
 use asura_protocol::game;
 use asura_world::{serve as serve_world, MapEntry, World};
@@ -122,6 +123,7 @@ async fn a_client_logs_in_travels_and_reaches_its_map() {
             map_type: 0,
             spawn: SPAWN,
             spawn_plane: 0,
+            spawns: Vec::new(),
             name: "Lakeside County".to_string(),
             capacity: 2,
         }],
@@ -236,7 +238,7 @@ async fn a_client_logs_in_travels_and_reaches_its_map() {
     // The client is told to dial the **auth** address: that is what a real client does (measured -'- it
     // ignored the port in this same message and dialled the address it was launched with), and it is
     // what the reference does, whose auth port receives game connections and hands them to a game
-    // server. This service routes the connection onwards (`asura_auth::frontdoor`).
+    // server. This service routes the connection onwards (`asura_gateway::relay`).
     let host = &info.body()[12..36];
     assert_eq!(&host[0..2], &[2, 0], "AF_INET");
     let port = u16::from_be_bytes([host[2], host[3]]);
@@ -251,10 +253,19 @@ async fn a_client_logs_in_travels_and_reaches_its_map() {
         "and that is a different socket from the world's own (the routing is not accidental)"
     );
 
-    let map_token = u32::from_le_bytes([info.body()[4], info.body()[5], info.body()[6], info.body()[7]]);
+    let map_token = u32::from_le_bytes([
+        info.body()[4],
+        info.body()[5],
+        info.body()[6],
+        info.body()[7],
+    ]);
     // req_id(4) + map_token(4) + map_id(4) + host(24) = 36, then the player token.
-    let player_token =
-        u32::from_le_bytes([info.body()[36], info.body()[37], info.body()[38], info.body()[39]]);
+    let player_token = u32::from_le_bytes([
+        info.body()[36],
+        info.body()[37],
+        info.body()[38],
+        info.body()[39],
+    ]);
     assert_eq!(map_token, world_id as u32, "the map token is the world id");
     assert_ne!(player_token, 0, "and a player token was issued");
 
@@ -340,11 +351,21 @@ async fn a_client_logs_in_travels_and_reaches_its_map() {
         .find(|frame| frame.header() == game::INSTANCE_LOAD_SPAWN_POINT)
         .expect("a spawn point");
     assert_eq!(
-        u32::from_le_bytes([spawn.body()[0], spawn.body()[1], spawn.body()[2], spawn.body()[3]]),
+        u32::from_le_bytes([
+            spawn.body()[0],
+            spawn.body()[1],
+            spawn.body()[2],
+            spawn.body()[3]
+        ]),
         MAP_BLOB
     );
     assert_eq!(
-        f32::from_le_bytes([spawn.body()[4], spawn.body()[5], spawn.body()[6], spawn.body()[7]]),
+        f32::from_le_bytes([
+            spawn.body()[4],
+            spawn.body()[5],
+            spawn.body()[6],
+            spawn.body()[7]
+        ]),
         SPAWN.0
     );
 

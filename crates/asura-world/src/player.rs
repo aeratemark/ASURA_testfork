@@ -40,11 +40,23 @@ pub struct Player {
     /// Set when this connection has been redirected to another map. Its teardown must then leave the
     /// lease alone: the seat it holds now belongs to the connection the client is about to open.
     pub moved: bool,
+    /// The segment the last accepted movement moved the agent along: where the server believed it stood
+    /// before the report or correction, and where it believes it stands now. The doorway test reads it
+    /// after the movement handler returns (`travel::portal_crossed`) - a doorway is a wall, and the step
+    /// that passes through it is the crossing.
+    pub last_step: Option<((f32, f32), (f32, f32))>,
     /// What a character-creation connection has chosen so far: `Some` when this connection is in a
     /// creation instance (map type 11), which is the reference's `MapType_CharacterCreation`.
     pub creation: Option<Creation>,
     /// The character's stored traits - what the load block sends instead of constants.
     pub traits: db_game::Traits,
+    /// The character's explored cells on the continent it is on. Read from
+    /// `t_character_cartography` when the connection is built, saved as it changes and when the
+    /// connection ends.
+    pub explored: crate::cartography::Grid,
+    /// The walking reveal: the last cell it marked and the paced queue its `0x008C` marks go
+    /// through. Per connection, because the marker belongs to the socket that carries the marks.
+    pub walker: crate::cartography::Walker,
     /// When the connection began, for the load time the reference reports.
     pub started: Instant,
 }
@@ -118,21 +130,24 @@ pub const PLAYER_TEAM_TOKEN: u32 = 0xBAAD_F00D;
 /// client can render.
 pub const DEFAULT_PRIMARY_PROFESSION: u8 = 1;
 
-/// The unlocked-profession bitmap the reference sends (`GAME_SMSG_PLAYER_UPDATE_UNLOCKED_PROFESSIONS`:
-/// `02 00 00 00`), i.e. the bit for the profession above.
-pub const DEFAULT_UNLOCKED_PROFESSIONS: u32 = 2;
+/// The unlocked-profession bitmap the creation screen is told, before a character exists
+/// (`GAME_SMSG_PLAYER_UPDATE_UNLOCKED_PROFESSIONS`: `02 00 00 00`) - read from
+/// `config/Server/defaults.json`. A real character's bitmap is written at the confirm and read from its
+/// row on every load, so this is the screen's default and nothing else's.
+pub fn creation_screen_unlocked_professions() -> u32 {
+    asura_config::defaults()
+        .map(|defaults| defaults.creation_screen_unlocked_professions())
+        .unwrap_or(0)
+}
 
-/// Everything the client is told about the players in the instance, in the reference's order
-/// (`GameSrv_HandleInstanceLoadRequestPlayers`).
-///
-/// Two parameters are there for the two things this block no longer takes from a constant: `standing`,
-/// which places the agent where the character actually is (`WORLD_CREATE_AGENT`), and `inventory`, which
-/// says what the agent is wearing (`UPDATE_AGENT_VISUAL_EQUIPMENT`) - the nine ids read out of the
-/// equipped-items bag, because they belong to *this* character's items.
-// The block is built from the character's whole row-side state, and every argument is one of those facts
-// rather than a value computed here; a struct around them would only rename the call site. The same
-// allowance is used where this pattern already exists (`asura_db::inventory`, `asura_protocol::game`).
-#[allow(clippy::too_many_arguments)]
+/// How many UTF-16 units of a character name the confirm keeps, from
+/// `config/Server/defaults.json` (`name_max_units`).
+pub fn name_max_units() -> usize {
+    asura_config::defaults()
+        .map(|defaults| defaults.name_max_units())
+        .unwrap_or(0)
+}
+
 /// Morale is a percentage around 100, and 100 is the value a live load carries for a character with no
 /// morale modifier (`dump4-after`, `worldcontext.morale`). Sending 0 left the client's morale at zero.
 const MORALE_FULL: u32 = 100;
@@ -142,24 +157,58 @@ const MORALE_FULL: u32 = 100;
 /// owner's eye, so this stays 1 until the column exists: a non-zero number is the proof that the
 /// message is carrying the field at all.
 const EXPERIENCE_TEST_VALUE: u32 = 500;
-pub fn player_block(
-    name: &str,
-    standing: Standing,
-    inventory: &Inventory,
-    started: Instant,
-    player_id: u32,
-    agent_id: u32,
-    traits: db_game::Traits,
-    unlocked: &[u32],
-) -> Vec<Frame> {
+
+/// What the player block is built from: everything a character's own messages carry.
+///
+/// A struct rather than eight positional arguments, for the reason `asura-rules` and
+/// `asura-protocol` record (`docs/38-layer-decisions.md`, D16): the id, the agent id and the traits are
+/// all small integers, so a swapped pair compiles and a client draws the wrong character.
+pub struct PlayerBlock<'a> {
+    /// The character's name, as the client shows it.
+    pub name: &'a str,
+    /// Where it stands: the position and plane the client draws it at.
+    pub standing: Standing,
+    /// Its bags and items, as rows were read.
+    pub inventory: &'a Inventory,
+    /// When this connection started, which the client's clock display uses.
+    pub started: Instant,
+    /// The player id this connection was given.
+    pub player_id: u32,
+    /// The agent id this connection was given.
+    pub agent_id: u32,
+    /// The character's own row: appearance, campaign, level and the rest.
+    pub traits: db_game::Traits,
+    /// The unlocked-map bitmap, in the client's own encoding.
+    pub unlocked: &'a [u32],
+}
+
+/// Everything the client is told about the players in the instance, in the reference's order
+/// (`GameSrv_HandleInstanceLoadRequestPlayers`).
+///
+/// Two of the block's fields are there for the two things it no longer takes from a constant:
+/// `standing`, which places the agent where the character actually is (`WORLD_CREATE_AGENT`), and
+/// `inventory`, which says what the agent is wearing (`UPDATE_AGENT_VISUAL_EQUIPMENT`) - the nine ids
+/// read out of the equipped-items bag, because they belong to *this* character's items.
+pub fn player_block(block: &PlayerBlock<'_>) -> Vec<Frame> {
+    let PlayerBlock {
+        name,
+        standing,
+        inventory,
+        started,
+        player_id,
+        agent_id,
+        traits,
+        unlocked,
+    } = *block;
     let mut frames = Vec::with_capacity(30);
 
     // The PvP unlocks. The reference sends its own fixed table of 387 unlockable items
-    // (`GameSrv_SendPvpItems`, generated into `game::pvp_items`), and the client builds its
-    // unlockable-item table from them, so they are copied rather than skipped.
+    // (`GameSrv_SendPvpItems`), which this crate carries as content (`crate::pvp_items`, layer 9),
+    // and the client builds its unlockable-item table from them, so they are copied rather than
+    // skipped. The message builder stays in the wire crate; only the rows moved.
     frames.push(game::pvp_update_unlocked_skills(&[]));
     frames.push(game::pvp_update_unlocked_heroes(&[0xFFFF_FFFF; 8]));
-    for item in game::pvp_items::PVP_ITEMS {
+    for item in crate::pvp_items::PVP_ITEMS {
         frames.push(game::pvp_item_stream_add(item.id, item.params));
     }
     frames.push(game::pvp_item_stream_end());
@@ -193,8 +242,8 @@ pub fn player_block(
     frames.push(game::map_update_unlocked_list([
         &[][..],
         &[],
-        UNLOCKED_MAP_ZEROS,
-        UNLOCKED_MAP_ZEROS,
+        crate::player::UNLOCKED_MAP_ZEROS,
+        crate::player::UNLOCKED_MAP_ZEROS,
         unlocked,
     ]));
     frames.push(game::instance_loaded(PLAYER_TEAM_TOKEN));
@@ -221,21 +270,14 @@ pub fn player_block(
     // client's record for a level-13 character (`dump4-after`, worldcontext.level/experience/morale),
     // and `characters.level` is where our level comes from. Experience and skill points have no column
     // yet - a freshly created character has neither - so they go out as zero rather than as absent.
-    frames.push(game::character_update_factions(
-        EXPERIENCE_TEST_VALUE,      // experience: 500 until a column holds it, so the sheet shows it working
-        0,                          // current kurzick
-        0,                          // total earned kurzick
-        0,                          // current luxon
-        0,                          // total earned luxon
-        0,                          // current imperial
-        0,                          // total earned imperial
-        u32::from(traits.level),    // level, from `characters.level`
-        MORALE_FULL,                // morale: 100 is the no-modifier value a live load carries
-        0,                          // current balthazar
-        0,                          // total earned balthazar
-        0,                          // current skill points
-        0,                          // total earned skill points
-    ));
+    frames.push(game::character_update_factions(&game::CharacterProgress {
+        // 500 until a column holds experience, so the sheet shows it working.
+        experience: EXPERIENCE_TEST_VALUE,
+        level: u32::from(traits.level),
+        morale: MORALE_FULL,
+        // Faction, skill points and their earned totals have no column yet.
+        ..game::CharacterProgress::default()
+    }));
     // A live load sends these two immediately after the faction block, once per player: the visibility
     // flags and the player's own flags word (`recordings/asura/world/load-layers-20261031.jsonl`,
     // headers 00EF then 003C). Without them the client's player record carries no flags and its
@@ -253,7 +295,12 @@ pub fn player_block(
     // The appearance the client chose, or the reference's default for a character with no bits recorded:
     // all-zero bits say `Profession_None`, which is not a character the client can draw.
     let appearance = if traits.appearance == 0 {
-        game::Appearance::REFERENCE_DEFAULT.pack()
+        // The look for a character with no bits of its own
+        // (`config/World/Vanilla/character_defaults.json`, `appearance`): all-zero bits are
+        // `Profession_None`, which the client cannot draw.
+        crate::character_defaults::current()
+            .map(|defaults| defaults.appearance().pack())
+            .unwrap_or_default()
     } else {
         traits.appearance
     };
@@ -275,10 +322,9 @@ pub fn player_block(
         agent_type: game::AGENT_TYPE_LIVING,
         position: standing.position,
         plane: standing.plane,
-        direction: (1.0, 0.0),
+        direction: standing.direction,
         speed_base: game::PLAYER_SPEED_BASE,
         player_team_token: PLAYER_TEAM_TOKEN,
-
     }));
     // The agent's own morale record, which the party panel's morale icon is drawn from. A live server
     // sends one per body at load with 100, the unmodified value; with the record left unset the client
@@ -327,4 +373,219 @@ pub fn player_block(
 
     frames.push(game::instance_load_finish());
     frames
+}
+
+// ---- the instances a character has reached, as the client addresses them ---------------------
+
+/// A zero-filled bitmap of the length the reference uses for a character with no progress: 31 words.
+///
+/// Copied from its trace, not chosen: `GAME_SMSG_MAP_UPDATE_UNLOCKED_LIST` there carries two lists of
+/// 31 zero dwords (`02 00 00 00` twice, then 31 words of zeros, twice more). Sending the lists empty
+/// instead changes the *length* of a bitmap the client indexes by map id.
+pub const UNLOCKED_MAP_ZEROS: &[u32] = &[0u32; 31];
+
+/// The instance bitmap a character's reached instances become, in the client's own addressing.
+///
+/// **Read from the client's world context** (`docs/22-world-model.md`): the bitmap is an array of
+/// `u32` where instance `n` is bit `n % 32` of word `n / 32`. 31 words covers instances 0 to 991,
+/// which contains the reference's own `MapId_Count` sentinel of 877 (`MAP_ID_COUNT`), so a character
+/// can never outgrow the list the reference sends.
+///
+/// An id outside that range, or a negative one, is dropped rather than growing the list: the width is
+/// the message's, and an instance the client cannot address is not made addressable by a longer array.
+pub fn unlock_bitmap(instances: &[i32]) -> Vec<u32> {
+    let mut words = UNLOCKED_MAP_ZEROS.to_vec();
+    for &map_id in instances {
+        let index = usize::try_from(map_id).ok().map(|id| id / 32);
+        if let Some(word) = index.filter(|index| *index < words.len()) {
+            words[word] |= 1 << (map_id.rem_euclid(32) as u32);
+        }
+    }
+    words
+}
+
+/// The player is somewhere new: record the cells the step reveals and save them now.
+///
+/// Two callers: the position reports and the connection's walk poll. The poll exists because a
+/// server-side walk sends no reports until it ends, so without it a click-walk would reveal nothing
+/// until the arrival. The save is immediate for the same reason the position save is best-effort:
+/// a travel opens the next map's connection before this one has closed, and the next connection
+/// reads the row as it stands.
+pub(crate) async fn walked(world: &World, player: &mut Player, trace: bool) {
+    if player.moved {
+        player.walker.halt();
+        return;
+    }
+    let map_id = player.instance.map.map_id;
+    let position = player.GetXY();
+    let before = player.explored.explored_count();
+    let queued = player
+        .walker
+        .advance(&mut player.explored, map_id, position);
+    let now = player.explored.explored_count();
+    if trace && !queued.is_empty() {
+        eprintln!(
+            "world: cartography: at ({:.0}, {:.0}) on map {map_id}, {} mark(s) queued, last at {:?}; {now} cells explored",
+            position.0,
+            position.1,
+            queued.len(),
+            queued.last(),
+        );
+    }
+    if now != before {
+        save_explored(world, player).await;
+    }
+}
+
+/// Write this character's grid to its row, now.
+pub async fn save_explored(world: &World, player: &Player) {
+    let (dims_x, dims_y) = player.explored.dims();
+    let stored = db_cartography::Explored {
+        dims_x: dims_x as i16,
+        dims_y: dims_y as i16,
+        blocks: player.explored.packed(),
+        explored: player.explored.explored_count() as i32,
+    };
+    if let Err(err) = db_cartography::record_explored(
+        &world.pool,
+        player.character,
+        crate::cartography::continent_for(player.instance.map.map_id),
+        &stored,
+    )
+    .await
+    {
+        eprintln!("world: could not save the exploration as it was earned: {err}");
+    }
+}
+
+// ---- the client asks who else is in the instance ------------------------------------------
+
+/// The client asks who else is here. This is the big block, and its last message
+/// (`INSTANCE_LOAD_FINISH`) is what takes the client off the loading screen.
+///
+/// Everyone already in the map goes after it, in the reference's own order for a joining client
+/// (`GameSrv_SendWorldAgents`, `GmAgent.c:310-331`), and the same frames go out to *them* so they
+/// learn about this one. The reference broadcasts the player create there and unicasts the rest;
+/// the order is what matters here, and it is the same in both directions.
+pub async fn handle_request_players(
+    stream: &mut TcpStream,
+    session: &mut Session,
+    world: &World,
+    player: &mut Player,
+    trace: bool,
+) -> Result<bool, GameError> {
+    let replay = world.replay.as_ref();
+    // The load block's own cost, measured. The first instance a fresh process serves is the one that warms
+    // every cache behind it, so these numbers are what separates a server-side delay from a client-side
+    // one: a block built in single-digit milliseconds cannot be why a client's load drags.
+    let load_started = Instant::now();
+    // The instance the character is standing in is reached, so it is unlocked - that is the whole rule
+    // (`docs/22-world-model.md`): the walk sets the bit, the bit never gates the walk. The creation
+    // instance is not a place a character "reaches", so it sets nothing.
+    let here = player.instance.map.map_id;
+    // The last outpost this character stood in, kept for the base rule (docs/22-world-model.md): a travel
+    // into an explorable must not overwrite it, which is why only an outpost is written here.
+    if player.instance.map.map_type == map_kinds().main_town {
+        if let Err(err) = db_game::remember_outpost(&world.pool, player.character, here).await {
+            eprintln!("world: could not remember the outpost {here}: {err}");
+        }
+    }
+    if player.instance.map.map_type != map_kinds().character_creation {
+        match db_game::unlock_instance(&world.pool, player.character, here).await {
+            Ok(true) => eprintln!(
+                "world: {:?} unlocked instance {here}: first arrival",
+                player.name
+            ),
+            Ok(false) => {}
+            Err(err) => eprintln!("world: could not record the arrival in instance {here}: {err}"),
+        }
+    }
+    // The bitmaps the client is given: the character's own reached instances, and the one it is in even
+    // if the database could not be read - a client told it is nowhere can offer nowhere.
+    let unlocked = match db_game::unlocked_instances(&world.pool, player.character).await {
+        Ok(instances) => unlock_bitmap(&instances),
+        Err(err) => {
+            eprintln!("world: could not read the reached instances, sending this one only: {err}");
+            unlock_bitmap(&[here])
+        }
+    };
+    let unlocked_at = load_started.elapsed();
+    let block_started = Instant::now();
+    let mut block = match replay {
+        Some(replay) if replay.pick.wants(crate::replay::BlockName::Players) => {
+            replay.players.clone()
+        }
+        _ => player_block(&crate::player::PlayerBlock {
+            name: &player.name,
+            standing: player.standing(),
+            inventory: &player.inventory,
+            started: player.started,
+            player_id: player.player_id,
+            agent_id: player.agent_id,
+            traits: player.traits,
+            unlocked: &unlocked,
+        }),
+    };
+    let others = player.instance.others(player.player_id);
+    eprintln!(
+        "world: [+{} ms] load block for instance {here}: {} frame(s); reached list {} ms, block {} ms, total {} ms",
+        crate::stamp_ms(),
+        block.len(),
+        unlocked_at.as_millis(),
+        block_started.elapsed().as_millis(),
+        load_started.elapsed().as_millis()
+    );
+    for peer in &others {
+        block.extend(introduction(peer));
+    }
+    let me = PeerView {
+        player_id: player.player_id,
+        agent_id: player.agent_id,
+        name: player.name.clone(),
+        standing: player.standing(),
+        equipped: player.inventory.equipped_item_ids(),
+    };
+    if !others.is_empty() {
+        // The introduction, then what the others need in order to draw this player:
+        // `GameSrv_BroadcastPlayerEquippedItems` (`GmItem.c:129-160`, the *unnamed* item form),
+        // then `GameSrv_BroadcastUpdateAgentVisualEquipment` and `GameSrv_BroadcastAgentDisplayCape`
+        // - the reference's own order in the same handler (`GameSrv.c:1643-1650`).
+        let mut mine = introduction(&me);
+        let equipped_bag = player
+            .inventory
+            .bags
+            .iter()
+            .find(|bag| bag.bag_type == 2)
+            .map(|bag| bag.bag_id);
+        for item in player
+            .inventory
+            .items
+            .iter()
+            .filter(|item| item.bag_id == equipped_bag)
+        {
+            mine.push(game::create_unnamed_item(&named_item(item)));
+        }
+        mine.push(equipment_frame(player));
+        mine.push(game::agent_display_cape(player.agent_id, 1));
+        player.instance.broadcast(player.player_id, &mine);
+    }
+    send(stream, session, block, trace).await?;
+    // The load is over: the block's last message was `INSTANCE_LOAD_FINISH`. Only now may the instance's
+    // clock tick this player - measured, not assumed: 36 live loads carry no `0x001E` between the client's
+    // spawn request and this one, and this world used to send 49 into that window from the unasked block
+    // onwards (see `run`'s comment in connection.rs).
+    //
+    // The stored exploration follows the load. `cartography_replay_delay_ms` keeps its first mark out
+    // of the frame that finishes the load; a player who opens M without moving then sees the saved map
+    // fill immediately rather than waiting for a position report.
+    tokio::time::sleep(crate::cartography::replay_start_delay()).await;
+    let replayed = player.walker.replay(&player.explored);
+    if trace && !replayed.is_empty() {
+        eprintln!(
+            "world: cartography: replayed {} stored mark(s) after the load",
+            replayed.len()
+        );
+    }
+    player.instance.loaded(player.player_id);
+    Ok(true)
 }

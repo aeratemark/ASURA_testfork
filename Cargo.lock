@@ -12,17 +12,29 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 name = "asura-auth"
 version = "0.1.0"
 dependencies = [
+ "asura-config",
  "asura-db",
  "asura-protocol",
+ "asura-rules",
  "getrandom 0.2.17",
  "tokio",
  "uuid",
 ]
 
 [[package]]
+name = "asura-config"
+version = "0.1.0"
+dependencies = [
+ "asura-protocol",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "asura-db"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
  "sqlx",
  "tokio",
  "uuid",
@@ -37,10 +49,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "asura-gateway"
+version = "0.1.0"
+dependencies = [
+ "asura-auth",
+ "asura-config",
+ "asura-db",
+ "asura-protocol",
+ "asura-rules",
+ "getrandom 0.2.17",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "asura-protocol"
 version = "0.1.0"
 dependencies = [
  "num-bigint-dig",
+]
+
+[[package]]
+name = "asura-rules"
+version = "0.1.0"
+dependencies = [
+ "asura-protocol",
 ]
 
 [[package]]
@@ -67,9 +100,14 @@ name = "asura-world"
 version = "0.1.0"
 dependencies = [
  "asura-auth",
+ "asura-config",
  "asura-db",
+ "asura-gateway",
  "asura-protocol",
+ "asura-rules",
  "getrandom 0.2.17",
+ "serde",
+ "serde_json",
  "tokio",
 ]
 

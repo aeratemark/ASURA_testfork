@@ -32,13 +32,24 @@ pub const STATUS_INVALID_CHARNAME: u32 = 23;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MessageError {
     /// The frame carries a different header than this message expects.
-    UnexpectedHeader { got: u16, expected: u16 },
+    UnexpectedHeader {
+        /// The header the frame carries.
+        got: u16,
+        /// The header this message must carry.
+        expected: u16,
+    },
     /// The body ended early: the reference's layout needs more bytes.
-    Truncated { field: &'static str },
+    Truncated {
+        /// Which field ran out of bytes.
+        field: &'static str,
+    },
     /// A counted string or array was longer than the field that must hold it.
     TooLong {
+        /// Which field overflowed.
         field: &'static str,
+        /// How many units the field holds.
         capacity: usize,
+        /// How many were written or read.
         got: usize,
     },
 }
@@ -132,30 +143,6 @@ impl<'a> Reader<'a> {
         let mut out = [0u8; 16];
         out.copy_from_slice(bytes);
         Ok(out)
-    }
-
-    /// A counted UTF-16 string: a `u32` length, then that many `u16` code units, then padding to the
-    /// field's capacity. The length is the number of code units, not bytes.
-    ///
-    /// This is the **server-to-client** shape the reference packs. It is kept for the tests and for
-    /// messages the reference pads; client messages use [`Reader::u16_utf16`].
-    #[allow(dead_code)]
-    fn utf16(&mut self, capacity: usize, field: &'static str) -> Result<String, MessageError> {
-        let count = self.u32(field)? as usize;
-        if count > capacity {
-            return Err(MessageError::TooLong {
-                field,
-                capacity,
-                got: count,
-            });
-        }
-        let bytes = self.take(capacity * 2, field)?;
-        let units: Vec<u16> = (0..count)
-            .map(|index| u16::from_le_bytes([bytes[index * 2], bytes[index * 2 + 1]]))
-            .collect();
-        Ok(char::decode_utf16(units)
-            .map(|result| result.unwrap_or(char::REPLACEMENT_CHARACTER))
-            .collect())
     }
 }
 
@@ -309,9 +296,10 @@ pub struct PortalAccountLogin {
 
 impl PortalAccountLogin {
     /// Read the message out of a received frame.
+    /// Read an answer back, which the reference client does and the server never needs.
     pub fn decode(frame: &Frame) -> Result<Self, MessageError> {
         expect(frame, tables::AUTH_CMSG_PORTAL_ACCOUNT_LOGIN)?;
-        let mut reader = Reader::new(&frame.body());
+        let mut reader = Reader::new(frame.body());
         let request = reader.u32("req_id")?;
         let user_id = reader.array16(16, "user_id")?;
         let session_id = reader.array16(16, "session_id")?;
@@ -330,8 +318,11 @@ impl PortalAccountLogin {
         })
     }
 
-    /// Build the message, which is what the reference client in [`super::peer`] does.
-    pub fn frame(&self) -> Result<Frame, MessageError> {
+    /// Build the message, which is what the reference client in `super::reference_client` does.
+    ///
+    /// Fallible, because the character name must fit its counted field: a builder that can refuse
+    /// says so in its name. `RequestResponse::frame` cannot fail and does not carry the prefix.
+    pub fn try_to_frame(&self) -> Result<Frame, MessageError> {
         let mut writer = Writer::new();
         writer
             .u32(self.request)
@@ -351,20 +342,24 @@ impl PortalAccountLogin {
 /// `AUTH_SMSG_REQUEST_RESPONSE` (`0x0003`): the answer to any request, success or not.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RequestResponse {
+    /// The `req_id` of the request being answered.
     pub request: u32,
+    /// 0 for success; the reference's nonzero codes are the client's own error dialog.
     pub status: u32,
 }
 
 impl RequestResponse {
+    /// The 10-byte answer. Infallible: both fields are fixed-width dwords.
     pub fn frame(&self) -> Frame {
         let mut writer = Writer::new();
         writer.u32(self.request).u32(self.status);
         Frame::new(tables::AUTH_SMSG_REQUEST_RESPONSE, writer.into_body())
     }
 
+    /// Read an answer back, which the reference client does and the server never needs.
     pub fn decode(frame: &Frame) -> Result<Self, MessageError> {
         expect(frame, tables::AUTH_SMSG_REQUEST_RESPONSE)?;
-        let mut reader = Reader::new(&frame.body());
+        let mut reader = Reader::new(frame.body());
         Ok(RequestResponse {
             request: reader.u32("req_id")?,
             status: reader.u32("status")?,
@@ -422,6 +417,7 @@ pub struct CharacterSettings {
     pub campaign: u8,
     /// Four bits on the wire (`LEVEL_BITS`).
     pub level: u8,
+    /// Whether the character was created for PvP, where the client hides PvE-only surfaces.
     pub is_pvp: bool,
     /// Four bits on the wire.
     pub secondary_profession: u8,
@@ -571,10 +567,9 @@ pub fn decode_eula(body: &[u8]) -> Result<u8, MessageError> {
 /// Layout (`AuthSrv_AccountSettings`): `req_id`, a **u16** `n_data`, then exactly that many bytes of
 /// data. Measured from the reference's own output: `16 00 | 01 00 00 00 | 4f 02 <591 bytes>` -
 /// **599 bytes**, where the table says 2058. The blob is copied from the reference's own literal
-/// ([`super::login_fixtures::ACCOUNT_SETTINGS_DATA`]); nothing here knows what most of it means, and it
+/// (`config/Server/account_settings.json`, `asura-config`); nothing here knows what most of it means, and it
 /// is sent because it is what the reference sends.
-pub fn account_settings(request: u32) -> Frame {
-    let data = super::login_fixtures::ACCOUNT_SETTINGS_DATA;
+pub fn account_settings(request: u32, data: &[u8]) -> Frame {
     let mut writer = Writer::new();
     writer.u32(request).u16(data.len() as u16);
     writer.bytes.extend_from_slice(data);
@@ -655,12 +650,17 @@ pub const ADDRESS_FAMILY_INET6: u16 = 23;
 /// is fixed-size in both directions, so it is one of the few where the table is the wire.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GameInstanceRequest {
+    /// The `req_id` this request answers.
     pub request: u32,
     /// 0 for an outpost, 1 for an explorable area (`MapType_FromInt`).
     pub map_type: u32,
+    /// The instance the client asks for.
     pub map_id: u32,
+    /// The region the client names; it is a capacity hint, never a permission.
     pub region: u32,
+    /// The district the client names; 0 means "any".
     pub district: u32,
+    /// The client's language id, which the row stores and nothing else reads.
     pub language: u32,
 }
 
@@ -755,7 +755,7 @@ mod tests {
 
         // Measured from a live reference reply (`tools/inspect-reply.py`): the two messages the batch
         // carries in the middle are 599 and 77 bytes, not the table's 2058 and 275.
-        let settings = account_settings(7);
+        let settings = account_settings(7, &[0x08; 591]);
         assert_eq!(settings.len(), 599);
         let info = account_info(7, [0x44; 16], Some([0x55; 16]), 24);
         assert_eq!(info.len(), 81);
@@ -793,7 +793,7 @@ mod tests {
             character_name: String::new(),
             kind: "Portal".to_string(),
         };
-        let frame = login.frame().expect("builds");
+        let frame = login.try_to_frame().expect("builds");
         // header 2, req_id 4, two 16-byte ids, an empty name (2), a six-unit type (2 + 12).
         assert_eq!(frame.len(), 54);
         assert!(
@@ -813,26 +813,20 @@ mod tests {
     }
 
     #[test]
-    fn the_account_settings_carry_the_reference_blob_and_no_more() {
+    fn the_account_settings_frame_a_blob_and_pad_nothing_after_it() {
         // The count is a u16 and the data is exactly that long: measured, `16 00 | req_id | 4f 02
-        // <591 bytes>` - 599 bytes total, where the table's padded maximum is 2058.
-        let frame = account_settings(0x1234);
+        // <591 bytes>` - 599 bytes total, where the table's padded maximum is 2058. The blob itself is
+        // configuration (`config/Server/account_settings.json`), so this test supplies its own bytes.
+        let blob = [0x08u8; 591];
+        let frame = account_settings(0x1234, &blob);
         let body = &frame.body();
         assert_eq!(
             u32::from_le_bytes([body[0], body[1], body[2], body[3]]),
             0x1234
         );
         let declared = u16::from_le_bytes([body[4], body[5]]) as usize;
-        assert_eq!(
-            declared,
-            super::super::login_fixtures::ACCOUNT_SETTINGS_DATA.len()
-        );
         assert_eq!(declared, 591, "the reference's blob is 591 bytes");
-        assert_eq!(
-            &body[6..6 + declared],
-            super::super::login_fixtures::ACCOUNT_SETTINGS_DATA,
-            "the blob is copied verbatim"
-        );
+        assert_eq!(&body[6..6 + declared], &blob, "the blob is copied verbatim");
         assert_eq!(body.len(), 6 + declared, "nothing is padded after the data");
     }
 
@@ -863,7 +857,8 @@ mod tests {
         // The EULA version sits between the 8 feature bytes and `unk5`: 4 + 4 + 4 + 8 + 8 + 16 + 16
         // + 4 + 2 + 8 = 74 bytes before it, and `unk5` (a dword) is all that follows.
         assert_eq!(
-            frame.body()[74], 26,
+            frame.body()[74],
+            26,
             "the accepted version is the byte we send"
         );
         assert_eq!(&frame.body()[75..79], &[3, 0, 0, 0], "unk5 after it");
@@ -884,7 +879,7 @@ mod tests {
             kind: "Gw1".to_string(),
         };
 
-        let bytes = login.frame().expect("builds").encode();
+        let bytes = login.try_to_frame().expect("builds").encode();
         let (frame, used) = Frame::decode_client_message(&bytes).expect("frames");
         assert_eq!(used, bytes.len());
 
@@ -915,7 +910,7 @@ mod tests {
             kind: String::new(),
         };
         assert!(matches!(
-            login.frame(),
+            login.try_to_frame(),
             Err(MessageError::TooLong {
                 field: "charname",
                 ..
@@ -949,7 +944,7 @@ mod tests {
             character_name: "A".to_string(),
             kind: String::new(),
         };
-        let frame = login.frame().expect("builds");
+        let frame = login.try_to_frame().expect("builds");
         // One message, one representation: a body that ends early is a message built eight bytes
         // short, and it is refused because the table says what its fields must add up to.
         let short = frame.body().len() - 8;
@@ -985,7 +980,7 @@ mod tests {
             character_name: "A".to_string(),
             kind: String::new(),
         }
-        .frame()
+        .try_to_frame()
         .expect("builds");
 
         // The charname count sits after req_id, user_id and session_id.
@@ -1010,7 +1005,7 @@ mod tests {
             character_name: String::new(),
             kind: String::new(),
         };
-        let bytes = login.frame().expect("builds").encode();
+        let bytes = login.try_to_frame().expect("builds").encode();
         let (frame, _) = Frame::decode_client_message(&bytes).expect("frames");
         let decoded = PortalAccountLogin::decode(&frame).expect("decodes");
         assert_eq!(decoded.character_name, "");
@@ -1205,7 +1200,12 @@ mod tests {
         assert_eq!(hash.header(), tables::AUTH_CMSG_SEND_COMPUTER_HASH);
         assert_eq!(consumed, 22);
         assert_eq!(
-            u32::from_le_bytes([hash.body()[0], hash.body()[1], hash.body()[2], hash.body()[3]]),
+            u32::from_le_bytes([
+                hash.body()[0],
+                hash.body()[1],
+                hash.body()[2],
+                hash.body()[3]
+            ]),
             39112,
             "the hash message carries the client's build number"
         );
@@ -1272,7 +1272,7 @@ mod tests {
             Frame::decode_client_message(&bytes).expect("fixed size, walks by the table");
         assert_eq!(used, 26);
         assert_eq!(
-            GameInstanceRequest::decode(&decoded.body()).expect("decodes"),
+            GameInstanceRequest::decode(decoded.body()).expect("decodes"),
             GameInstanceRequest {
                 request: 7,
                 map_type: 0,

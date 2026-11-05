@@ -62,6 +62,19 @@ or to an explicitly supported engine resource.
 This model does not need overlays, patch stacking, profile dependency graphs, load-order conflict
 resolution, or merge rules. Do not add them to support the author's three-quest example.
 
+## Profile-owned HeroAI and custom skills
+
+The selected profile supplies both skill behavior and HeroAI behavior. Authors can modify
+skill knowledge, usage conditions, targeting, priorities, combinations, coordination, and
+build-specific tactics in Lua. A custom skill pack must be able to change the corresponding
+HeroAI rules without editing or rebuilding Rust if the engine already supports its mechanics.
+
+This follows the existing self-contained model: copy the base profile to reuse its skill and
+HeroAI scripts, then edit the copy. Loading a custom profile does not silently fall back to
+base HeroAI scripts or a hardcoded Rust skill registry. Required behavior references must
+resolve within the selected profile or use explicitly supported generic engine operations.
+No new pack overlay, script inheritance, or independent package loader is selected here.
+
 ## Chosen model: separate experiences and saved state
 
 The owner clarified: each mod has its own account settings and is a separate experience, with
@@ -115,6 +128,9 @@ or build the future launcher to answer a loader/storage question.
 - Account settings and characters changed in profile A do not change those in profile B.
 - A character's level, inventory, quest progress, and unlocks remain local to its profile.
 - Returning to profile A restores its own persisted state rather than profile B's state or a reset.
+- A copied profile can add a custom skill using existing mechanics and teach HeroAI to use it
+  through Lua changes alone, without modifying/rebuilding Rust or changing the original profile.
+- Required HeroAI behavior is resolved from the selected profile, without hidden base fallback.
 - Invalid required references are reported without silently completing missing content.
 - A profile copy leaves the original and private operational/player data untouched.
 

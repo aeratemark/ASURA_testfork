@@ -20,8 +20,8 @@ use crate::{PgPool, Uuid};
 pub async fn identity_for_email(pool: &PgPool, email: &str) -> sqlx::Result<Option<(Uuid, Uuid)>> {
     sqlx::query_as::<_, (Uuid, Uuid)>(
         "SELECT s.portal_user, s.id
-           FROM session s
-           JOIN account a ON a.id = s.account_id
+           FROM t_session s
+           JOIN t_account a ON a.id = s.account_id
           WHERE a.username = $1
             AND s.ended_at IS NULL
           ORDER BY s.started_at DESC
@@ -44,7 +44,7 @@ mod tests {
         let portal = Uuid::new_v4();
         let session = Uuid::new_v4();
         sqlx::query(
-            "INSERT INTO account (id, username) VALUES (gen_random_uuid(), $1)
+            "INSERT INTO t_account (id, username) VALUES (gen_random_uuid(), $1)
              ON CONFLICT (username) DO NOTHING",
         )
         .bind(&email)
@@ -52,8 +52,8 @@ mod tests {
         .await
         .ok()?;
         sqlx::query(
-            "INSERT INTO session (id, account_id, portal_user, started_at)
-             SELECT $1, a.id, $2, now() FROM account a WHERE a.username = $3
+            "INSERT INTO t_session (id, account_id, portal_user, started_at)
+             SELECT $1, a.id, $2, now() FROM t_account a WHERE a.username = $3
              ON CONFLICT (id) DO NOTHING",
         )
         .bind(session)
@@ -66,7 +66,7 @@ mod tests {
     }
 
     async fn clean(pool: &PgPool, email: &str) {
-        let _ = sqlx::query("DELETE FROM account WHERE username = $1")
+        let _ = sqlx::query("DELETE FROM t_account WHERE username = $1")
             .bind(email)
             .execute(pool)
             .await;
@@ -102,7 +102,7 @@ mod tests {
             );
             return;
         };
-        sqlx::query("UPDATE session SET ended_at = now() WHERE id = $1")
+        sqlx::query("UPDATE t_session SET ended_at = now() WHERE id = $1")
             .bind(session)
             .execute(&pool)
             .await

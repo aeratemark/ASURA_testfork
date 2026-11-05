@@ -97,6 +97,10 @@ impl Drop for Arc4 {
     /// Not load-bearing for correctness - a leaked RC4 state only exposes a dead connection's
     /// keystream - but a login path should not scatter key material into freed memory, and this costs
     /// nothing. `write_volatile` keeps the writes from being optimised away.
+    ///
+    /// The one `unsafe` in this crate, and it is allowed here rather than at the crate: the deny
+    /// policy (`Cargo.toml`, `[workspace.lints.rust]`) is what keeps every other file free of it.
+    #[allow(unsafe_code)]
     fn drop(&mut self) {
         for byte in self.m.iter_mut() {
             // SAFETY: `byte` is a valid, aligned, exclusively-borrowed u8 for the duration of the

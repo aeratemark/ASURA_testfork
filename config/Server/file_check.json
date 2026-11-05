@@ -1,0 +1,10 @@
+{
+  "request": {
+    "hex": "01 00 00 00 00 f1 00 10 00 01 00 00 00 00 00 00 00 00 00 00 00",
+    "doc": "The 21 bytes the client sends before anything else on a file-server socket: it asks which game files it should have, and compares this whole string (the reference uses memcmp over all 21). Answered by whoever holds the file server's address - ArenaNet when the client resolves it normally, this server when the machine's lookups point it here (docs/19-running.md)."
+  },
+  "response": {
+    "hex": "f1 02 20 00 ab f7 05 00 b4 f7 05 00 9c 43 05 00 b6 f7 05 00 b7 f7 05 00 00 00 00 00 b5 f7 05 00",
+    "doc": "The 32 bytes to answer with: header 0x02F1, length 0x2000, then six Gw.dat file ids and a zero. These are the ids the reference sends, which are 0x100 below the ones a live client was answered with (docs/03-protocol.md 7); they change when the client's files change, and refreshing them is a capture of the real reply, not an edit made by arithmetic."
+  }
+}

@@ -11,8 +11,8 @@ ADR decides five things which shape every row below, and none of them is re-open
    restated in this project's own words with this project's own evidence.
 2. It is never a dependency. Nothing in `Cargo.toml`, nothing under `crates/`, no test requires the
    checkout. `cargo build --workspace` succeeds on a machine without it, and the same holds for Python:
-   **no Python crosses into this tree**, so a "port" here always means the behaviour and the numbers,
-   written as Rust.
+   **no Python crosses into this tree**. Server mechanics are implemented in Rust; skill behavior
+   is declared in external Lua scripts, as clarified in `docs/35-skill-mechanics-and-behavior.md`.
 3. Its vocabulary stays out. A module is named after the game's noun; no file under `crates/` describes
    itself as coming from Rurik.
 4. Every fact taken from it is restated with our evidence: a recording under `recordings/`, a crash log,
@@ -257,7 +257,7 @@ Accepts it: a live client clicks an agent, the server drives the fight to a kill
 it.
 
 **P10 (B) - DEFERRED. The skill substrate.**
-Rurik: the cast lifecycle on the wire as the client sends it - `0x00E4 -> 0x00E5 -> 0x00E3 -> 0x00E6` -
+Rurik: the ordinary recharging cast lifecycle - `0x00E4 -> 0x00E5 -> 0x00E3 -> 0x00E6` -
 and the **queue law**: a press during aftercast schedules from the aftercast's end. Damage is the skill's
 scale endpoints interpolated by the client's own formula (`0x005A8920`:
 `max(0, round(lo + (hi-lo)*rank/15.0))`). Hexes and enchantments came off the missing list 2026-08-20 via
@@ -265,8 +265,10 @@ scale endpoints interpolated by the client's own formula (`0x005A8920`:
 Energy and adrenaline are `toolkit/authsrv/pools.py`, `adrenjoin.py`, `adrenreplay.py`. Conditions from
 `studies/isle/FINDINGS.md` (478 Bleeding .. 486 Weakness, +2077).
 Here: `skillbar_update` and `update_unlocked_skills` exist as builders; no cast is answered.
-A port: the four-message cast cycle, the queue law, the scaling formula, then conditions, then the effect
-episode pair.
+A port: the evidenced cast lifecycle including its exceptions, the queue law, the scaling formula,
+then conditions, then the effect episode pair. The pinned source review in
+`docs/35-skill-mechanics-and-behavior.md` records zero-recharge exceptions, the queue divergence,
+and the boundary between mechanics and scripted skill behavior.
 Not to take: `type_code` as a discriminator for what a magnitude means - Rurik records that it cannot
 discriminate, and that an unmodelled skill resolves to None rather than 0.
 Accepts it: a skill on the bar casts, lands on a target, and a second press inside the aftercast is

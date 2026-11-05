@@ -8,11 +8,20 @@
 ## Decision
 
 Use BehaviorTree.CPP as the reference for the execution rules of ASURA's behavior-tree nodes.
-Implement the runtime in Rust. Use Py4GW Reforged's existing HeroAI as the source of behaviors to
-port, with an explicit mapping from its node rules to the target rules.
+Implement the execution runtime in Rust. Use Py4GW Reforged's existing HeroAI as the source of
+game decisions to express in external Lua scripts, with an explicit mapping from its node rules
+to the target execution rules.
 
 This is a semantic reference, not a C++ runtime dependency or a choice of tree file format.
-Lua remains the content scripting language. Behavior trees remain Rust simulation work.
+Rust owns the execution machinery and the tick. Lua is the configuration layer: game-specific
+conditions, action decisions, priorities, skill knowledge, and tree structure are declared in
+external configuration, and Lua constructs each tree from Rust-provided node kinds and wrapped
+leaves. Lua never ticks, holds running node state, or executes per-tick logic. The generic Rust
+runtime must not embed skill-specific or profile-specific rules. This boundary follows the
+owner's 2026-11-02 clarification in docs/30-world-content-and-scripting.md; it does not select a
+configuration format or a Lua binding API.
+Custom profiles must be able to adapt HeroAI for custom skills without changing Rust when the
+required mechanics exist.
 
 Matching node names do not establish matching behavior. Select the reference variant by its
 execution rules, including running, completion, interruption, and reset. Do not automatically
@@ -82,8 +91,9 @@ Before porting each used branch:
 3. Show the expected behavior for immediate success, running across ticks, failure, interruption,
    and reentry. Include successful parallel siblings and a change in priority while another
    branch runs wherever those nodes are used.
-4. Translate leaves to authoritative Rust agent state and actions; client globals and queues do
-   not define the server's API.
+4. Express game-specific leaf decisions in Lua using authoritative Rust agent queries and
+   actions; keep generic execution machinery in Rust. Client globals and queues do not define
+   the server's API.
 5. Verify the affected cases with focused deterministic checks, then use the real client for
    gameplay and packet-stream behavior. Record intentional adaptations rather than silently
    preserving quirks or silently changing HeroAI's decisions.

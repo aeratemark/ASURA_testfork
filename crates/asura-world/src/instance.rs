@@ -79,6 +79,7 @@ impl Instance {
                     agent_id,
                     standing.position,
                     standing.plane,
+                    standing.direction,
                     game::PLAYER_SPEED_BASE,
                 ),
                 name,
@@ -151,11 +152,13 @@ impl Instance {
         self.with_slot(player_id, |slot| slot.move_stats)
     }
 
-    /// Where a player's agent is now: the server's own copy, not where it entered.
+    /// Where a player's agent is now: the server's own copy, not where it entered. The direction is
+    /// the facing the agent was created with, so a spawn point's angle survives into the load block.
     pub fn standing(&self, player_id: u32) -> Option<Standing> {
         self.with_slot(player_id, |slot| Standing {
             position: slot.agent.position,
             plane: slot.agent.plane,
+            direction: slot.agent.facing,
         })
     }
 
@@ -286,7 +289,7 @@ impl Instance {
 
     /// The instance's clock: one task per map, ticking while the instance exists.
     pub async fn run(self: Arc<Self>) {
-        let mut tick = tokio::time::interval(TICK_INTERVAL);
+        let mut tick = tokio::time::interval(crate::connection::tick_interval());
         let mut last_tick = Instant::now();
         loop {
             tick.tick().await;
@@ -316,6 +319,7 @@ impl From<&Slot> for PeerView {
             standing: Standing {
                 position: slot.agent.position,
                 plane: slot.agent.plane,
+                direction: slot.agent.facing,
             },
             equipped: slot.equipped,
         }
@@ -333,7 +337,9 @@ pub fn introduction(peer: &PeerView) -> Vec<Frame> {
         game::player_create(
             peer.player_id,
             peer.agent_id,
-            game::Appearance::REFERENCE_DEFAULT.pack(),
+            crate::character_defaults::current()
+                .map(|defaults| defaults.appearance().pack())
+                .unwrap_or_default(),
             &peer.name,
         ),
         game::player_update_party_size(peer.player_id, 1),
@@ -344,10 +350,9 @@ pub fn introduction(peer: &PeerView) -> Vec<Frame> {
             agent_type: game::AGENT_TYPE_LIVING,
             position: peer.standing.position,
             plane: peer.standing.plane,
-            direction: (1.0, 0.0),
+            direction: peer.standing.direction,
             speed_base: game::PLAYER_SPEED_BASE,
             player_team_token: PLAYER_TEAM_TOKEN,
-
         }),
     ]
 }

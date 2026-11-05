@@ -24,10 +24,7 @@ use std::time::Duration;
 use asura_db::migrations::{self, EnsureError};
 use asura_db::{game as db_game, placement};
 use asura_protocol::Trace;
-use asura_world::{
-    serve, MapEntry, World, MAP_TYPE_CHARACTER_CREATION, MAP_TYPE_MAIN_EXPLORABLE,
-    MAP_TYPE_MAIN_TOWN,
-};
+use asura_world::{serve, MapEntry, World};
 
 /// How often the world tells the database it is alive. Placement stops offering a world whose
 /// heartbeat is older than a minute, so this is comfortably inside that window.
@@ -203,16 +200,18 @@ async fn main() -> ExitCode {
             let count = rows.len();
             let table: Vec<asura_world::portals::Portal> = rows
                 .into_iter()
-                .map(|(map_id, x, y, to_map, arrive_x, arrive_y)| asura_world::portals::Portal {
-                    from_instance: map_id,
-                    x,
-                    y,
-                    to_instance: to_map,
-                    arrive: match (arrive_x, arrive_y) {
-                        (Some(ax), Some(ay)) => Some((ax, ay)),
-                        _ => None,
+                .map(
+                    |(map_id, x, y, to_map, arrive_x, arrive_y)| asura_world::portals::Portal {
+                        from_instance: map_id,
+                        x,
+                        y,
+                        to_instance: to_map,
+                        arrive: match (arrive_x, arrive_y) {
+                            (Some(ax), Some(ay)) => Some((ax, ay)),
+                            _ => None,
+                        },
                     },
-                })
+                )
                 .collect();
             asura_world::portals::install(table);
             eprintln!("asura-world: {count} doorway(s) from map_portal");
@@ -254,16 +253,19 @@ async fn main() -> ExitCode {
                 // live creation, it sends no spawn point and no map file id at all, only the load head,
                 // the player-data block and `CHAR_CREATION_START`. Every other map needs one, because
                 // the client is told which blob to load.
-                if map_file_id == 0 && configured.map_type != MAP_TYPE_CHARACTER_CREATION {
+                if map_file_id == 0
+                    && configured.map_type != asura_world::map_kinds().character_creation
+                {
                     eprintln!(
                         "asura-world: map {map_id} has no map_file_id; a client cannot load it"
                     );
                     return ExitCode::from(4);
                 }
-                if !matches!(
-                    configured.map_type,
-                    MAP_TYPE_MAIN_TOWN | MAP_TYPE_MAIN_EXPLORABLE | MAP_TYPE_CHARACTER_CREATION
-                ) {
+                let kinds = asura_world::map_kinds();
+                if configured.map_type != kinds.main_town
+                    && configured.map_type != kinds.main_explorable
+                    && configured.map_type != kinds.character_creation
+                {
                     // A world hosts what the reference hosts: main towns (0), explorable areas (1) and the
                     // character-creation instance (11). Explorable hosting used to be refused here on the
                     // theory that this server "cannot spawn anything into one" - but a world server does not
@@ -283,6 +285,9 @@ async fn main() -> ExitCode {
                     map_type: configured.map_type,
                     spawn: (configured.spawn_x, configured.spawn_y),
                     spawn_plane: configured.spawn_plane as u16,
+                    spawns: asura_world::map_spawns::for_map(*map_id)
+                        .map(<[_]>::to_vec)
+                        .unwrap_or_default(),
                     name: configured.name.clone(),
                     capacity,
                 });
@@ -367,6 +372,27 @@ async fn main() -> ExitCode {
     // world that still accepts TCP connections is worse than one that is plainly gone. It is
     // started below, once the world exists: it now also carries the player count and the drain
     // (S3), which need the world itself.
+
+    // The pack is configuration: read once here, and a bad file stops the world before it serves anyone
+    // rather than on the first character creation or the first load block.
+    if let Err(err) = asura_world::character_defaults::current() {
+        eprintln!("asura-world: {err}");
+        eprintln!("asura-world: refusing to start without the character defaults");
+        return ExitCode::from(4);
+    }
+    if let Err(err) = asura_world::spawns::current() {
+        eprintln!("asura-world: {err}");
+        eprintln!("asura-world: refusing to start without the character spawn table");
+        return ExitCode::from(4);
+    }
+    // The map spawn lists are content as well - `spawns.json` in each map folder - and they are read
+    // here so a bad edit is reported at start-up rather than on somebody's next travel. A map without
+    // a file is not an error: its catalogue row's single coordinate answers instead (`Standing`).
+    asura_world::map_spawns::table();
+    // The doorways and the arrival points are the pack's `portals.json` files, the same tree. Read here
+    // for the same reason: a map without one falls back to the measured tables `map_portal` installs
+    // above (`crate::portals`).
+    asura_world::portals::table_pack();
 
     let listener = match tokio::net::TcpListener::bind(bind).await {
         Ok(listener) => listener,

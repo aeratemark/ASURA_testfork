@@ -62,8 +62,15 @@ pub const POSITION_UPDATE_TOLERANCE: f32 = 50.0;
 /// elapsed time. A longer gap is treated as this, so a stalled client does not get an unbounded budget.
 pub const POSITION_UPDATE_MAX_ELAPSED_MS: u32 = 2_000;
 
-/// The reference's `MAXIMUM_ALLOWED_CORRECTION`: how far a client may move itself when it cancels a walk.
-pub const MAXIMUM_ALLOWED_CORRECTION: f32 = 100.0;
+/// The correction ceiling in force: `config/Server/movement.json`'s `max_allowed_correction`.
+///
+/// The rule is the reference's `MAXIMUM_ALLOWED_CORRECTION` and the reference's own number is 100
+/// (`GmAgent.c:547-563`), which is also the fallback `asura-config` carries for a checkout with no
+/// `config/`. A compiled copy does not live here: this is a number a machine chooses, and
+/// `docs/38-layer-decisions.md` (D33) keeps those in a file so they can be read and reviewed.
+pub fn max_allowed_correction() -> f32 {
+    asura_config::movement().max_allowed_correction()
+}
 
 /// What the server did with a reported position.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -83,6 +90,9 @@ pub struct AgentState {
     pub agent_id: u32,
     pub position: (f32, f32),
     pub plane: u16,
+    /// Which way the agent faces while it is not walking, as the unit vector the world announced when
+    /// it created the agent. The spawn point's angle lands here.
+    pub facing: (f32, f32),
     /// The reference's `last_position_update`, in milliseconds since the connection started.
     pub last_report: Option<Instant>,
     /// The agent's walking speed, which is what the budget is computed from.
@@ -115,12 +125,19 @@ pub struct Motion {
 }
 
 impl AgentState {
-    /// A new agent, standing where the map says a character arrives.
-    pub fn new(agent_id: u32, position: (f32, f32), plane: u16, speed_base: f32) -> AgentState {
+    /// A new agent, standing where the connection placed it, facing the spawn point's direction.
+    pub fn new(
+        agent_id: u32,
+        position: (f32, f32),
+        plane: u16,
+        facing: (f32, f32),
+        speed_base: f32,
+    ) -> AgentState {
         AgentState {
             agent_id,
             position,
             plane,
+            facing,
             last_report: None,
             speed_base,
             motion: Motion::default(),
@@ -248,15 +265,24 @@ impl AgentState {
 
     /// alternating-live.jsonl 321-322: type 9, then a destination at the stopping point.
     pub fn stop_manual_walk(&mut self) -> Vec<Frame> {
+        self.stand_still();
+        vec![
+            game::agent_update_speed(self.agent_id, 1.0, 9),
+            game::agent_move_to_point(self.agent_id, self.position, self.plane, self.plane),
+        ]
+    }
+
+    /// The state half of [`stop_manual_walk`]: the walk is over, at rest, with no waypoints left.
+    ///
+    /// Used when the stopping point is refused. A refused correction still means the agent is not
+    /// walking, so the server's copy must stop -- otherwise it keeps advancing along the abandoned path
+    /// and tells every client to keep walking it. Nothing goes on the wire.
+    pub fn stand_still(&mut self) {
         self.cancel_movement();
         self.motion.waypoints.clear();
         self.motion.waypoint_idx = 0;
         self.move_type = 9;
         self.move_speed = 1.0;
-        vec![
-            game::agent_update_speed(self.agent_id, 1.0, 9),
-            game::agent_move_to_point(self.agent_id, self.position, self.plane, self.plane),
-        ]
     }
 
     /// `GameSrv_UpdateAgentMovement`: walk `delta` seconds of the current segment.
@@ -359,9 +385,10 @@ impl AgentState {
     }
 
     /// Adopt a correction the client sends after cancelling a walk
-    /// (`GAME_CMSG_LAST_POS_BEFORE_MOVE_CANCELED`). Only a short correction on the same plane counts.
+    /// (`GAME_CMSG_LAST_POS_BEFORE_MOVE_CANCELED`). Only a short correction on the same plane counts;
+    /// how short is `config/Server/movement.json`'s `max_allowed_correction`.
     pub fn adopt_correction(&mut self, position: (f32, f32), plane: u16) -> bool {
-        if plane != self.plane || MAXIMUM_ALLOWED_CORRECTION < self.distance_to(position) {
+        if plane != self.plane || max_allowed_correction() < self.distance_to(position) {
             return false;
         }
         self.position = position;
@@ -394,23 +421,87 @@ pub const AGENT_PROPERTY_VALUE64: u32 = 64;
 
 /// Where a character stands as it enters a map.
 ///
-/// Two sources, and which one applies is the whole of the persistence rule: the position the character
-/// was saved at when it last left **if it was saved in this map**, and otherwise the map's own spawn
-/// point. A character that has never been played has no saved position, and one that was saved in a
-/// different map is arriving here for the first time (`asura_db::game::position`).
+/// Three rules, and which one applies is the whole of the arrival rule ([`Standing::arrival`]):
+///
+/// * a **doorway arrival** stands on the point the receiving map states for the map it came from
+///   (`portals.json`'s `arrivals`), facing that arrival's angle - a portal walk is placed by the door,
+///   not by a random spawn point;
+/// * an **outpost** (a main town) is entered at a **random point of its own spawn list**, the pack's
+///   `spawns.json`, scattered around it and facing the direction that point states: every other way
+///   into an outpost - the world map, `/tp`, a login - stands on a random spawn point from that list,
+///   which is the owner's rule (2026-10-31, restated 2026-11-05);
+/// * every other map keeps the position the character was saved at when it last left **if it was
+///   saved in this map**, and otherwise the map's own single spawn point. That is the disconnect
+///   case: a character that comes back to the map it left stands where it left.
+///
+/// A character that has never been played has no saved position, and one that was saved in a
+/// different map is arriving here for the first time (`asura_db::game::position`). The facing of a
+/// saved position is not stored; a doorway arrival takes its facing from the map's arrival entry, and
+/// a resumed character keeps the default direction.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Standing {
     pub position: (f32, f32),
     pub plane: u16,
+    /// Which way the character faces on arrival, as the unit vector
+    /// `GAME_SMSG_WORLD_CREATE_AGENT` carries.
+    pub direction: (f32, f32),
 }
 
 impl Standing {
-    /// The map's own spawn point: where the map row says a character arrives.
+    /// The map's own single spawn point: where the catalogue row says a character arrives.
     pub fn from_map(map: &MapEntry) -> Standing {
         Standing {
             position: map.spawn,
             plane: map.spawn_plane,
+            direction: (1.0, 0.0),
         }
+    }
+
+    /// One of the map's own spawn points, **scattered around it**: a random point inside a
+    /// [`spawn_scatter`]-unit circle, on the point's plane, facing the point's own angle.
+    ///
+    /// A spawn point is not a pin - the owner's rule, 2026-11-05: "when we spawn we should get our
+    /// position randomized 250 units around a circle from the spawn point" (`docs/36-game-rules-ledger.md`
+    /// R13's soft scatter). The radius is `config/Server/spawns.json`'s `spawn_scatter`, not a compiled
+    /// constant, so an operator changes it without a rebuild. The scatter keeps the point's plane: the
+    /// graph that would say which plane a scattered coordinate lands on is not loaded on every machine
+    /// (no `Gw.dat`, no graph), so the point's own plane is the one answer that is always right.
+    pub fn at_spawn(spawn: &crate::map_spawns::MapSpawn) -> Result<Standing, GameError> {
+        let (dx, dy) = scatter(spawn_scatter())?;
+        Ok(Standing {
+            position: (spawn.x + dx, spawn.y + dy),
+            plane: spawn.plane,
+            direction: spawn.direction(),
+        })
+    }
+
+    /// Where a character stands as a connection enters `map`.
+    ///
+    /// Three rules, in this order:
+    ///
+    /// 1. an **arrival** the receiving map states for the doorway that brought the character here
+    ///    (`portals.json`'s `arrivals`, keyed by the map it came from): the crossing wrote that point as
+    ///    the saved position before the redirect, so a saved position that is one of the map's arrivals
+    ///    is a doorway arrival, and it stands **there**, facing the arrival's angle;
+    /// 2. an **outpost** with a spawn list is entered at a random point of that list, scattered around it
+    ///    ([`Standing::at_spawn`]) - a world-map request or a `/tp` picks one at random;
+    /// 3. every other map keeps the saved position when it belongs to this map (a disconnect coming
+    ///    back), and the catalogue row's single coordinate otherwise.
+    pub fn arrival(map: &MapEntry, saved: Option<db_game::Position>) -> Result<Standing, GameError> {
+        if let Some(saved) = saved.filter(|saved| saved.map_id == map.map_id) {
+            if let Some(arrival) = crate::portals::arrival_at(map.map_id, (saved.x, saved.y)) {
+                return Ok(Standing {
+                    position: (arrival.x, arrival.y),
+                    plane: saved.plane.max(0) as u16,
+                    direction: arrival.direction(),
+                });
+            }
+        }
+        if map.map_type == map_kinds().main_town && !map.spawns.is_empty() {
+            let index = (crate::random_u32()? as usize) % map.spawns.len();
+            return Standing::at_spawn(&map.spawns[index]);
+        }
+        Ok(Standing::resume(map, saved))
     }
 
     /// This character's standing, from what the database remembers about it.
@@ -423,10 +514,31 @@ impl Standing {
             Some(saved) if saved.map_id == map.map_id => Standing {
                 position: (saved.x, saved.y),
                 plane: saved.plane.max(0) as u16,
+                direction: (1.0, 0.0),
             },
             _ => Standing::from_map(map),
         }
     }
+}
+
+/// How far from its spawn point a character lands: the radius of the circle the position is scattered
+/// over. It is a value this machine chooses, so it lives in `config/Server/spawns.json`
+/// (`asura_config::spawns`, D34, D35) and this is the read; the built-in 250-unit fallback is what a
+/// checkout with no `config/` runs on (`crates/asura-world/src/agent.rs`, [`Standing::at_spawn`]).
+pub fn spawn_scatter() -> f32 {
+    asura_config::spawns().spawn_scatter()
+}
+
+/// A random offset inside a `radius`-unit circle: an even angle and a radius whose square is uniform,
+/// which spreads the points over the area instead of bunching them at the centre.
+fn scatter(radius: f32) -> Result<(f32, f32), GameError> {
+    let angle = (crate::random_u32()? as f64 / u32::MAX as f64) * std::f64::consts::TAU;
+    let scale = (crate::random_u32()? as f64 / u32::MAX as f64).sqrt();
+    let distance = f64::from(radius) * scale;
+    Ok((
+        (angle.cos() * distance) as f32,
+        (angle.sin() * distance) as f32,
+    ))
 }
 
 /// What the finder said about a walk.
@@ -801,6 +913,7 @@ pub async fn handle_position_update(
         let standing = Standing {
             position: slot.agent.position,
             plane: slot.agent.plane,
+            direction: slot.agent.facing,
         };
         if move_trace_on() {
             slot.move_stats.reports += 1;
@@ -856,8 +969,33 @@ pub async fn handle_position_update(
         }
         let reply = if adopted != Adopted::Refused {
             let from = slot.agent.here();
-            let to = Pos { x: from.x + offset.0, y: from.y + offset.1, plane: from.plane };
-            let waypoints = match world.graphs.walk(instance.map.map_id, from, to) {
+            // The report names a direction, not a surface. The point `offset` away can sit on a bridge
+            // or slope plane the character is not standing on, so the destination's plane is the graph's
+            // answer; stamping `from.plane` there made the search fail, and a failed search is answered
+            // with silence (`pathfind::PathGraphs::walk_any_plane` has the measurement).
+            let target = (from.x + offset.0, from.y + offset.1);
+            let walked = world.graphs.walk_any_plane(instance.map.map_id, from, target);
+            if move_trace_on() {
+                match &walked {
+                    Walk::Found(waypoints) => eprintln!(
+                        "move[manual] answered with a walk to (x={:.1}, y={:.1}): {} waypoint(s) {}",
+                        target.0,
+                        target.1,
+                        waypoints.len(),
+                        waypoints_preview(waypoints)
+                    ),
+                    Walk::NoPath => eprintln!(
+                        "move[manual] the finder refused a walk to (x={:.1}, y={:.1}) from \
+                         (x={:.1}, y={:.1}, plane={}): nothing is sent",
+                        target.0, target.1, from.x, from.y, from.plane
+                    ),
+                    Walk::NoGraph => eprintln!(
+                        "move[manual] this world has no path graph for map {}: nothing is sent",
+                        instance.map.map_id
+                    ),
+                }
+            }
+            let waypoints = match walked {
                 Walk::Found(waypoints) => waypoints,
                 Walk::NoPath | Walk::NoGraph => Vec::new(),
             };
@@ -872,6 +1010,16 @@ pub async fn handle_position_update(
         return Ok(true);
     };
     let (adopted, standing, reply) = outcome;
+    // The step the report moved the agent along: the doorway test reads it after this handler returns
+    // (`travel::portal_crossed`), because the crossing is judged by the path, not by where a report
+    // happened to land.
+    player.last_step = if adopted == Adopted::Refused {
+        None
+    } else if before.position == standing.position {
+        None
+    } else {
+        Some((before.position, standing.position))
+    };
     instance.broadcast(player.player_id, &reply);
     send(stream, session, reply, trace).await?;
     if trace {
@@ -909,6 +1057,7 @@ pub async fn handle_cancel_movement(
         let stood = Standing {
             position: slot.agent.position,
             plane: slot.agent.plane,
+            direction: slot.agent.facing,
         };
         (
             was_walking,
@@ -940,7 +1089,13 @@ pub async fn handle_cancel_movement(
 
 /// The keyboard stop includes its stopping point; an accepted point ends the old
 /// path and answers with type 9 and that point (alternating-live.jsonl 482-486).
-/// A refused position correction still stops the movement at the server's point.
+///
+/// A refused correction sends **nothing at all**. The reference refuses a long or wrong-plane correction
+/// and stops there (`GmAgent.c:547-563`, `docs/09-parity-audit.md` row 17); the frame it must not send is
+/// the destination, because the only position it could name is its own stale guess -- and a client
+/// obeys that message, so the character walks backwards to where it stood a report ago. Measured live:
+/// `logs/world-8001.log` 6230-6246 is one refusal ordering the client 196.7 units back and the client
+/// complying. The server's own copy still stops walking.
 pub async fn handle_last_position(
     stream: &mut TcpStream,
     session: &mut Session,
@@ -972,24 +1127,93 @@ pub async fn handle_last_position(
         frame.body()[11],
     ]) as u16;
     let instance = Arc::clone(&player.instance);
-    let Some((taken, reply)) = instance.with_slot(player.player_id, |slot| {
+    let Some((taken, reply, believed, distance)) = instance.with_slot(player.player_id, |slot| {
+        let believed = Standing {
+            position: slot.agent.position,
+            plane: slot.agent.plane,
+            direction: slot.agent.facing,
+        };
         let taken = slot.agent.adopt_correction(position, plane);
-        let reply = slot.agent.stop_manual_walk();
-        (taken, reply)
+        let distance = {
+            let dx = position.0 - believed.position.0;
+            let dy = position.1 - believed.position.1;
+            (dx * dx + dy * dy).sqrt()
+        };
+        let reply = if taken {
+            slot.agent.stop_manual_walk()
+        } else {
+            // Refused: the agent stops, and no position is named, so the client is not moved.
+            slot.agent.stand_still();
+            Vec::new()
+        };
+        (taken, reply, believed, distance)
     }) else {
         return Ok(true);
     };
-    instance.broadcast(player.player_id, &reply);
-    send(stream, session, reply, trace).await?;
+    if !reply.is_empty() {
+        instance.broadcast(player.player_id, &reply);
+        send(stream, session, reply, trace).await?;
+    }
+    // A correction the client was allowed to make is a movement it made while the reports lagged: the
+    // step from where the server believed it stood to where it says it stood is a step the doorway
+    // test reads (`travel::portal_crossed`).
+    player.last_step = if taken && believed.position != position {
+        Some((believed.position, position))
+    } else {
+        None
+    };
+    if move_trace_on() {
+        // The distance is what decides and the ceiling is configuration, so the trace names both: a
+        // refusal is otherwise indistinguishable from a plane mismatch without it.
+        eprintln!(
+            "move[stop] correction to (x={:.1}, y={:.1}, plane={plane}) against the server's \
+             (x={:.1}, y={:.1}, plane={}) - d={distance:.1}, ceiling={:.1}: {}",
+            position.0,
+            position.1,
+            believed.position.0,
+            believed.position.1,
+            believed.plane,
+            max_allowed_correction(),
+            if taken {
+                "taken - type 9 and a destination at that point [0x802B, 0x8029]"
+            } else if plane != believed.plane {
+                "refused (the plane differs) - the agent stops and nothing is sent"
+            } else {
+                "refused (farther than the ceiling) - the agent stops and nothing is sent"
+            }
+        );
+    }
     if trace {
         eprintln!(
             "world: agent {} correction to ({:.1}, {:.1}) plane {plane}: {}",
             player.GetAgentID(),
             position.0,
             position.1,
-            if taken { "taken" } else { "refused" }
+            if taken {
+                "taken - type 9 and a destination at that point"
+            } else {
+                "refused - the agent stops and nothing is sent"
+            }
         );
     }
+    Ok(true)
+}
+
+// ---- the client asks where to stand --------------------------------------------------------
+
+pub async fn handle_request_spawn(
+    stream: &mut TcpStream,
+    session: &mut Session,
+    world: &World,
+    player: &mut Player,
+    trace: bool,
+) -> Result<bool, GameError> {
+    let replay = world.replay.as_ref();
+    let block = match replay {
+        Some(replay) if replay.pick.wants(crate::replay::BlockName::Spawn) => replay.spawn.clone(),
+        _ => spawn_block(&player.instance.map, player.standing()),
+    };
+    send(stream, session, block, trace).await?;
     Ok(true)
 }
 
@@ -998,7 +1222,7 @@ mod tests {
     use super::*;
 
     pub fn agent() -> AgentState {
-        AgentState::new(1, (6602.0, 4485.0), 0, 288.0)
+        AgentState::new(1, (6602.0, 4485.0), 0, (1.0, 0.0), 288.0)
     }
 
     #[test]
@@ -1108,6 +1332,50 @@ mod tests {
         );
         assert!(!other.adopt_correction((6602.0, 4485.0), 3), "wrong plane");
         assert_eq!(other.position, (6602.0, 4485.0));
+    }
+
+    #[test]
+    pub fn the_ceiling_comes_from_the_movement_file_and_not_a_constant() {
+        // `config/Server/movement.json` carries `max_allowed_correction`; the reference's own 100 is only
+        // the fallback a checkout with no file runs on. What matters here is that the ceiling is read,
+        // not that it is any particular number: an unchanged constant would make this test pass too, so
+        // the file's shipped value is what is asserted.
+        let ceiling = max_allowed_correction();
+        let mut inside = agent();
+        assert!(
+            inside.adopt_correction((6602.0 + ceiling - 1.0, 4485.0), 0),
+            "a point just inside the ceiling is taken"
+        );
+        let mut outside = agent();
+        assert!(
+            !outside.adopt_correction((6602.0 + ceiling + 1.0, 4485.0), 0),
+            "a point just outside it is refused"
+        );
+    }
+
+    #[test]
+    pub fn a_refused_correction_stops_the_walk_and_names_no_point() {
+        // The two frames `stop_manual_walk` builds are what a refused correction must NOT send: the only
+        // position it could name is the server's stale guess, and the client walks to it. So a refusal
+        // stops the copy and produces no frames at all -- the reference's own reply (`GmAgent.c:547-563`).
+        let mut walker = agent();
+        walker.begin_walk(vec![
+            waypoint(6702.0, 4485.0, 1),
+            waypoint(6802.0, 4485.0, 2),
+        ]);
+        walker.advance(0.1);
+        let believed = walker.position;
+
+        let far = (believed.0 + max_allowed_correction() + 50.0, believed.1);
+        assert!(!walker.adopt_correction(far, 0), "out of budget");
+        // `stand_still` returns no frames at all, so "nothing goes on the wire" is the signature's claim
+        // and not an assertion that could be quiet about it.
+        walker.stand_still();
+        assert_eq!(walker.position, believed, "and the agent is not moved");
+        assert_eq!(walker.motion.speed, 0.0, "the copy stops walking");
+        assert!(walker.motion.waypoints.is_empty(), "the path is dropped");
+        assert_eq!(walker.advance(2.0), None, "and it stays stopped");
+        assert_eq!(walker.position, believed);
     }
 
     #[test]

@@ -1,0 +1,28 @@
+{
+  "note": "What a character is given the moment it is created. The confirm writes these onto the character's row, together with the appearance word and the profession the creation screen chose. The unlocked-profession bitmap is not here: it is one bit for the chosen profession, which the confirm derives rather than reads.",
+  "level": {
+    "value": 1,
+    "doc": "The level a new character starts at. One, because a character that has never played has earned nothing."
+  },
+  "gold": {
+    "value": 0,
+    "doc": "The gold a new character starts with."
+  },
+  "appearance": {
+    "value": {
+      "sex": 0,
+      "height": 0,
+      "skin_color": 0,
+      "hair_color": 0,
+      "face_style": 0,
+      "primary_profession": 1,
+      "hair_style": 3,
+      "race": 0
+    },
+    "doc": "The look of a character with no appearance recorded: profession 1 (Warrior) and hair style 3, everything else zero. The client builds a model from these bits and an all-zero appearance is Profession_None, which it cannot draw, so this is the fallback every character without bits of its own is given."
+  },
+  "secondary_profession": {
+    "value": 0,
+    "doc": "The secondary profession of a new character: none. The creation flow has no secondary profession - the reference sets one only through CHAR_CREATION_CHANGE_PROF, and its confirm leaves the field zero."
+  }
+}

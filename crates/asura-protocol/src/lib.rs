@@ -20,7 +20,11 @@
 /// u8  body[length]
 /// ```
 pub const INTERNAL_MAGIC: [u8; 4] = *b"ASUR";
+/// The internal protocol's version; a mismatch is fatal, never a warning.
+///
 pub const INTERNAL_VERSION: u16 = 1;
+/// Magic, version, kind and a u32 length: the bytes before a body.
+///
 pub const INTERNAL_HEADER_LEN: usize = 12;
 
 /// Message kinds this project defines. Deliberately short: placement and state go through the
@@ -39,6 +43,7 @@ pub enum Kind {
 }
 
 impl Kind {
+    /// The kind a wire value names, or `None` for a value this version does not define.
     pub fn from_u16(value: u16) -> Option<Self> {
         match value {
             1 => Some(Kind::WorldHello),
@@ -53,24 +58,45 @@ impl Kind {
 /// A framed internal message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Frame {
+    /// What the body means.
     pub kind: Kind,
+    /// The message itself, already past the 12-byte header.
     pub body: Vec<u8>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
+/// Why a buffer was not an internal frame.
 pub enum FrameError {
+    /// Fewer bytes than the 12-byte header.
     TooShort,
+    /// The first four bytes are not ASUR.
     BadMagic,
-    VersionMismatch { got: u16, expected: u16 },
+    /// A frame from another version of this protocol.
+    VersionMismatch {
+        /// The version the bytes declared.
+        got: u16,
+        /// The version this build speaks.
+        expected: u16,
+    },
+    /// A kind number this version does not define.
     UnknownKind(u16),
-    LengthMismatch { declared: usize, actual: usize },
+    /// The declared body length and the bytes present disagree.
+    LengthMismatch {
+        /// What the header declared.
+        declared: usize,
+        /// What is actually there.
+        actual: usize,
+    },
 }
 
 impl Frame {
+    /// A frame whose header is written by [`Frame::encode`].
     pub fn new(kind: Kind, body: Vec<u8>) -> Self {
         Frame { kind, body }
     }
 
+    /// The wire form: magic, version, kind, body length, then the body.
+    /// The wire form: magic, version, kind, body length, then the body.
     pub fn encode(&self) -> Vec<u8> {
         let mut out = Vec::with_capacity(INTERNAL_HEADER_LEN + self.body.len());
         out.extend_from_slice(&INTERNAL_MAGIC);
@@ -81,6 +107,8 @@ impl Frame {
         out
     }
 
+    /// Read one frame and report how many bytes it used, so a caller can walk a stream.
+    /// Read one frame and report how many bytes it used, so a caller can walk a stream.
     pub fn decode(bytes: &[u8]) -> Result<(Frame, usize), FrameError> {
         if bytes.len() < INTERNAL_HEADER_LEN {
             return Err(FrameError::TooShort);

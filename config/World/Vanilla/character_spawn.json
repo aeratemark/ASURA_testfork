@@ -1,0 +1,41 @@
+{
+  "note": "Where a character is spawned when it is created, keyed by the expansion source the character belongs to. The creation screen asks the player for that source, and the confirm writes this map into the character's row before the client reconnects into it. A source that names no map is null, and the creation refuses that character rather than putting it somewhere nobody has seen. Where each number came from is recorded in docs/22-world-model.md, section 'Character spawn points'.",
+  "spawns": [
+    {
+      "campaign": 1,
+      "source": "prophecies",
+      "map_id": 148,
+      "doc": "Ascalon City (pre-Searing): the outpost a Prophecies character is created in."
+    },
+    {
+      "campaign": 2,
+      "source": "factions",
+      "map_id": 212,
+      "doc": "Monastery Overlook: the outpost a Factions character is created in."
+    },
+    {
+      "campaign": 3,
+      "source": "nightfall",
+      "map_id": 449,
+      "doc": "Kamadan, Jewel of Istan: the outpost a Nightfall character is created in."
+    },
+    {
+      "campaign": 4,
+      "source": "eye_of_the_north",
+      "map_id": 642,
+      "doc": "The Eye of the North outpost: where an Eye of the North character is created."
+    },
+    {
+      "campaign": 0,
+      "source": "pvp",
+      "map_id": null,
+      "doc": "A PvP character, which belongs to no expansion. It names no map, so the creation refuses it until one is established."
+    }
+  ],
+  "fallback": {
+    "campaign": 255,
+    "source": "fallback",
+    "map_id": 148,
+    "doc": "Where a character goes when its expansion source is not one of the entries above - an unknown or newer source. Ascalon City pre-Searing is a real map this world hosts, which is better than a loading screen for a map that does not exist."
+  }
+}

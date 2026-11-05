@@ -1,0 +1,15 @@
+[package]
+name = "asura-rules"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Game rules as pure decisions over data a caller has already read"
+
+[lints]
+workspace = true
+
+[dependencies]
+# The client's `MapType` values, which travel inside `MapKinds` (D34). Nothing else: this crate holds no
+# value of its own, reads no file and opens no connection.
+asura-protocol = { path = "../asura-protocol" }

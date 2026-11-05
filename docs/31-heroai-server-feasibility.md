@@ -2,7 +2,7 @@
 
 Source review, 2026-11-01. The owner's workload is 100 instances with 200 AI-controlled agents in
 each: 20,000 independently controlled agents. The owner asked whether the client-side headless
-HeroAI can supply their combat decisions after a Rust port.
+HeroAI can supply their combat decisions through Lua scripts backed by Rust mechanics.
 
 ## Finding
 
@@ -12,7 +12,10 @@ Their replacement is assumed, not a feasibility objection. Capacity for 20,000 a
 unmeasured. The small behavior tree is orchestration; skill selection, target searches, state
 queries, and the work requested by those decisions are the larger body of work to examine.
 
-The proposed port reuses the decision rules against ASURA's agent state and action API. It needs
+The proposed port expresses the decision rules in Lua against ASURA's agent state and action API.
+Skill knowledge, target conditions, priorities, combinations, coordination, and build-specific
+tactics are editable behavior supplied by the selected profile, including for custom skills.
+They must not require Rust changes when the needed mechanics already exist. The port needs
 actor-relative context, server-owned combat mechanics, and the execution mappings in
 `docs/adr/0014-behavior-tree-execution.md`. This review adds no implementation or runtime policy.
 
@@ -118,7 +121,7 @@ invalidation and reaction timing defined explicitly.
 
 The custom skill table is already constructed once at module scope (`combat.py:31`). Its
 `CustomSkillClass` allocates 3,433 entries (`custom_skill.py:19`); this is table capacity, not a
-verified supported-skill count. A Rust port can likewise share immutable skill definitions while
+verified supported-skill count. The server can likewise share immutable profile skill definitions while
 keeping skill cooldowns, selected targets, cast progress, and behavior state separate per agent.
 
 ## What 100 instances with 200 agents means
@@ -152,15 +155,18 @@ still need measurement before claiming efficient execution for 20,000 agents.
 
 When implementation is authorized:
 
-1. Map the selected generic and specialized build behavior to Rust state queries and actions,
-   including faction, party, cast timing, and coordination scope.
+1. Express the selected generic and specialized build decisions in profile-owned Lua scripts
+   using Rust state queries and actions, including faction, party, cast timing, and coordination
+   scope. Keep game-specific conditions and tree composition externally authorable.
 2. Preserve decisions while replacing repeated client observation and preparation work; apply
    ADR 0014 to node lifecycle differences.
 3. Measure one 200-agent instance with varied skillbars, dense area targeting, healing, effects,
    interrupts, and movement. Distinguish idle and all-active combat cases.
 4. Measure concurrent instances, through 100 when resources permit, recording decision/update
    latency, missed deadlines, CPU, memory, path searches, and outgoing traffic.
-5. Validate gameplay and the packet stream with a real client. Synthetic timing alone does not
+5. Add a custom skill and its HeroAI usage rules within a copied profile, using existing
+   mechanics, and demonstrate the NPC using it without modifying or rebuilding Rust.
+6. Validate gameplay and the packet stream with a real client. Synthetic timing alone does not
    establish parity, complete combat behavior, or acceptable reaction timing.
 
 No new benchmark harness or external runtime dependency is introduced by this review.

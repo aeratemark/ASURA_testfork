@@ -50,7 +50,7 @@ pub async fn register_world(
     let mut tx = pool.begin().await?;
 
     sqlx::query(
-        "INSERT INTO world (id, name, address, port, build, draining, population, heartbeat_at, started_at)
+        "INSERT INTO t_world (id, name, address, port, build, draining, population, heartbeat_at, started_at)
          VALUES ($1, $2, $3, $4, $5, false, 0, now(), now())
          ON CONFLICT (id) DO UPDATE SET
              name        = EXCLUDED.name,
@@ -72,14 +72,14 @@ pub async fn register_world(
 
     // A restarted world owns nothing yet: clear leftovers from the previous process before the
     // counter reset below, or the ledger would outlive its count.
-    sqlx::query("DELETE FROM lease WHERE world_id = $1")
+    sqlx::query("DELETE FROM t_lease WHERE world_id = $1")
         .bind(world_id)
         .execute(&mut *tx)
         .await?;
 
     for (map_id, capacity) in capacities {
         sqlx::query(
-            "INSERT INTO world_pool (world_id, map_id, capacity, leased)
+            "INSERT INTO t_world_pool (world_id, map_id, capacity, leased)
              VALUES ($1, $2, $3, 0)
              ON CONFLICT (world_id, map_id) DO UPDATE SET
                  capacity = EXCLUDED.capacity,
@@ -96,7 +96,7 @@ pub async fn register_world(
     // who publishes a map, so a leftover row would route a client to a world that does not serve it
     // (observed live: a world started with --maps 146 was still sent a login for map 148).
     let ids: Vec<i32> = capacities.iter().map(|(map_id, _)| *map_id).collect();
-    sqlx::query("DELETE FROM world_pool WHERE world_id = $1 AND NOT (map_id = ANY($2))")
+    sqlx::query("DELETE FROM t_world_pool WHERE world_id = $1 AND NOT (map_id = ANY($2))")
         .bind(world_id)
         .bind(&ids)
         .execute(&mut *tx)
@@ -117,7 +117,7 @@ pub async fn publish_pool(
     capacity: i32,
 ) -> sqlx::Result<()> {
     sqlx::query(
-        "INSERT INTO world_pool (world_id, map_id, capacity, leased)
+        "INSERT INTO t_world_pool (world_id, map_id, capacity, leased)
          VALUES ($1, $2, $3, 0)
          ON CONFLICT (world_id, map_id) DO UPDATE SET capacity = EXCLUDED.capacity",
     )
@@ -131,17 +131,18 @@ pub async fn publish_pool(
 
 /// A world says it is alive, and how many players it currently holds.
 pub async fn heartbeat(pool: &PgPool, world_id: i32, population: i32) -> sqlx::Result<bool> {
-    let done = sqlx::query("UPDATE world SET heartbeat_at = now(), population = $2 WHERE id = $1")
-        .bind(world_id)
-        .bind(population)
-        .execute(pool)
-        .await?;
+    let done =
+        sqlx::query("UPDATE t_world SET heartbeat_at = now(), population = $2 WHERE id = $1")
+            .bind(world_id)
+            .bind(population)
+            .execute(pool)
+            .await?;
     Ok(done.rows_affected() > 0)
 }
 
 /// Mark a world draining (finish its players, accept nobody new) or clear the flag.
 pub async fn set_draining(pool: &PgPool, world_id: i32, draining: bool) -> sqlx::Result<bool> {
-    let done = sqlx::query("UPDATE world SET draining = $2 WHERE id = $1")
+    let done = sqlx::query("UPDATE t_world SET draining = $2 WHERE id = $1")
         .bind(world_id)
         .bind(draining)
         .execute(pool)
@@ -153,7 +154,7 @@ pub async fn set_draining(pool: &PgPool, world_id: i32, draining: bool) -> sqlx:
 /// finish its players and leave (S3); a world that is gone reads as `false` rather than an error, so
 /// the heartbeat keeps running until the row is back.
 pub async fn is_draining(pool: &PgPool, world_id: i32) -> sqlx::Result<bool> {
-    let row: Option<(bool,)> = sqlx::query_as("SELECT draining FROM world WHERE id = $1")
+    let row: Option<(bool,)> = sqlx::query_as("SELECT draining FROM t_world WHERE id = $1")
         .bind(world_id)
         .fetch_optional(pool)
         .await?;
@@ -170,7 +171,7 @@ pub async fn backdate_heartbeat(
     seconds_ago: f64,
 ) -> sqlx::Result<bool> {
     let done = sqlx::query(
-        "UPDATE world SET heartbeat_at = now() - make_interval(secs => $2::float8) WHERE id = $1",
+        "UPDATE t_world SET heartbeat_at = now() - make_interval(secs => $2::float8) WHERE id = $1",
     )
     .bind(world_id)
     .bind(seconds_ago)
@@ -197,7 +198,7 @@ pub async fn reserve(
     let mut tx = pool.begin().await?;
 
     let won: Option<i32> = sqlx::query_scalar(
-        "UPDATE world_pool SET leased = leased + 1
+        "UPDATE t_world_pool SET leased = leased + 1
           WHERE world_id = $1 AND map_id = $2 AND leased < capacity
           RETURNING world_id",
     )
@@ -216,7 +217,7 @@ pub async fn reserve(
     // The newest reservation is the one that counts: this session's earlier lease, if any, is
     // released in the same transaction (docs/05-gw2-lessons.md, rule 1).
     let previous: Vec<(i32, i32)> =
-        sqlx::query_as("DELETE FROM lease WHERE session_id = $1 RETURNING world_id, map_id")
+        sqlx::query_as("DELETE FROM t_lease WHERE session_id = $1 RETURNING world_id, map_id")
             .bind(session_id)
             .fetch_all(&mut *tx)
             .await?;
@@ -224,7 +225,7 @@ pub async fn reserve(
         decrement_lease(&mut tx, old_world, old_map).await?;
     }
 
-    sqlx::query("INSERT INTO lease (world_id, map_id, session_id) VALUES ($1, $2, $3)")
+    sqlx::query("INSERT INTO t_lease (world_id, map_id, session_id) VALUES ($1, $2, $3)")
         .bind(world_id)
         .bind(map_id)
         .bind(session_id)
@@ -241,7 +242,7 @@ pub async fn reserve(
 pub async fn release(pool: &PgPool, session_id: uuid::Uuid) -> sqlx::Result<bool> {
     let mut tx = pool.begin().await?;
     let rows: Vec<(i32, i32)> =
-        sqlx::query_as("DELETE FROM lease WHERE session_id = $1 RETURNING world_id, map_id")
+        sqlx::query_as("DELETE FROM t_lease WHERE session_id = $1 RETURNING world_id, map_id")
             .bind(session_id)
             .fetch_all(&mut *tx)
             .await?;
@@ -261,8 +262,8 @@ pub async fn release(pool: &PgPool, session_id: uuid::Uuid) -> sqlx::Result<bool
 pub async fn reap_stale(pool: &PgPool, max_age_secs: f64) -> sqlx::Result<ReapReport> {
     let row: (i64, i64) = sqlx::query_as(
         "WITH dead AS (
-             DELETE FROM lease l
-             USING world w
+             DELETE FROM t_lease l
+             USING t_world w
              WHERE l.world_id = w.id
                AND w.heartbeat_at < now() - make_interval(secs => $1::float8)
              RETURNING l.world_id, l.map_id
@@ -273,7 +274,7 @@ pub async fn reap_stale(pool: &PgPool, max_age_secs: f64) -> sqlx::Result<ReapRe
              GROUP BY world_id, map_id
          ),
          upd AS (
-             UPDATE world_pool wp
+             UPDATE t_world_pool wp
              SET leased = GREATEST((wp.leased - agg.n)::int, 0)
              FROM agg
              WHERE wp.world_id = agg.world_id AND wp.map_id = agg.map_id
@@ -295,7 +296,9 @@ pub async fn reap_stale(pool: &PgPool, max_age_secs: f64) -> sqlx::Result<ReapRe
 /// `world_pool` rows whose counter was corrected.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ReapReport {
+    /// How many leases the call released.
     pub leases_freed: i64,
+    /// How many pool rows the call wrote.
     pub pools_touched: i64,
 }
 
@@ -306,10 +309,10 @@ pub struct ReapReport {
 /// restarts, the counter is rebuilt from the rows instead of being trusted blindly.
 pub async fn reconcile_world(pool: &PgPool, world_id: i32) -> sqlx::Result<u64> {
     let done = sqlx::query(
-        "UPDATE world_pool wp
+        "UPDATE t_world_pool wp
          SET leased = coalesce((
              SELECT count(*)::int
-             FROM lease l
+             FROM t_lease l
              WHERE l.world_id = wp.world_id AND l.map_id = wp.map_id
          ), 0)
          WHERE wp.world_id = $1",
@@ -326,7 +329,7 @@ pub async fn pool_counts(
     world_id: i32,
     map_id: i32,
 ) -> sqlx::Result<Option<(i32, i32)>> {
-    sqlx::query_as("SELECT capacity, leased FROM world_pool WHERE world_id = $1 AND map_id = $2")
+    sqlx::query_as("SELECT capacity, leased FROM t_world_pool WHERE world_id = $1 AND map_id = $2")
         .bind(world_id)
         .bind(map_id)
         .fetch_optional(pool)
@@ -335,7 +338,7 @@ pub async fn pool_counts(
 
 /// How many leases the ledger holds for one pool row.
 pub async fn lease_count(pool: &PgPool, world_id: i32, map_id: i32) -> sqlx::Result<i64> {
-    sqlx::query_scalar("SELECT count(*) FROM lease WHERE world_id = $1 AND map_id = $2")
+    sqlx::query_scalar("SELECT count(*) FROM t_lease WHERE world_id = $1 AND map_id = $2")
         .bind(world_id)
         .bind(map_id)
         .fetch_one(pool)
@@ -348,7 +351,7 @@ pub async fn lease_count(pool: &PgPool, world_id: i32, map_id: i32) -> sqlx::Res
 pub async fn world_is_fresh(pool: &PgPool, world_id: i32, max_age_secs: f64) -> sqlx::Result<bool> {
     let fresh: bool = sqlx::query_scalar(
         "SELECT heartbeat_at > now() - make_interval(secs => $2::float8)
-         FROM world WHERE id = $1",
+         FROM t_world WHERE id = $1",
     )
     .bind(world_id)
     .bind(max_age_secs)
@@ -361,15 +364,21 @@ pub async fn world_is_fresh(pool: &PgPool, world_id: i32, max_age_secs: f64) -> 
 /// request with `AUTH_SMSG_GAME_SERVER_INFO`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorldCandidate {
+    /// Which world server the row belongs to.
     pub world_id: i32,
+    /// The name, as the UTF-16 code units the wire carries.
     pub name: String,
     /// The address as the world registered it. `asura-world` registers the address the *client* may
     /// dial, not the one it binds: a server behind a NAT listens on a private address and must
     /// publish the public one, exactly as a realmlist does.
     pub address: String,
+    /// The port that goes with it.
     pub port: i32,
+    /// The map the row is about.
     pub map_id: i32,
+    /// How many of those seats are handed out right now.
     pub leased: i32,
+    /// How many seats the world offers on that map.
     pub capacity: i32,
 }
 
@@ -382,10 +391,15 @@ pub struct WorldCandidate {
 /// for the first.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorldEndpoint {
+    /// Which world server the row belongs to.
     pub world_id: i32,
+    /// The name, as the UTF-16 code units the wire carries.
     pub name: String,
+    /// The address clients are told to dial.
     pub address: String,
+    /// The port that goes with it.
     pub port: i32,
+    /// Whether the world`s heartbeat is recent enough to be offered.
     pub fresh: bool,
 }
 
@@ -398,7 +412,7 @@ pub async fn world_endpoint(
     let row: Option<(i32, String, String, i32, bool)> = sqlx::query_as(
         "SELECT id, name, address, port,
                 heartbeat_at > now() - make_interval(secs => $2::float8)
-           FROM world WHERE id = $1",
+           FROM t_world WHERE id = $1",
     )
     .bind(world_id)
     .bind(max_age_secs)
@@ -445,16 +459,16 @@ pub async fn find_worlds(
     let rows: Vec<(i32, String, String, i32, i32, i32, i32)> = sqlx::query_as(
         "WITH hosting AS (
              SELECT w.id, w.build, w.started_at
-               FROM world w
-               JOIN world_pool p ON p.world_id = w.id
+               FROM t_world w
+               JOIN t_world_pool p ON p.world_id = w.id
               WHERE p.map_id = $1
                 AND w.heartbeat_at > now() - make_interval(secs => $2::float8)
          ), newest AS (
              SELECT build FROM hosting ORDER BY started_at DESC LIMIT 1
          )
          SELECT w.id, w.name, w.address, w.port, p.map_id, p.leased, p.capacity
-           FROM world w
-           JOIN world_pool p ON p.world_id = w.id
+           FROM t_world w
+           JOIN t_world_pool p ON p.world_id = w.id
           WHERE p.map_id = $1
             AND NOT w.draining
             AND w.heartbeat_at > now() - make_interval(secs => $2::float8)
@@ -494,7 +508,7 @@ pub async fn note_session_world(
     map_id: i32,
 ) -> sqlx::Result<bool> {
     let done = sqlx::query(
-        "UPDATE session SET world_id = $2, map_id = $3
+        "UPDATE t_session SET world_id = $2, map_id = $3
           WHERE id = $1 AND ended_at IS NULL",
     )
     .bind(session_id)
@@ -509,11 +523,17 @@ pub async fn note_session_world(
 /// believes a connecting client.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Transfer {
+    /// The token the client`s next connection must present.
     pub player_token: i64,
+    /// Which world server the row belongs to.
     pub world_id: i32,
+    /// The map the row is about.
     pub map_id: i32,
+    /// The session that was issued for the connection.
     pub session_id: uuid::Uuid,
+    /// The account the row belongs to.
     pub account_id: uuid::Uuid,
+    /// The character the row is about.
     pub character_id: uuid::Uuid,
 }
 
@@ -532,7 +552,7 @@ pub async fn begin_transfer(
     character_id: uuid::Uuid,
 ) -> sqlx::Result<()> {
     sqlx::query(
-        "INSERT INTO transfer
+        "INSERT INTO t_transfer
              (player_token, world_id, map_id, session_id, account_id, character_id, created_at,
               claimed_at)
          VALUES ($1, $2, $3, $4, $5, $6, now(), NULL)",
@@ -568,7 +588,7 @@ pub async fn claim_transfer(
     player_token: u32,
 ) -> sqlx::Result<Option<Transfer>> {
     let row: Option<(i64, i32, i32, uuid::Uuid, uuid::Uuid, uuid::Uuid)> = sqlx::query_as(
-        "UPDATE transfer SET claimed_at = now()
+        "UPDATE t_transfer SET claimed_at = now()
           WHERE player_token = $1 AND world_id = $2
           RETURNING player_token, world_id, map_id, session_id, account_id, character_id",
     )
@@ -592,7 +612,7 @@ pub async fn claim_transfer(
 /// Forget a transfer nobody claimed. Used when a travel is refused after the row was written, and by
 /// the tests; a stale pending row would let a token be used long after the attempt it belonged to.
 pub async fn cancel_transfer(pool: &PgPool, player_token: u32) -> sqlx::Result<bool> {
-    let done = sqlx::query("DELETE FROM transfer WHERE player_token = $1 AND claimed_at IS NULL")
+    let done = sqlx::query("DELETE FROM t_transfer WHERE player_token = $1 AND claimed_at IS NULL")
         .bind(i64::from(player_token))
         .execute(pool)
         .await?;
@@ -609,7 +629,7 @@ pub async fn force_counter(
     leased: i32,
 ) -> sqlx::Result<bool> {
     let done = sqlx::query(
-        "UPDATE world_pool SET leased = $3
+        "UPDATE t_world_pool SET leased = $3
           WHERE world_id = $1 AND map_id = $2 AND $3 >= 0 AND $3 <= capacity",
     )
     .bind(world_id)
@@ -624,7 +644,7 @@ pub async fn force_counter(
 /// cascade). Harness and test hygiene: a scenario leaves no row behind that the next run would
 /// mistake for a live world.
 pub async fn remove_world(pool: &PgPool, world_id: i32) -> sqlx::Result<bool> {
-    let done = sqlx::query("DELETE FROM world WHERE id = $1")
+    let done = sqlx::query("DELETE FROM t_world WHERE id = $1")
         .bind(world_id)
         .execute(pool)
         .await?;
@@ -639,7 +659,7 @@ async fn decrement_lease(
     map_id: i32,
 ) -> sqlx::Result<()> {
     sqlx::query(
-        "UPDATE world_pool SET leased = leased - 1
+        "UPDATE t_world_pool SET leased = leased - 1
           WHERE world_id = $1 AND map_id = $2 AND leased > 0",
     )
     .bind(world_id)

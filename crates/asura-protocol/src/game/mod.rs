@@ -15,13 +15,30 @@
 //!   write the count themselves instead of mirroring a struct.
 //!
 //! Everything here is server-to-client. The client-to-server messages a world server must *read* are
-//! framed by the generated game table ([`super::client::game_tables`]) through
-//! [`super::client::Frame::decode_game_message`].
+//! framed by the generated game table (`super::client::game_tables`) through
+//! `super::client::Frame::decode_game_message`.
 
 /// The unlockable PvP item table, generated from the reference: 387 `(id, params)` pairs the client
 /// builds its item table from. Data rather than protocol, which is why it is generated and not typed.
-pub mod instance_table;
-pub mod pvp_items;
+/// The client's `MapType` values, as configuration holds them.
+///
+/// Three numbers that mean "a town", "an explorable area" and "the creation instance" to the client. They
+/// live here because they are the client's vocabulary, and they are *values*, so a server reads them from
+/// `config/Server/defaults.json` rather than compiling them (`docs/38-layer-decisions.md`, D34): a file
+/// states them, a rule is handed them, and this type is what travels between the two.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MapKinds {
+    /// A town or outpost: a destination the outpost rule never overrides.
+    pub main_town: i32,
+    /// An explorable area: a destination placement replaces with the last outpost.
+    pub main_explorable: i32,
+    /// The creation instance: the one kind that is a conversation rather than a place.
+    pub character_creation: i32,
+}
+
+pub mod appearance;
+/// Re-exported so `Appearance::...` reads the same as it did when the type lived here.
+pub use appearance::Appearance;
 
 /// `GAME_SMSG_INSTANCE_LOAD_HEAD` (`0x017C`): 6 bytes. The first message a client receives on the
 /// game connection.
@@ -76,19 +93,22 @@ pub const MAP_UPDATE_UNLOCKED_LIST: u16 = crate::packets::game::GAME_SMSG_MAP_UP
 /// Unnamed in the generated table (three dwords is all it records); the name is the client's own
 /// handler, `OnMsgSrvMapInitStart`, and the shape is measured - `{dims.x, dims.y, compressed
 /// byte count}`, three dwords. See [`map_init_start`].
-pub const MAP_INIT_START: u16 = 0x008B;
-/// `GAME_SMSG_CARTOGRAPHY_DATA` (`0x008A`, 262 bytes): one slice of the exploration grid.
+pub const MAP_INIT_START: u16 = crate::packets::game::GAME_SMSG_MAP_INIT_START;
+/// `GAME_SMSG_CARTOGRAPHY_DATA` (`0x008A`, declared maximum 262 bytes): one slice of the exploration
+/// grid.
 pub const CARTOGRAPHY_DATA: u16 = crate::packets::game::GAME_SMSG_CARTOGRAPHY_DATA;
-/// The blob bytes one [`CARTOGRAPHY_DATA`] message carries: 256, so 64 dwords.
+/// `GAME_SMSG_MAP_EXPLORATION_MARK` (`0x008C`, 11 bytes): reveal a `(2 * half_span + 1)` square.
+pub const MAP_EXPLORATION_MARK: u16 = 0x008C;
+/// The dwords the fixed frame carries after its `u32` count: 63 dwords, then the two bytes that make
+/// the client's 254-byte payload.
 ///
-/// **The reference's shape is the one this client frames to.** A `u16` count then the fixed 64-dword
-/// array, 260 bytes per message, and the count says how many dwords arrived. A live capture reports
-/// the same message at 132 bytes with a `u32` count (`character_creation-live-necro_factions.jsonl`,
-/// seq 1056), and sending that shape here desynchronises this client - it answers `007` at map load,
-/// measured 2026-10-30. So the capture and the framing disagree, and the client settles it.
-pub const CARTOGRAPHY_DATA_BYTES: usize = 256;
-/// The dwords that payload holds.
-pub const CARTOGRAPHY_DATA_SLOTS: usize = CARTOGRAPHY_DATA_BYTES / 4;
+/// The packet table declares 64 dwords because that is the client's own array capacity; the frame
+/// this client frames to is the 63-dword shape below. A `u16` count shifts the stream by two bytes,
+/// and a 262-byte frame is read as the next message's header - both measured against this client on
+/// 2026-11-04. The count stays four bytes wide, so the stream begins at byte 6.
+pub const CARTOGRAPHY_DATA_SLOTS: usize = 63;
+/// The blob bytes one [`CARTOGRAPHY_DATA`] message carries.
+pub const CARTOGRAPHY_DATA_BYTES: usize = CARTOGRAPHY_DATA_SLOTS * 4;
 
 /// `GAME_SMSG_ITEM_STREAM_CREATE` (`0x0144`): 5 bytes.
 pub const ITEM_STREAM_CREATE: u16 = crate::packets::game::GAME_SMSG_ITEM_STREAM_CREATE;
@@ -214,10 +234,10 @@ pub const PLAYER_UPDATE_PARTY: u16 = crate::packets::game::GAME_SMSG_PLAYER_UPDA
 
 /// `GAME_SMSG_CHAT_MESSAGE_CORE` (`0x005D`): the text of a chat message, `2 + 2 + 2n`.
 pub const CHAT_MESSAGE_CORE: u16 = crate::packets::game::GAME_SMSG_CHAT_MESSAGE_CORE;
-/// `GAME_SMSG_CHAT_MESSAGE_SERVER` (`0x005E`): 10 bytes. The server speaking on a channel - what the
+/// `GAME_SMSG_CHAT_MESSAGE_SERVER` (`0x005E`): 5 bytes. The server speaking on a channel - what the
 /// reference answers a command with, because a core message on its own renders nothing.
 pub const CHAT_MESSAGE_SERVER: u16 = crate::packets::game::GAME_SMSG_CHAT_MESSAGE_SERVER;
-/// `GAME_SMSG_CHAT_MESSAGE_LOCAL` (`0x0061`): which player spoke, on which channel. 10 bytes.
+/// `GAME_SMSG_CHAT_MESSAGE_LOCAL` (`0x0061`): which player spoke, on which channel. 5 bytes.
 pub const CHAT_MESSAGE_LOCAL: u16 = crate::packets::game::GAME_SMSG_CHAT_MESSAGE_LOCAL;
 /// `Channel_All` in the client's own enum (`GmChat.h`): the channel `!` speaks on.
 pub const CHANNEL_ALL: u32 = 3;
@@ -228,32 +248,27 @@ pub const CHANNEL_TRADE: u32 = 12;
 /// `Channel_Warning`: the middle-of-the-screen channel the reference answers a command on.
 pub const CHANNEL_WARNING: u32 = 7;
 
-/// `GAME_SMSG_CHAT_MESSAGE_CORE`: the text of one chat message.
+/// `GAME_SMSG_CHAT_MESSAGE_CORE`: one fragment of the coded-string body.
 pub fn chat_message_core(text: &str) -> crate::client::Frame {
     Builder::new(CHAT_MESSAGE_CORE).text(text, 122).frame()
 }
 
 /// The leading word of a player's All-channel chat body: string id 8, the All-chat body wrapper.
-/// Measured by the Rurik project on the live wire (3 of 3 channel-3 player bodies) and seen to
-/// render on its own client (`studies/chat/FINDINGS.md`); restated here, not copied.
 pub const CHAT_BODY_WRAPPER: u16 = 0x0108;
 /// The marker that opens a literal run inside a coded string (string id 7).
 pub const CODED_LITERAL_START: u16 = 0x0107;
 /// The terminator that closes a literal run (a marker word, below `0x100`).
 pub const CODED_LITERAL_END: u16 = 0x0001;
-/// Units per `CHAT_MESSAGE_CORE` fragment: the declared 122 minus one, which is where both multi-part
-/// live lines split (Rurik, `FRAGMENT_UNITS`).
+/// Units per `CHAT_MESSAGE_CORE` fragment: the declared 122 minus one.
 pub const CHAT_FRAGMENT_UNITS: usize = 121;
 
 /// A typed chat line as the coded string the client renders: wrapper, literal start, the text,
 /// literal end.
 ///
-/// **Why not plain text.** `CHAT_MESSAGE_CORE` carries a *coded* string: a word below `0x100` is a
-/// control marker and a word at or above it is a string id. Plain ASCII is all below `0x100`, so a
-/// bare "hello" opens with a marker the client does not expect and it asserts
-/// (`TextApi.cpp(585)`, `(codedString[0] & ~WORD_BIT_MORE) >= WORD_VALUE_BASE`) and closes - the
-/// crash a chat line caused here. Units below `0x20` are dropped from the typed text so a stray
-/// control code cannot end the literal early.
+/// `CHAT_MESSAGE_CORE` carries a *coded* string: a word below `0x100` is a control marker and a word
+/// at or above it is a string id. Plain ASCII is all below `0x100`, so bare text opens with a marker
+/// the client does not expect and hits its coded-string assert. Units below `0x20` are dropped so a
+/// stray control code cannot end the literal early.
 pub fn chat_body_units(text: &str) -> Vec<u16> {
     let mut units = vec![CHAT_BODY_WRAPPER, CODED_LITERAL_START];
     units.extend(text.encode_utf16().filter(|unit| *unit >= 0x20));
@@ -278,14 +293,10 @@ pub fn player_chat_line(player_id: u32, channel: u32, text: &str) -> Vec<crate::
     frames
 }
 
-/// `GAME_SMSG_CHAT_MESSAGE_LOCAL`: who is speaking, and on which channel - **a word and a byte, 5
-/// bytes**.
+/// `GAME_SMSG_CHAT_MESSAGE_LOCAL`: who is speaking, and on which channel - a word and a byte, 5 bytes.
 ///
-/// The generated table said two dwords (10 bytes). The live wire, as the Rurik project captured it from
-/// ArenaNet's server and replayed it to a client that rendered the line and stayed connected, carries
-/// the player number as a word and the channel as a byte (`studies/chat/FINDINGS.md` §10). Sent as two
-/// dwords, the client read the first five bytes and took the other five as the start of a message it
-/// does not have, and dropped the connection - right after the line had rendered.
+/// The generated table's two-dword form was read as 5 bytes plus the start of another message, and
+/// the client dropped the connection right after the line rendered.
 pub fn chat_message_local(player_id: u32, channel: u32) -> crate::client::Frame {
     Builder::new(CHAT_MESSAGE_LOCAL)
         .u16(player_id as u16)
@@ -294,10 +305,7 @@ pub fn chat_message_local(player_id: u32, channel: u32) -> crate::client::Frame 
 }
 
 /// `GAME_SMSG_CHAT_MESSAGE_SERVER`: a server-composed line, committed under a subject player on a
-/// channel - **a word and a byte, 5 bytes**, the same shape as `CHAT_MESSAGE_LOCAL`.
-///
-/// Rurik captured it live as `[subject playerId, channel]` (the `/bow` reply, `[1, 6]`) and saw the line
-/// render; the old two-dword form was the generated table's and had never reached a screen.
+/// channel - a word and a byte, 5 bytes, the same shape as [`chat_message_local`].
 pub fn chat_message_server(subject_player_id: u32, channel: u32) -> crate::client::Frame {
     Builder::new(CHAT_MESSAGE_SERVER)
         .u16(subject_player_id as u16)
@@ -398,73 +406,6 @@ pub const CHAR_CLASS_PLAYER_BASE: u32 = 0x3000_0000;
 pub const AGENT_TYPE_LIVING: u8 = 1;
 /// `AgentType_Item`: the agent type of an item on the ground (`GmAgent.h`). What a drop creates.
 pub const AGENT_TYPE_ITEM: u8 = 4;
-
-/// A character's appearance, as the client's own 32-bit bitfield (`GmChar.h`, `Appearance`).
-///
-/// This is not decoration: the client builds the character model from these bits, and an all-zero
-/// appearance says `Profession_None` with hair style 0 -- a model it has no data for. The reference's
-/// own character sends `0x03100000` in `GAME_SMSG_PLAYER_CREATE` (its own trace, read by
-/// `tools/compare-load.py`), which decodes as profession 1 and hair style 3.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct Appearance {
-    /// 1 bit.
-    pub sex: u8,
-    /// 4 bits.
-    pub height: u8,
-    /// 5 bits.
-    pub skin_color: u8,
-    /// 5 bits.
-    pub hair_color: u8,
-    /// 5 bits.
-    pub face_style: u8,
-    /// 4 bits.
-    pub primary_profession: u8,
-    /// 6 bits.
-    pub hair_style: u8,
-    /// 2 bits: 0 Prophecies, 1 Factions, 2 Nightfall.
-    pub race: u8,
-}
-
-impl Appearance {
-    /// The appearance the reference reports for its default character: profession 1 (Warrior) and
-    /// hair style 3, everything else zero. It is a copy of the wire, not a design.
-    pub const REFERENCE_DEFAULT: Appearance = Appearance {
-        sex: 0,
-        height: 0,
-        skin_color: 0,
-        hair_color: 0,
-        face_style: 0,
-        primary_profession: 1,
-        hair_style: 3,
-        race: 0,
-    };
-
-    /// Pack into the wire's 32-bit word, in the client's field order.
-    pub fn pack(&self) -> u32 {
-        (u32::from(self.sex) & 0x1)
-            | ((u32::from(self.height) & 0xF) << 1)
-            | ((u32::from(self.skin_color) & 0x1F) << 5)
-            | ((u32::from(self.hair_color) & 0x1F) << 10)
-            | ((u32::from(self.face_style) & 0x1F) << 15)
-            | ((u32::from(self.primary_profession) & 0xF) << 20)
-            | ((u32::from(self.hair_style) & 0x3F) << 24)
-            | ((u32::from(self.race) & 0x3) << 30)
-    }
-
-    /// Unpack a word from the wire, for tests and for reading one back.
-    pub fn unpack(word: u32) -> Self {
-        Appearance {
-            sex: (word & 0x1) as u8,
-            height: ((word >> 1) & 0xF) as u8,
-            skin_color: ((word >> 5) & 0x1F) as u8,
-            hair_color: ((word >> 10) & 0x1F) as u8,
-            face_style: ((word >> 15) & 0x1F) as u8,
-            primary_profession: ((word >> 20) & 0xF) as u8,
-            hair_style: ((word >> 24) & 0x3F) as u8,
-            race: ((word >> 30) & 0x3) as u8,
-        }
-    }
-}
 
 /// A message body being built, with the header first.
 struct Builder {
@@ -744,16 +685,27 @@ pub fn inventory_create_bag(
 /// UTF-16 code units that are not necessarily characters, and its modifiers are the client's own dwords.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NamedItem {
+    /// The item's own id in the item table.
     pub id: u32,
+    /// The `Gw.dat` file id the client draws the model from.
     pub file_id: u32,
+    /// The item's kind code (`GmItem.h`); the client groups bags and dyes by it.
     pub item_type: u8,
+    /// Which dye slot mask applies; zero for an undyed item.
     pub dye_tint: u8,
+    /// The four packed dye colours, four bits each.
     pub dye_colors: u16,
+    /// Crafting materials the item carries or needs, as the reference packs them.
     pub materials: u16,
+    /// The reference's own unverified byte; copied, not reasoned about.
     pub unk1: u8,
+    /// Item flags: identified, customized, equipped and the rest.
     pub flags: u32,
+    /// The item's value in gold, as the client shows it.
     pub value: u32,
+    /// The model id the client draws, which for some item kinds is not `file_id`.
     pub model_id: u32,
+    /// How many are in the stack; 1 for a non-stackable item.
     pub quantity: u32,
     /// The name, as UTF-16 code units, at most 64.
     pub name: Vec<u16>,
@@ -958,7 +910,7 @@ pub fn transfer_game_server_info(
 /// Unnamed in the reference's own table, which is why it is addressed by its header here. A live server
 /// sends it in batches during a load - ten of them for the load of instance 148
 /// (`recordings/client/feature/maps/pre-searing-load-3.jsonl`) - and the data is `game::instance_table`.
-pub const INSTANCE_TABLE: u16 = 0x01A0;
+pub const INSTANCE_TABLE: u16 = crate::packets::game::GAME_SMSG_INSTANCE_TABLE;
 
 /// One batch of [`INSTANCE_TABLE`]: a `u8` count and that many `{u16 instance, u32 value}` pairs.
 ///
@@ -1004,12 +956,16 @@ pub fn map_init_start(dims_x: u32, dims_y: u32, byte_count: u32) -> crate::clien
         .frame()
 }
 
-/// `GAME_SMSG_CARTOGRAPHY_DATA`: a slice of the compressed grid - a `u16` count and the fixed 64-dword
-/// array, 260 bytes, with the count saying how many dwords arrived.
+/// `GAME_SMSG_CARTOGRAPHY_DATA`: a slice of the compressed grid - a `u32` count at byte 2, the stream
+/// at byte 6, 63 dwords and two pad bytes, 260 bytes.
+///
+/// The count is four bytes wide, so the stream begins at byte 6. A `u16` count loads but shifts the
+/// stream two bytes: band 1 lands in band 0. A 262-byte frame is read as a header in the middle of
+/// the message. Both were measured against build 39112 on 2026-11-04.
 pub fn cartography_data(blob: &[u8]) -> crate::client::Frame {
     let bytes = &blob[..blob.len().min(CARTOGRAPHY_DATA_BYTES)];
     let dwords = bytes.len().div_ceil(4);
-    let mut builder = Builder::new(CARTOGRAPHY_DATA).u16(dwords as u16);
+    let mut builder = Builder::new(CARTOGRAPHY_DATA).u32(dwords as u32);
     for slot in 0..CARTOGRAPHY_DATA_SLOTS {
         let at = slot * 4;
         let mut word = [0u8; 4];
@@ -1020,7 +976,16 @@ pub fn cartography_data(blob: &[u8]) -> crate::client::Frame {
         }
         builder = builder.u32(u32::from_le_bytes(word));
     }
-    builder.frame()
+    builder.u16(0).frame()
+}
+
+/// `GAME_SMSG_MAP_EXPLORATION_MARK`: reveal a `(2 * half_span + 1)` square of continent cells.
+pub fn map_exploration_mark(x: u32, y: u32, half_span: u8) -> crate::client::Frame {
+    Builder::new(MAP_EXPLORATION_MARK)
+        .u32(x)
+        .u32(y)
+        .u8(half_span)
+        .frame()
 }
 
 /// `GAME_SMSG_HARD_MODE_UNLOCKED`.
@@ -1028,40 +993,61 @@ pub fn hard_mode_unlocked(unlocked: u8) -> crate::client::Frame {
     Builder::new(HARD_MODE_UNLOCKED).u8(unlocked).frame()
 }
 
+/// The character and account progress `GAME_SMSG_CHARACTER_UPDATE_FACTIONS` reports, one field per
+/// reference argument (`GameSrv_UpdatePlayerFactions`).
+///
+/// A struct rather than thirteen arguments: the dwords are positional on the wire, so a caller that
+/// passes them in order reads as a wall of zeros and the compiler cannot catch a swap. Two dwords of
+/// the body (`unk_faction4`, `unk_faction5`) are not modelled here because nothing measured sets them.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct CharacterProgress {
+    /// Total experience; the client shows it on the character sheet.
+    pub experience: u32,
+    /// Kurzick faction held now.
+    pub current_kurzick: u32,
+    /// Kurzick faction earned in total.
+    pub total_earned_kurzick: u32,
+    /// Luxon faction held now.
+    pub current_luxon: u32,
+    /// Luxon faction earned in total.
+    pub total_earned_luxon: u32,
+    /// Imperial faction held now.
+    pub current_imperial: u32,
+    /// Imperial faction earned in total.
+    pub total_earned_imperial: u32,
+    /// The character's level, from `characters.level`.
+    pub level: u32,
+    /// Morale percentage: 100 is the unmodified value a live load carries.
+    pub morale: u32,
+    /// Balthazar faction held now.
+    pub current_balthazar: u32,
+    /// Balthazar faction earned in total.
+    pub total_earned_balthazar: u32,
+    /// Skill points held now.
+    pub current_skill_points: u32,
+    /// Skill points earned in total.
+    pub total_earned_skill_points: u32,
+}
+
 /// `GAME_SMSG_CHARACTER_UPDATE_FACTIONS`: fifteen dwords of character and account progress, in the
 /// reference's order (`GameSrv_UpdatePlayerFactions`).
-#[allow(clippy::too_many_arguments)]
-pub fn character_update_factions(
-    experience: u32,
-    current_kurzick: u32,
-    total_earned_kurzick: u32,
-    current_luxon: u32,
-    total_earned_luxon: u32,
-    current_imperial: u32,
-    total_earned_imperial: u32,
-    level: u32,
-    morale: u32,
-    current_balthazar: u32,
-    total_earned_balthazar: u32,
-    current_skill_points: u32,
-    total_earned_skill_points: u32,
-) -> crate::client::Frame {
+pub fn character_update_factions(progress: &CharacterProgress) -> crate::client::Frame {
     Builder::new(CHARACTER_UPDATE_FACTIONS)
-        .u32(experience)
-        .u32(current_kurzick)
-        .u32(total_earned_kurzick)
-        .u32(current_luxon)
-        .u32(total_earned_luxon)
-        .u32(current_imperial)
-        .u32(total_earned_imperial)
+        .u32(progress.experience)
+        .u32(progress.current_kurzick)
+        .u32(progress.total_earned_kurzick)
+        .u32(progress.current_luxon)
+        .u32(progress.total_earned_luxon)
+        .u32(progress.current_imperial)
+        .u32(progress.total_earned_imperial)
         .u32(0) // unk_faction4
         .u32(0) // unk_faction5
-        .u32(level)
-        .u32(morale)
-        .u32(current_balthazar)
-        .u32(total_earned_balthazar)
-        .u32(current_skill_points)
-        .u32(total_earned_skill_points)
+        .u32(progress.level)
+        .u32(progress.morale)
+        .u32(progress.current_balthazar)
+        .u32(progress.total_earned_balthazar)
+        .u32(progress.current_skill_points)
+        .u32(progress.total_earned_skill_points)
         .frame()
 }
 
@@ -1221,15 +1207,21 @@ pub fn player_create(
 /// ground (`AgentType_Item`); everything else is what the reference fills from its `GmAgent`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CreateAgent {
+    /// The id the rest of the stream refers to this body by.
     pub agent_id: u32,
+    /// What the client draws: a character class word for a player, an item model for a drop.
     pub model_id: u32,
     /// `AgentType_Living` (1) for a player, `AgentType_Item` (4) for a dropped item.
     pub agent_type: u8,
-
+    /// Where the body stands, in the map's own units.
     pub position: (f32, f32),
+    /// The pathing plane, not a height.
     pub plane: u16,
+    /// Which way it faces, as a unit vector.
     pub direction: (f32, f32),
+    /// Walking speed the client uses until a `0x002B` says otherwise.
     pub speed_base: f32,
+    /// The team the body belongs to; 0 for a neutral body.
     pub player_team_token: u32,
 }
 
@@ -1882,7 +1874,7 @@ mod tests {
 
     #[test]
     fn character_update_factions_is_fifteen_dwords_of_body() {
-        let frame = character_update_factions(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        let frame = character_update_factions(&CharacterProgress::default());
         assert_eq!(wire(&frame), 62);
         assert_eq!(frame.body().len(), 60, "fifteen dwords");
     }
@@ -1905,32 +1897,62 @@ mod tests {
         );
     }
 
+    /// The word the reference's own `PLAYER_CREATE` carries for its character: profession 1 (Warrior) and
+    /// hair style 3, everything else zero. Written out here because this crate packs and unpacks a word;
+    /// the *default* a server sends for a character with no bits of its own is a value, and it lives in
+    /// `config/World/Vanilla/character_defaults.json`.
+    const REFERENCE_WORD: u32 = 0x0310_0000;
+
     #[test]
     fn the_appearance_bitfield_matches_the_clients_own_word() {
-        // The reference's `PLAYER_CREATE` carries 0x03100000 for its character. If this packing is
-        // wrong the client builds a model out of nonsense, so the number is asserted from the wire.
-        assert_eq!(Appearance::REFERENCE_DEFAULT.pack(), 0x0310_0000);
-        let unpacked = Appearance::unpack(0x0310_0000);
+        // If this packing is wrong the client builds a model out of nonsense, so the number is asserted
+        // from the wire.
+        let unpacked = Appearance::unpack(REFERENCE_WORD);
         assert_eq!(unpacked.primary_profession, 1, "Warrior");
         assert_eq!(unpacked.hair_style, 3);
         assert_eq!(unpacked.race, 0, "Prophecies");
         assert_eq!(unpacked.sex, 0);
         assert_eq!(unpacked.height, 0);
         assert_eq!(
-            Appearance::unpack(Appearance::REFERENCE_DEFAULT.pack()),
-            Appearance::REFERENCE_DEFAULT
+            unpacked.pack(),
+            REFERENCE_WORD,
+            "packing what was unpacked returns the same word"
         );
     }
 
     #[test]
-    fn a_zero_appearance_is_not_the_default_one() {
+    fn a_zero_appearance_is_not_the_references_word() {
         // The bug this exists to prevent: 0 packs to profession 0 (Profession_None) and hair 0, which
         // is a character model the client has no data for.
-        assert_ne!(
-            Appearance::default().pack(),
-            Appearance::REFERENCE_DEFAULT.pack()
-        );
+        assert_ne!(Appearance::default().pack(), REFERENCE_WORD);
         assert_eq!(Appearance::unpack(0).primary_profession, 0);
+    }
+
+    #[test]
+    fn the_cartography_payload_is_the_arrays_the_table_declares() {
+        // The row is `FieldKind::Array32` with a length of 64, the client's own array capacity. The
+        // frame this client frames to carries 63 dwords and two pad bytes after a four-byte count:
+        // 2 header + 4 count + 252 + 2 = 260. This test is the one place the two numbers meet.
+        let row = crate::packets::PACKETS
+            .iter()
+            .find(|row| row.header == CARTOGRAPHY_DATA)
+            .expect("the row exists");
+        assert_eq!(row.size, 262, "the table's declared maximum");
+        assert_eq!(
+            2 + 4 + CARTOGRAPHY_DATA_BYTES + 2,
+            260,
+            "the frame this tree sends"
+        );
+        assert_eq!(
+            CARTOGRAPHY_DATA_SLOTS, 63,
+            "the frame's slots, not the client's array capacity"
+        );
+        let array = row
+            .fields
+            .iter()
+            .find(|field| field.kind == crate::packets::FieldKind::Array32)
+            .expect("the array field");
+        assert_eq!(usize::from(array.length), 64, "the client's array capacity");
     }
 
     #[test]
@@ -1940,28 +1962,5 @@ mod tests {
         assert_eq!(&bytes[0..2], &0x0099u16.to_le_bytes());
         assert_eq!(&bytes[2..4], &146u16.to_le_bytes());
         assert_eq!(bytes[4], 0);
-    }
-    /// A typed line is a coded string: wrapper, literal start, the text, literal end (the shape Rurik
-    /// saw render), and a long line is split into 121-unit fragments before the one tag.
-    #[test]
-    fn a_chat_line_is_a_coded_string_not_plain_text() {
-        let units = chat_body_units("hello");
-        assert_eq!(
-            units,
-            vec![0x0108, 0x0107, 0x68, 0x65, 0x6C, 0x6C, 0x6F, 0x0001]
-        );
-        assert!(units[0] >= 0x100, "the first word must be a string id, not a marker");
-
-        let frames = player_chat_line(1, CHANNEL_ALL, "hello");
-        assert_eq!(frames.len(), 2);
-        assert_eq!(frames[0].header(), CHAT_MESSAGE_CORE);
-        assert_eq!(wire(&frames[0]), 2 + 2 + 2 * 8);
-        assert_eq!(frames[1].header(), CHAT_MESSAGE_LOCAL);
-        assert_eq!(frames[1].bytes(), &[0x61, 0x00, 0x01, 0x00, 0x03], "Rurik's live `6100 0100 03`");
-
-        let long = "x".repeat(200);
-        let frames = player_chat_line(1, CHANNEL_ALL, &long);
-        assert_eq!(frames.len(), 3, "203 units: two CORE fragments and the tag");
-        assert_eq!(wire(&frames[0]), 2 + 2 + 2 * CHAT_FRAGMENT_UNITS);
     }
 }

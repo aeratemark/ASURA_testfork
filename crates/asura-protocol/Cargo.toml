@@ -10,3 +10,12 @@ description = "Message layouts and framing for the client protocol and the inter
 # Modular exponentiation for the key exchange's fixed-constant Diffie-Hellman
 # (docs/adr/0009-crypto-primitives.md). Everything else in this crate is dependency-free on purpose.
 num-bigint-dig = { workspace = true }
+
+[features]
+# `client::peer` is a fake game client, used by other crates' tests and by
+# `asura-auth/examples/probe.rs`, never by the server's own code. Off by default, so a production
+# build of the wire layer carries no test client.
+test-client = []
+
+[lints]
+workspace = true

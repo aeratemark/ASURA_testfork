@@ -100,7 +100,7 @@ if ($exitCode -ne 0) {
 
 Write-Host ""
 Write-Host "maps seeded from tools/map-config.sql (generated):"
-$summary = & $script:Psql -v ON_ERROR_STOP=1 -X -q -t -A -F '|' -c "SELECT map_id, map_type, name FROM map_config ORDER BY map_id" $url 2>&1
+$summary = & $script:Psql -v ON_ERROR_STOP=1 -X -q -t -A -F '|' -c "SELECT map_id, map_type, name FROM t_map_config ORDER BY map_id" $url 2>&1
 foreach ($line in $summary) {
     $parts = "$line" -split '\|'
     if ($parts.Count -eq 3) {

@@ -6,11 +6,11 @@
 //! dropped, equipped, moved or saved. These are the rows that replaced them, and the two operations the
 //! world server needs them for:
 //!
-//! * **reading** a character's inventory into the shape the wire wants ([`load`]);
-//! * **creating** the default inventory for a character that has none ([`seed_default`]), which is what
+//! * **reading** a character's inventory into the shape the wire wants (`load`);
+//! * **creating** the default inventory for a character that has none (`seed_default`), which is what
 //!   the reference does for every player it creates (`GameSrv_CreateDefaultBags`, guarded by
 //!   `IsValidBag` so a loaded character keeps what it had);
-//! * **finding** the item a client asks to drop ([`find_in_carrying_bags`]), restricted to the bags the
+//! * **finding** the item a client asks to drop (`find_in_carrying_bags`), restricted to the bags the
 //!   reference searches (`GmBag_FindItem` looks only at the backpack, the belt pouch and bags 1 and 2).
 //!
 //! The model, and where it differs from the reference's own `items`/`bags` tables, is argued in
@@ -33,6 +33,7 @@ pub struct Bag {
     pub bag_model_id: i32,
     /// `BagType`: 1 bag, 2 equipped, 3 not collected, 4 storage, 5 material storage.
     pub bag_type: i32,
+    /// How many slots the bag holds, as `GmBag.slots`.
     pub slot_count: i32,
     /// The item that *is* the bag (the reference's `bag_item_id`), 0 for the bags that have none.
     pub assoc_item_id: i32,
@@ -45,17 +46,29 @@ pub struct Item {
     pub id: i32,
     /// Where it sits. `None` for an item that is not in a slot - a bag's own item.
     pub bag_id: Option<i32>,
+    /// Which slot inside that bag; `None` for a bag`s own item.
     pub slot: Option<i32>,
+    /// The `Gw.dat` file id the client draws the model from.
     pub file_id: i64,
+    /// The item`s kind code; the client groups bags and dyes by it.
     pub item_type: i32,
+    /// The model id the client draws, which for some kinds differs from `file_id`.
     pub model_id: i32,
+    /// Which dye slots apply; 0 for an undyed item.
     pub dye_tint: i32,
+    /// The four packed dye colours, four bits each.
     pub dye_colors: i32,
+    /// Crafting materials the item carries or needs.
     pub materials: i32,
+    /// The reference`s own unverified byte; copied, not reasoned about.
     pub unk1: i32,
+    /// Item flags: identified, customized, equipped and the rest.
     pub flags: i64,
+    /// The item`s value in gold, as the client shows it.
     pub value: i32,
+    /// How many are in the stack; 1 for a non-stackable item.
     pub quantity: i32,
+    /// The profession the item was made for, or 0.
     pub profession: i32,
     /// The name, as the UTF-16 code units the wire carries. Not text: the reference's bag name is a
     /// Gw.dat template id packed into units, and some of them are not valid Unicode.
@@ -87,20 +100,23 @@ impl Item {
 pub struct Inventory {
     /// In the reference's order: by bag model id, which is the order its bag array is walked in.
     pub bags: Vec<Bag>,
+    /// Every item the character owns, in the order the reference`s bag walk produces.
     pub items: Vec<Item>,
 }
 
 impl Inventory {
     /// Empty is the answer for a character that has never been loaded, and it is what
-    /// [`seed_default`] fills.
+    /// `seed_default` fills.
     pub fn is_empty(&self) -> bool {
         self.bags.is_empty() && self.items.is_empty()
     }
 
+    /// The bag with this id, if the character has it.
     pub fn bag(&self, bag_id: i32) -> Option<&Bag> {
         self.bags.iter().find(|bag| bag.bag_id == bag_id)
     }
 
+    /// The item with this id, if the character has it.
     pub fn item(&self, item_id: i32) -> Option<&Item> {
         self.items.iter().find(|item| item.id == item_id)
     }
@@ -169,9 +185,13 @@ pub const LAST_CARRYING_MODEL: i32 = 3;
 /// One bag as the seed describes it: the capture's bag id, and the capture id of its own item.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SeedBag {
+    /// The capture's bag id.
     pub bag_id: i32,
+    /// `BagModelId`, as `Bag` carries it: 0 backpack, 5 material storage, 7+ storage, 21 equipped.
     pub bag_model_id: i32,
+    /// `BagType`: 1 bag, 2 equipped, 3 not collected, 4 storage, 5 material storage.
     pub bag_type: i32,
+    /// How many slots the bag holds, as `GmBag.slots`.
     pub slot_count: i32,
     /// The capture's item id of the item that is this bag, 0 when the bag has none.
     pub assoc_item: i32,
@@ -182,20 +202,35 @@ pub struct SeedBag {
 pub struct SeedItem {
     /// The capture's item id. Renumbered from the sequence when it is written.
     pub id: i32,
+    /// Which bag the record belongs to; `None` for an item that is not in a slot.
     pub bag_id: Option<i32>,
+    /// Which slot inside that bag; `None` for a bag`s own item.
     pub slot: Option<i32>,
+    /// The `Gw.dat` file id the client draws the model from.
     pub file_id: i64,
+    /// The item`s kind code; the client groups bags and dyes by it.
     pub item_type: i32,
+    /// The model id the client draws, which for some kinds differs from `file_id`.
     pub model_id: i32,
+    /// Which dye slots apply; 0 for an undyed item.
     pub dye_tint: i32,
+    /// The four packed dye colours, four bits each.
     pub dye_colors: i32,
+    /// Crafting materials the item carries or needs.
     pub materials: i32,
+    /// The reference`s own unverified byte; copied, not reasoned about.
     pub unk1: i32,
+    /// Item flags: identified, customized, equipped and the rest.
     pub flags: i64,
+    /// The item`s value in gold, as the client shows it.
     pub value: i32,
+    /// How many are in the stack; 1 for a non-stackable item.
     pub quantity: i32,
+    /// The profession the item was made for, or 0.
     pub profession: i32,
+    /// The name, as the UTF-16 code units the wire carries.
     pub name: &'static [i32],
+    /// The modifier list, in the client`s own dwords.
     pub modifiers: &'static [i64],
 }
 
@@ -237,7 +272,7 @@ impl From<&SeedBag> for Bag {
 
 /// The default inventory, as rows, with the ids the original capture used.
 ///
-/// This is the seed: [`seed_default`] writes these rows (with ids taken from the sequence, because
+/// This is the seed: `seed_default` writes these rows (with ids taken from the sequence, because
 /// two characters cannot both own item 1). The rows are the source of truth now; the world server
 /// builds the item block out of them.
 pub fn default_inventory() -> Inventory {
@@ -262,7 +297,7 @@ fn item_columns(alias: &str) -> String {
 }
 
 /// One item row as both queries select it, in the order they select it (`load` and
-/// [`find_in_carrying_bags`] share the column list so the two cannot drift apart).
+/// `find_in_carrying_bags` share the column list so the two cannot drift apart).
 type ItemRow = (
     i32,
     Option<i32>,
@@ -329,7 +364,7 @@ fn item_from_row(row: ItemRow) -> Item {
 pub async fn load(pool: &PgPool, character: Uuid) -> sqlx::Result<Inventory> {
     let bags: Vec<(i32, i32, i32, i32, i32)> = sqlx::query_as(
         "SELECT bag_id, bag_model_id, bag_type, slot_count, assoc_item_id
-           FROM bag WHERE character_id = $1
+           FROM t_bag WHERE character_id = $1
           ORDER BY bag_model_id, bag_id",
     )
     .bind(character)
@@ -337,7 +372,7 @@ pub async fn load(pool: &PgPool, character: Uuid) -> sqlx::Result<Inventory> {
     .await?;
 
     let items: Vec<ItemRow> = sqlx::query_as(&format!(
-        "SELECT {ITEM_COLUMNS} FROM item WHERE character_id = $1
+        "SELECT {ITEM_COLUMNS} FROM t_item WHERE character_id = $1
           ORDER BY bag_id NULLS FIRST, slot, id"
     ))
     .bind(character)
@@ -368,20 +403,35 @@ pub async fn load(pool: &PgPool, character: Uuid) -> sqlx::Result<Inventory> {
 /// profession the client picked, so it owns its slices.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NewItem {
+    /// Which bag the record belongs to; `None` for an item that is not in a slot.
     pub bag_id: Option<i32>,
+    /// Which slot inside that bag; `None` for a bag`s own item.
     pub slot: Option<i32>,
+    /// The `Gw.dat` file id the client draws the model from.
     pub file_id: i64,
+    /// The item`s kind code; the client groups bags and dyes by it.
     pub item_type: i32,
+    /// The model id the client draws, which for some kinds differs from `file_id`.
     pub model_id: i32,
+    /// Which dye slots apply; 0 for an undyed item.
     pub dye_tint: i32,
+    /// The four packed dye colours, four bits each.
     pub dye_colors: i32,
+    /// Crafting materials the item carries or needs.
     pub materials: i32,
+    /// The reference`s own unverified byte; copied, not reasoned about.
     pub unk1: i32,
+    /// Item flags: identified, customized, equipped and the rest.
     pub flags: i64,
+    /// The item`s value in gold, as the client shows it.
     pub value: i32,
+    /// How many are in the stack; 1 for a non-stackable item.
     pub quantity: i32,
+    /// The profession the item was made for, or 0.
     pub profession: i32,
+    /// The name, as the UTF-16 code units the wire carries.
     pub name: Vec<i32>,
+    /// The modifier list, in the client`s own dwords.
     pub modifiers: Vec<i64>,
 }
 
@@ -410,7 +460,7 @@ pub async fn create_character(
     // creation defaults (`GameSrv.c:1880-1886`): level 1, `is_pvp` when the campaign is none, the helmet
     // shown, the secondary profession the screen chose, and the unlocked-professions bit for the primary.
     sqlx::query(
-        "INSERT INTO characters (id, account_id, name, map_id, appearance, primary_profession,
+        "INSERT INTO t_characters (id, account_id, name, map_id, appearance, primary_profession,
                                  unlocked_professions, gold, campaign, secondary_profession, level,
                                  is_pvp, helm_status)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 1, $11, 1)",
@@ -454,7 +504,7 @@ pub async fn create_character(
     for seed_bag in seed::BAGS {
         let assoc_item_id = bag_own_item(seed_bag, &allocated)?;
         sqlx::query(
-            "INSERT INTO bag (character_id, bag_id, bag_model_id, bag_type, slot_count, assoc_item_id)
+            "INSERT INTO t_bag (character_id, bag_id, bag_model_id, bag_type, slot_count, assoc_item_id)
              VALUES ($1, $2, $3, $4, $5, $6)",
         )
         .bind(character)
@@ -473,26 +523,7 @@ pub async fn create_character(
 
 /// One item row from the generated seed, returning the id the sequence gave it.
 async fn insert_item(tx: &mut PgConnection, character: Uuid, seed: &SeedItem) -> sqlx::Result<i32> {
-    insert_row(
-        tx,
-        character,
-        seed.bag_id,
-        seed.slot,
-        seed.file_id,
-        seed.item_type,
-        seed.model_id,
-        seed.dye_tint,
-        seed.dye_colors,
-        seed.materials,
-        seed.unk1,
-        seed.flags,
-        seed.value,
-        seed.quantity,
-        seed.profession,
-        seed.name,
-        seed.modifiers,
-    )
-    .await
+    insert_row(tx, character, ItemColumns::from(seed)).await
 }
 
 /// One item row from a runtime set, returning the id the sequence gave it.
@@ -501,32 +532,15 @@ async fn insert_new_item(
     character: Uuid,
     item: &NewItem,
 ) -> sqlx::Result<i32> {
-    insert_row(
-        tx,
-        character,
-        item.bag_id,
-        item.slot,
-        item.file_id,
-        item.item_type,
-        item.model_id,
-        item.dye_tint,
-        item.dye_colors,
-        item.materials,
-        item.unk1,
-        item.flags,
-        item.value,
-        item.quantity,
-        item.profession,
-        &item.name,
-        &item.modifiers,
-    )
-    .await
+    insert_row(tx, character, ItemColumns::from(item)).await
 }
 
-#[allow(clippy::too_many_arguments)]
-async fn insert_row(
-    tx: &mut PgConnection,
-    character: Uuid,
+/// The sixteen columns one `item` INSERT writes, borrowed from whichever record produced them.
+///
+/// A struct rather than fifteen positional arguments: `SeedItem` and `NewItem` carry the same columns
+/// with different ownership, so one borrow view serves both and a swapped pair cannot compile
+/// (`docs/38-layer-decisions.md`, D16).
+struct ItemColumns<'a> {
     bag_id: Option<i32>,
     slot: Option<i32>,
     file_id: i64,
@@ -540,32 +554,82 @@ async fn insert_row(
     value: i32,
     quantity: i32,
     profession: i32,
-    name: &[i32],
-    modifiers: &[i64],
+    name: &'a [i32],
+    modifiers: &'a [i64],
+}
+
+impl<'a> From<&'a SeedItem> for ItemColumns<'a> {
+    fn from(item: &'a SeedItem) -> Self {
+        ItemColumns {
+            bag_id: item.bag_id,
+            slot: item.slot,
+            file_id: item.file_id,
+            item_type: item.item_type,
+            model_id: item.model_id,
+            dye_tint: item.dye_tint,
+            dye_colors: item.dye_colors,
+            materials: item.materials,
+            unk1: item.unk1,
+            flags: item.flags,
+            value: item.value,
+            quantity: item.quantity,
+            profession: item.profession,
+            name: item.name,
+            modifiers: item.modifiers,
+        }
+    }
+}
+
+impl<'a> From<&'a NewItem> for ItemColumns<'a> {
+    fn from(item: &'a NewItem) -> Self {
+        ItemColumns {
+            bag_id: item.bag_id,
+            slot: item.slot,
+            file_id: item.file_id,
+            item_type: item.item_type,
+            model_id: item.model_id,
+            dye_tint: item.dye_tint,
+            dye_colors: item.dye_colors,
+            materials: item.materials,
+            unk1: item.unk1,
+            flags: item.flags,
+            value: item.value,
+            quantity: item.quantity,
+            profession: item.profession,
+            name: &item.name,
+            modifiers: &item.modifiers,
+        }
+    }
+}
+
+async fn insert_row(
+    tx: &mut PgConnection,
+    character: Uuid,
+    item: ItemColumns<'_>,
 ) -> sqlx::Result<i32> {
     sqlx::query_scalar(
-        "INSERT INTO item (character_id, bag_id, slot, file_id, item_type, model_id, dye_tint,
+        "INSERT INTO t_item (character_id, bag_id, slot, file_id, item_type, model_id, dye_tint,
                            dye_colors, materials, unk1, flags, value, quantity, profession,
                            name, modifiers)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
          RETURNING id",
     )
     .bind(character)
-    .bind(bag_id)
-    .bind(slot)
-    .bind(file_id)
-    .bind(item_type)
-    .bind(model_id)
-    .bind(dye_tint)
-    .bind(dye_colors)
-    .bind(materials)
-    .bind(unk1)
-    .bind(flags)
-    .bind(value)
-    .bind(quantity)
-    .bind(profession)
-    .bind(name.to_vec())
-    .bind(modifiers.to_vec())
+    .bind(item.bag_id)
+    .bind(item.slot)
+    .bind(item.file_id)
+    .bind(item.item_type)
+    .bind(item.model_id)
+    .bind(item.dye_tint)
+    .bind(item.dye_colors)
+    .bind(item.materials)
+    .bind(item.unk1)
+    .bind(item.flags)
+    .bind(item.value)
+    .bind(item.quantity)
+    .bind(item.profession)
+    .bind(item.name.to_vec())
+    .bind(item.modifiers.to_vec())
     .fetch_one(tx)
     .await
 }
@@ -586,7 +650,7 @@ pub async fn seed_default(pool: &PgPool, character: Uuid) -> sqlx::Result<bool> 
     // not both decide it has no bags. The reference cannot hit this (one connection per player); a
     // server that reconnects fast can.
     let exists: Option<Uuid> =
-        sqlx::query_scalar("SELECT id FROM characters WHERE id = $1 FOR UPDATE")
+        sqlx::query_scalar("SELECT id FROM t_characters WHERE id = $1 FOR UPDATE")
             .bind(character)
             .fetch_optional(&mut *tx)
             .await?;
@@ -594,7 +658,7 @@ pub async fn seed_default(pool: &PgPool, character: Uuid) -> sqlx::Result<bool> 
         return Ok(false);
     }
 
-    let bags: i64 = sqlx::query_scalar("SELECT count(*) FROM bag WHERE character_id = $1")
+    let bags: i64 = sqlx::query_scalar("SELECT count(*) FROM t_bag WHERE character_id = $1")
         .bind(character)
         .fetch_one(&mut *tx)
         .await?;
@@ -608,7 +672,7 @@ pub async fn seed_default(pool: &PgPool, character: Uuid) -> sqlx::Result<bool> 
     let mut allocated: Vec<(i32, i32)> = Vec::with_capacity(seed::ITEMS.len());
     for seed in seed::ITEMS {
         let id: i32 = sqlx::query_scalar(
-            "INSERT INTO item (character_id, bag_id, slot, file_id, item_type, model_id, dye_tint,
+            "INSERT INTO t_item (character_id, bag_id, slot, file_id, item_type, model_id, dye_tint,
                                dye_colors, materials, unk1, flags, value, quantity, profession,
                                name, modifiers)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
@@ -639,7 +703,7 @@ pub async fn seed_default(pool: &PgPool, character: Uuid) -> sqlx::Result<bool> 
         let assoc_item_id = bag_own_item(seed, &allocated)?;
 
         sqlx::query(
-            "INSERT INTO bag (character_id, bag_id, bag_model_id, bag_type, slot_count, assoc_item_id)
+            "INSERT INTO t_bag (character_id, bag_id, bag_model_id, bag_type, slot_count, assoc_item_id)
              VALUES ($1, $2, $3, $4, $5, $6)",
         )
         .bind(character)
@@ -692,8 +756,8 @@ pub async fn find_in_carrying_bags(
     item_id: i32,
 ) -> sqlx::Result<Option<Item>> {
     let row: Option<ItemRow> = sqlx::query_as(&format!(
-        "SELECT {} FROM item i
-           JOIN bag b ON b.character_id = i.character_id AND b.bag_id = i.bag_id
+        "SELECT {} FROM t_item i
+           JOIN t_bag b ON b.character_id = i.character_id AND b.bag_id = i.bag_id
           WHERE i.character_id = $1
             AND i.id = $2
             AND b.bag_model_id BETWEEN $3 AND $4",
@@ -740,7 +804,7 @@ pub async fn take_from_stack(
 
     let mut tx = pool.begin().await?;
     let row: Option<ItemRow> = sqlx::query_as(&format!(
-        "SELECT {ITEM_COLUMNS} FROM item WHERE character_id = $1 AND id = $2 FOR UPDATE"
+        "SELECT {ITEM_COLUMNS} FROM t_item WHERE character_id = $1 AND id = $2 FOR UPDATE"
     ))
     .bind(character)
     .bind(item_id)
@@ -756,13 +820,13 @@ pub async fn take_from_stack(
 
     let remaining = item.quantity - count;
     if remaining == 0 {
-        sqlx::query("DELETE FROM item WHERE character_id = $1 AND id = $2")
+        sqlx::query("DELETE FROM t_item WHERE character_id = $1 AND id = $2")
             .bind(character)
             .bind(item_id)
             .execute(&mut *tx)
             .await?;
     } else {
-        sqlx::query("UPDATE item SET quantity = $3 WHERE character_id = $1 AND id = $2")
+        sqlx::query("UPDATE t_item SET quantity = $3 WHERE character_id = $1 AND id = $2")
             .bind(character)
             .bind(item_id)
             .bind(remaining)
@@ -793,12 +857,27 @@ pub enum Refused {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MoveOutcome {
     /// It is now at `(bag_id, slot)`.
-    At { item: Item, bag_id: i32, slot: i32 },
+    At {
+        /// The item, with its new place filled in.
+        item: Item,
+        /// Where it now sits.
+        bag_id: i32,
+        /// Which slot of that bag.
+        slot: i32,
+    },
     /// It was already there; nothing was written.
-    Unchanged { item: Item },
+    Unchanged {
+        /// The item, exactly as it was.
+        item: Item,
+    },
     /// Nothing happened, and `item` is where it actually is - a caller uses that to put the client's
     /// own model back, because the client moves the item optimistically before it asks.
-    Refused { item: Option<Item>, reason: Refused },
+    Refused {
+        /// The item where it really is, when the character still has it.
+        item: Option<Item>,
+        /// Why the move did not happen.
+        reason: Refused,
+    },
 }
 
 /// Move an item to a slot in one of its character's bags.
@@ -815,7 +894,7 @@ pub async fn move_item(
 ) -> sqlx::Result<MoveOutcome> {
     let mut tx = pool.begin().await?;
     let row: Option<ItemRow> = sqlx::query_as(&format!(
-        "SELECT {ITEM_COLUMNS} FROM item WHERE character_id = $1 AND id = $2 FOR UPDATE"
+        "SELECT {ITEM_COLUMNS} FROM t_item WHERE character_id = $1 AND id = $2 FOR UPDATE"
     ))
     .bind(character)
     .bind(item_id)
@@ -839,7 +918,7 @@ pub async fn move_item(
     }
 
     let bag: Option<(i32,)> =
-        sqlx::query_as("SELECT slot_count FROM bag WHERE character_id = $1 AND bag_id = $2")
+        sqlx::query_as("SELECT slot_count FROM t_bag WHERE character_id = $1 AND bag_id = $2")
             .bind(character)
             .bind(bag_id)
             .fetch_optional(&mut *tx)
@@ -858,7 +937,7 @@ pub async fn move_item(
     }
 
     let occupant: Option<i32> = sqlx::query_scalar(
-        "SELECT id FROM item
+        "SELECT id FROM t_item
           WHERE character_id = $1 AND bag_id = $2 AND slot = $3 AND id <> $4",
     )
     .bind(character)
@@ -874,7 +953,7 @@ pub async fn move_item(
         });
     }
 
-    sqlx::query("UPDATE item SET bag_id = $3, slot = $4 WHERE character_id = $1 AND id = $2")
+    sqlx::query("UPDATE t_item SET bag_id = $3, slot = $4 WHERE character_id = $1 AND id = $2")
         .bind(character)
         .bind(item_id)
         .bind(bag_id)
@@ -905,12 +984,12 @@ pub async fn first_free_carrying_slot(
 ) -> sqlx::Result<Option<(i32, i32)>> {
     let row: Option<(i32, i32)> = sqlx::query_as(
         "SELECT b.bag_id, free.slot
-           FROM bag b
+           FROM t_bag b
            CROSS JOIN LATERAL generate_series(0, b.slot_count - 1) AS free(slot)
           WHERE b.character_id = $1
             AND b.bag_model_id BETWEEN $2 AND $3
             AND NOT EXISTS (
-                SELECT 1 FROM item i
+                SELECT 1 FROM t_item i
                  WHERE i.character_id = b.character_id
                    AND i.bag_id = b.bag_id
                    AND i.slot = free.slot

@@ -70,7 +70,7 @@ that nobody reads the table above as more than it says:
   (`crates/asura-world/src/default_equipment.rs`);
 - **the game connection's front door** is a byte-copy router; the reference hands the socket
   itself to the game server, which needs one process and is not what this does
-  (`crates/asura-auth/src/frontdoor.rs`).
+  (`crates/asura-gateway/src/relay.rs`).
 
 ## Chat and chat commands, command by command
 

@@ -256,7 +256,9 @@ The server half of the experiment is pinned by
 `a_connection_to_an_unhosted_map_is_loaded_on_demand` and
 `a_travel_to_an_unhosted_map_is_loaded_on_demand` (`crates/asura-world/tests/load.rs`): the
 connection or transfer names the unhosted map, its entry and pool row appear when it is demanded,
-and the client lands in the destination's own configured spawn point.
+and the client lands on the destination's own spawn data - a random point of its spawn list for an
+outpost, the catalogue row's coordinate when the pack states no list (`docs/22-world-model.md`,
+"Spawn points, and the outpost rule").
 
 ### 5d. Path graphs without `Gw.dat` (the dump)
 
@@ -432,11 +434,14 @@ outpost into an explorable and the crossing contained **no client message at all
 
 Zero `0x00C1` in that file. So the world is what decides that the player reached a portal and sends the
 same eight-message stream `/tp` and the world map produce (`docs/03` 5f, the eight messages below). The
-implementation therefore has a **portal table**: for each instance, the travel portals' positions and
-which instance each leads to - read from the instance's own props, which is where the client draws them
-from (`crates/asura-world/src/portals.rs`, generated from `data/portals.json`; `docs/22-world-model.md`,
-answer 3). A doorway a walk reaches fires the crossing; the `0x80C1` arm still names the touch and starts
-nothing (`crates/asura-world/src/travel.rs:154-166`).
+implementation therefore has a **doorway table**: where a map's doors are, which instance each leads to,
+and where a character arriving through one stands. The table is the pack's `portals.json` files - `arches`
+state the wall as its two endpoints, `arrivals` the point and facing per map arrived from - and the
+measured tables (`crates/asura-world/src/portals.rs`, generated from `data/portals.json`, plus the
+`map_portal` rows) answer for a map the pack does not describe. A crossing fires when the step from the
+last believed position to this one passes **through** a wall (`crates/asura-world/src/travel.rs`,
+`portal_crossed`); a point-shaped doorway still counts within `REACH`. The `0x80C1` arm still names the
+touch and starts nothing (`crates/asura-world/src/travel.rs`).
 
 The `0x00C1` messages seen in `captures/zone-ref2-012225.jsonl` are therefore **not** the crossing; they
 are the client asking about instances, and what they are owed is still open.
@@ -570,10 +575,58 @@ environment variable.
 
 ## 7. File check
 
-The client also asks a file service whether a file is current: a 21-byte request answered with 32
-bytes. GWPS answers it correctly when it receives it (`AuthSrv_TryHandleFileCheck`), and this auth
-service does too: it consumes the request and writes the 32-byte response before the version message
-(`crates/asura-auth/src/lib.rs:239-242`, `filecheck::FILE_CHECK_RESPONSE`).
+The client asks which game files it should have: a 21-byte request answered with 32 bytes. Two runs on
+2026-10-25 answered this, and the pair is what the socket layer implements
+(`crates/asura-gateway/src/lib.rs`, step 0 of `handle_connection`).
+
+**On the wire.** Captured with `pktmon` filtered to port 6112 and decoded by the run's own pcap parser:
+one request, one reply, and the request is the first thing on that socket - nothing precedes it and no
+handshake is possible before it. The reply's seven words are six `Gw.dat` file ids in tight consecutive
+order with a zero among them, so the question is *which files*, not a transfer. The client treats a
+failure here as fatal: with those addresses made unreachable it refused with "Guild Wars is unable to
+connect to the ArenaNet network". The captured ids are `391339 391348 344988 391350 391351 0 391349`;
+the reference's own literal is `0x100` lower on every id that differs (`client/filecheck.rs`).
+
+**Against a server of ours.** With hosts entries for the six file names, one check arrived on loopback
+and was answered - "File check on 0114: answered 32 of 32 bytes" in that run's log.
+
+**What that does not settle.** The file-check address is the client's own choice. It builds and
+resolves the file-server names itself, and some of those lookups ignore the hosts file - after flushing
+the DNS cache, entries for two of the names reappeared though both were in the file - so the check
+reaches our port only when the machine's name resolution sends it there. In the default open mode the
+client asks ArenaNet and our handler never fires: that is why it is written as a loop that may run zero
+times. A follow-up of four bytes (`F1 0F 04 00`, header `0x40FF1`) comes after the check on that socket;
+the reference does not answer it and the client tolerates the silence.
+
+**The seven words are a client-build fact, so this server needs the running client's version.** They are
+file ids in the archive the client loaded, so a new client build brings a new set: the reference's
+literal and the captured set differ by `0x100` on every id, which is what a rebuild looks like. A server
+that answers with another build's ids is answering a question the client did not ask. Nothing here
+prevents that from being harmless in practice - and nothing shows that it is, either: the one run in
+which a server of ours answered had its other file sockets still going to ArenaNet, so the client may
+have been answered elsewhere and never compared ours. What *is* measured is the opposite failure, no
+answer at all, and that one is fatal. Until a mismatch is measured one way or the other, treat the set
+as required and keep it current.
+
+Getting the current set is a measurement, not a guess, and there are three routes:
+
+1. **Capture the answer the client accepts.** `pktmon` filtered to port 6112, one login in open mode,
+   then decode the pcap. This is how the captured set above was obtained, and it is exact by definition -
+   it is the bytes the running client was answered with. It repeats once per client build. The pcap
+   decoder used then lived outside this tree; `docs/19-running.md` ("Refreshing the file check's seven
+   words") has the commands that need no decoder, and what to record beside the set.
+2. **Check a set against the archive.** `crates/asura-world/src/gwdat.rs` reads `Gw.dat`'s file table, so
+   a set can be confirmed present with sensible sizes before it is trusted. It cannot invent the set:
+   which six files are named is the protocol's rule, not the archive's ordering.
+3. **Read the set out of the running client.** Py4GW Stealth reads the client through its own image and
+   archive code, which is the way to ask a running client what it expects without touching the network.
+   Not done here yet, and `tools/sniff-capture.py` will not show it: the sniffer records framed messages
+   at the client's handler table, and this request is a bare blob outside that table.
+
+Ghidra answers a different question and is worth it only for that one: what the client actually
+compares - the whole 21-byte request, the reply's header and length, or the ids as well - and what it
+does when they differ. The ids themselves are not in the code; they come from the archive the client
+loaded.
 
 ## 8. Coordination between programs: the database, not a protocol
 
@@ -642,7 +695,7 @@ After `AUTH_SMSG_GAME_SERVER_INFO` the client opens a **second** connection, to 
 was launched with, and presents the tokens it was issued. The reference names its own address in that
 message, which is why it never noticed; a client handed a *different* address still dials the launch
 address (measured, build 39112), so ASURA's front door relays that connection to the world
-(`crates/asura-auth/src/frontdoor.rs`). Everything below is measured from the reference: the
+(`crates/asura-gateway/src/relay.rs`). Everything below is measured from the reference: the
 message layouts from its packed structs (`GameMsg.h`), the sizes from its own send log, and the order
 from the functions named beside each step.
 
@@ -695,6 +748,39 @@ character is refused.
 
 `LOAD_INFO` is `{agent, map_id(u16), is_explorable(u8), district(u32), language(u8), is_observer(u8),
 unk(u8)}`. The reference hardcodes `is_explorable = 1` with the comment `// what to put here?`.
+
+### 11.3a The order, as this server sends it, and the capture that shows it
+
+The block goes out unasked the moment the world has the connection, and the order inside it is a rule,
+not an accident: a client that receives the same messages in another order stops at the loading screen.
+Written down here because it lived only in `crates/asura-world/src/map.rs` (`load_block`), and the box in
+`docs/37-rework-layers.md` (layer 7) asked for exactly this.
+
+| # | message | header | what it carries |
+|---|---|---|---|
+| 1 | `INSTANCE_LOAD_HEAD` | `0x017C` | the load begins |
+| 2 | `INSTANCE_PLAYER_DATA_START` | `0x0186` | the player-data block opens |
+| 3 | `INSTANCE_LOAD_PLAYER_NAME` | `0x017D` | the character's name |
+| 4 | `INSTANCE_LOAD_INFO` | `0x019A` | agent, map id, is-explorable, district, language, observer |
+| 5 | `MAP_INIT_START`, `CARTOGRAPHY_DATA` | `0x008A`... | the exploration grid, once per instance |
+| 6 | `INSTANCE_TABLE` batches | `0x01A0` | the instances that exist, in the batches a live server sends |
+
+Then the world tick (`0x001E`) and the ping (`0x000C`, `0x000D`) join in, and the client's three requests
+are answered in the order they arrive - items (`0x8091`), spawn (`0x8088`), players (`0x8090`) - which is
+section 11.4 below. The item stream ends with the six-message download manifest
+(`GameSrv_SendDownloadManifest`), whose first `DONE` carries the `MapId_Count` sentinel 877 and whose
+second carries the map itself.
+
+**The capture that shows the head of that order:** `recordings/asura/world/live-client-session-20261027-222641.jsonl`,
+the first 24 server-to-client messages, recorded by `asura-world --capture` on a live client:
+
+```text
+017C 0186 017D 019A 001E 000C 001E 001E 000D 0144 0148 0161 013F 0161 013E 013F 013F 013F 013F 013F 0161 015A 013E 0161
+```
+
+The client survived that order (the session continues past it in the same file), which is what makes it
+the order to send. Its counts per load - 538 messages for map 166, one `0x017C` and one `0x019A` each -
+are in `recordings/asura/world/load-layers-20261031.jsonl`.
 
 ### 11.4 The three things the client asks for
 
@@ -836,17 +922,22 @@ message a working drop needs is a measurement this project does not have yet.
 
 `GAME_CMSG_SEND_CHAT_MESSAGE` (`0x8064`) is `{agent_id u32, text String16}`; the first unit of the text is
 the channel: `!` all, `#` group, `$` trade, `/` a command, and `@`/`%`/`"` are dropped, as the reference
-drops them. A player's line is answered with two messages - `CHAT_MESSAGE_CORE` (`0x005D`) carrying the text
-and `CHAT_MESSAGE_LOCAL` (`0x0061`, speaker and channel) - and that pair is **sent**, exactly as the
-reference sends it: `GmChat.c:259-277` is not behind the reference's chat switch.
+drops them. A player's line is a **coded string**, not plain text: `CHAT_MESSAGE_CORE` (`0x005D`) carries
+the body wrapper `0x0108`, the literal-start marker `0x0107`, the typed units with anything below `0x20`
+removed, and the literal-end marker `0x0001`, in fragments of at most 121 units. `CHAT_MESSAGE_LOCAL`
+(`0x0061`) then commits it: a `u16` speaker and a `u8` channel, **5 bytes**. That pair is **sent**, exactly
+as the reference sends it: `GmChat.c:259-277` is not behind the reference's chat switch.
+
+`GAME_SMSG_CHAT_MESSAGE_SERVER` (`0x005E`) has the same 5-byte shape, with the subject player and channel.
+The generated table's two-dword form for both was read as 5 bytes plus the start of another message, and
+the client dropped the connection right after the line rendered. Plain text in `0x005D` hits the client's
+coded-string assert instead.
 
 The answers the *server* generates are the other half, and they are printed, not sent. Every GM answer and
 every "unknown command" in the reference funnels through `GameSrv_SendSystemChatMessage` or
 `GameSrv_SendInvalidCommand`, and both return before touching the wire unless `GWPS_CHAT=1`
 (`GmChat.c:150-153`, `GmChat.c:209-212`). So the reference's `/maps` answer is a log line; this server's
-`/maps` answer is a console line; neither puts a byte on the wire. That is parity, not a switch. No chat text
-has ever reached a screen in either server, and sending it here crashed a live client - `0x005D`, `0x005E`
-and `0x0061` appear in no capture, so the layouts are guesses.
+`/maps` answer is a console line; neither puts a byte on the wire. That is parity, not a switch.
 
 Nothing in this build is behind a switch (#11). The split above is what the reference does, not what this
 server enables: a spoken line goes out; a generated answer is printed.

@@ -45,6 +45,9 @@ Worth stating plainly, because it makes most questions answerable by looking at 
 | AzerothCore | ASURA | note |
 |---|---|---|
 | `authserver` | auth service (`asura-auth`) | login, realm list, session key |
+| `authserver`'s accept loop and `AuthSession` state machine | socket layer (`asura-gateway`) | one listener takes both client connections: the login one and, after `GAME_SERVER_INFO`, the gameplay one - `docs/02-architecture.md`, `docs/38-layer-decisions.md` D26 |
+| `AuthSession::HandleSubsystemPacket` / `_HandleLogonChallenge` | the auth conversation, called by the socket layer | the socket layer decides *who answers*, never *what is said* |
+| `SocketHandle` passed to the world over `WorldSocket` | a second connection dialled to the world, bytes copied both ways | a deliberate deviation, below |
 | `worldserver` (a *realm*) | world server (`asura-world`) | hosts maps and instances |
 | `realmlist` table + realm flags | `world` registry + `world_pool` | self-registration in the database |
 | Login / Character / World databases | `auth` / `game` / `content` | separate pools per domain |
@@ -52,6 +55,17 @@ Worth stating plainly, because it makes most questions answerable by looking at 
 | `MapInstancer` / `MapUpdater` | instance manager + update-thread pool | prebuilt pools instead of on-demand *only if the experiment says so* |
 | SRP6 world auth + session key | DH + ARC4 + player token | protocol differs; the handoff model is theirs |
 | `.conf` files | configuration in the database and env | their structure, our delivery |
+
+### The one deviation these rows show
+
+AzerothCore hands a gameplay connection from `authserver` to `worldserver` over its control channel,
+which passes the socket handle. ASURA copies bytes between two sockets instead, because a handle cannot
+cross a process boundary cleanly here (`crates/asura-gateway/src/relay.rs`). Three things follow, and none
+of them is a second architecture. The client sees the reference's sequence, because the address it was
+launched with is the one that answers both its connections. The world sees a client that dialled it
+directly, so it knows nothing about the socket layer. And the transfer stays claimed by the world: the
+token pair and the character are checked there, so the socket layer routes and never authorises
+(`docs/38-layer-decisions.md` D26).
 
 ## Why this rule is worth adopting rather than debating
 

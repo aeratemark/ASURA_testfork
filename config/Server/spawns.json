@@ -1,0 +1,6 @@
+{
+  "spawn_scatter": {
+    "value": 250.0,
+    "doc": "How far, in map units, a character lands from the spawn point it entered at: a random point inside a circle of this radius, on that point's plane, so arrivals into an outpost are spread over the area instead of stacking on one spot. An outpost arrival first takes a random point of the map's own spawn list (the pack's spawns.json), then this circle decides where in it the character stands. Zero puts every arrival exactly on the point's coordinate."
+  }
+}

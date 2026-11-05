@@ -41,10 +41,11 @@ use std::time::{Duration, Instant};
 
 // The crate's externals, re-exported at crate visibility so a domain file's `use crate::*;`
 // reaches them the same way it reaches the domains themselves.
+pub use asura_db::cartography as db_cartography;
 pub use asura_db::game as db_game;
 pub use asura_db::inventory::{self as db_inventory, Inventory};
 pub use asura_db::{placement, PgPool, Uuid};
-pub use asura_protocol::client::game::GameVersion;
+pub use asura_protocol::client::game_version::GameVersion;
 pub use asura_protocol::client::handshake;
 pub use asura_protocol::client::handshake::{Established, CLIENT_SEED_LEN, MASTER_SECRET_LEN};
 pub use asura_protocol::client::version;
@@ -65,22 +66,45 @@ pub use tokio::net::{TcpListener, TcpStream};
 // module.
 // -------------------------------------------------------------------------------------------
 
+/// The map catalogue: one entry per map, and the questions a server answers about it.
+pub mod catalogue;
+/// What a new character is given, from the world pack (`config/World/Vanilla/`).
+pub mod character_defaults;
 pub mod chat;
 pub mod connection;
+
 pub mod creation;
 pub mod dispatch;
 pub mod instance;
 pub mod item;
+
+/// The client's instance table: the destinations a load tells the client exist (data, D36).
+pub mod instance_table;
+
 pub mod map;
+
+/// The spawn points a map carries, read from the world pack (`config/World/<pack>/.../spawns.json`).
+pub mod map_spawns;
+
 pub mod player;
+/// The client's unlockable-PvP-item table: content of this layer, moved out of the wire crate
+/// (`docs/38-layer-decisions.md`, D11).
+pub mod pvp_items;
+/// Where a created character is spawned, by its expansion source (config/World/Vanilla/).
+pub mod spawns;
 pub mod travel;
 pub mod world;
 
+pub use catalogue::*;
 pub use connection::*;
 pub use creation::*;
 pub use instance::*;
 pub use item::*;
 pub use map::*;
+
+/// The graph API, as the world's start-up and its tests name it: PathGraphs and the two helpers that
+/// import one from an archive.
+pub use pathfind::{find_path_blob, import_graph, PathGraphs};
 pub use player::*;
 pub use travel::*;
 pub use world::*;
@@ -104,10 +128,27 @@ pub mod graph_dump;
 
 /// A server-side packet capture: every game message both ways, plaintext JSONL, for diagnosing a
 /// live session without an injected client (`--capture` / `ASURA_CAPTURE`).
+///
+/// Behind the `harness` feature: a measuring instrument is not part of answering a client
+/// (`docs/38-layer-decisions.md`, D32). Without the feature, [`harness_off`] answers with an inert
+/// module of the same shape, so no call site needs to know which build it is in.
+#[cfg(feature = "harness")]
 pub mod capture;
 
-/// Replaying the reference's captured stream, for bisection (ASURA_WORLD_REPLAY).
+/// Replaying the reference's captured stream, for bisection (ASURA_WORLD_REPLAY). Harness-only, like the
+/// capture above.
+#[cfg(feature = "harness")]
 pub mod replay;
+
+/// The inert answer to `capture` and `replay` in a build without the `harness` feature.
+#[cfg(not(feature = "harness"))]
+#[path = "harness_off.rs"]
+mod harness_off;
+
+/// Both instruments as the serving build sees them: an installation that refuses, and a replay that never
+/// replaces anything.
+#[cfg(not(feature = "harness"))]
+pub use harness_off::{capture, replay};
 
 /// The `Gw.dat` archive's index: the reference's `FaArchive.c`, ported far enough to find a file id and
 /// say where its bytes are. The decompressor is the other half and is not here yet (docs/10-parity-queue.md,
@@ -260,6 +301,7 @@ mod tests {
             map_type: 0,
             spawn: (6602.0, 4485.0),
             spawn_plane: 0,
+            spawns: Vec::new(),
             name: "Lakeside County".to_string(),
             capacity: 8,
         }
@@ -268,10 +310,11 @@ mod tests {
     #[test]
     fn the_tick_and_ping_intervals_are_the_references() {
         // The ping is the reference's own constant; the tick cadence is the measured 100 ms (the frame is
-        // the reference's 6-byte form either way).
-        assert_eq!(TICK_INTERVAL, Duration::from_millis(100));
-        assert_eq!(PING_INTERVAL, Duration::from_secs(5));
-        assert_eq!(PING_VALUE, 20);
+        // the reference's 6-byte form either way). Both now arrive from `config/Server/intervals.json`
+        // (`asura_config`, D33), whose own test pins the file to those defaults.
+        assert_eq!(connection::tick_interval(), Duration::from_millis(100));
+        assert_eq!(connection::ping_interval(), Duration::from_secs(5));
+        assert_eq!(connection::ping_value(), 20);
     }
 
     #[test]
@@ -371,7 +414,7 @@ mod tests {
     fn the_block_sends_the_characters_own_appearance_not_the_default() {
         // The reference's load block carries whatever `HandleCharCreationConfirm` stored
         // (`GameSrv.c:1869-1886`). Before the traits existed this server sent
-        // `Appearance::REFERENCE_DEFAULT` to everyone, so every character looked the same.
+        // one default appearance to everyone, so every character looked the same.
         let map = test_map();
         let standing = Standing::from_map(&map);
         let inventory = db_inventory::default_inventory();
@@ -384,16 +427,16 @@ mod tests {
             secondary_profession: 0,
             level: 1,
         };
-        let frames = player_block(
-            "Asura",
+        let frames = player_block(&PlayerBlock {
+            name: "Asura",
             standing,
-            &inventory,
-            Instant::now(),
-            PLAYER_ID,
-            AGENT_ID,
+            inventory: &inventory,
+            started: Instant::now(),
+            player_id: PLAYER_ID,
+            agent_id: AGENT_ID,
             traits,
-            crate::map::UNLOCKED_MAP_ZEROS,
-        );
+            unlocked: crate::player::UNLOCKED_MAP_ZEROS,
+        });
         let created = frames
             .iter()
             .find(|frame| frame.header() == game::PLAYER_CREATE)
@@ -411,16 +454,16 @@ mod tests {
 
         // A character with no bits recorded still gets the reference's default, because all-zero bits say
         // `Profession_None` and the client cannot draw that.
-        let fallback = player_block(
-            "Asura",
+        let fallback = player_block(&PlayerBlock {
+            name: "Asura",
             standing,
-            &inventory,
-            Instant::now(),
-            PLAYER_ID,
-            AGENT_ID,
-            db_game::Traits::default(),
-            crate::map::UNLOCKED_MAP_ZEROS,
-        );
+            inventory: &inventory,
+            started: Instant::now(),
+            player_id: PLAYER_ID,
+            agent_id: AGENT_ID,
+            traits: db_game::Traits::default(),
+            unlocked: crate::player::UNLOCKED_MAP_ZEROS,
+        });
         let created = fallback
             .iter()
             .find(|frame| frame.header() == game::PLAYER_CREATE)
@@ -432,23 +475,26 @@ mod tests {
                 created.body()[10],
                 created.body()[11]
             ]),
-            game::Appearance::REFERENCE_DEFAULT.pack(),
-            "an unrecorded appearance falls back to the reference's default"
+            crate::character_defaults::current()
+                .expect("the committed character defaults")
+                .appearance()
+                .pack(),
+            "an unrecorded appearance falls back to the configured default"
         );
     }
 
     #[test]
     fn the_block_ends_with_the_message_that_leaves_the_loading_screen() {
-        let frames = player_block(
-            "Asura",
-            Standing::from_map(&test_map()),
-            &db_inventory::default_inventory(),
-            Instant::now(),
-            PLAYER_ID,
-            AGENT_ID,
-            db_game::Traits::default(),
-            crate::map::UNLOCKED_MAP_ZEROS,
-        );
+        let frames = player_block(&PlayerBlock {
+            name: "Asura",
+            standing: Standing::from_map(&test_map()),
+            inventory: &db_inventory::default_inventory(),
+            started: Instant::now(),
+            player_id: PLAYER_ID,
+            agent_id: AGENT_ID,
+            traits: db_game::Traits::default(),
+            unlocked: crate::player::UNLOCKED_MAP_ZEROS,
+        });
         assert_eq!(
             frames.last().expect("a block").header(),
             game::INSTANCE_LOAD_FINISH
@@ -467,7 +513,12 @@ mod tests {
 
     #[test]
     fn the_load_block_carries_the_exploration_grid_after_the_instance_info() {
-        let frames = load_block(&test_map(), "Asura", AGENT_ID);
+        let frames = load_block(
+            &test_map(),
+            "Asura",
+            AGENT_ID,
+            &cartography::Grid::empty(cartography::TYRIA),
+        );
         let info = frames
             .iter()
             .position(|frame| frame.header() == game::INSTANCE_LOAD_INFO)
@@ -517,11 +568,11 @@ mod tests {
     /// "everywhere is locked" or "the wrong instance is open".
     #[test]
     fn the_unlock_bitmap_puts_each_instance_at_the_bit_the_client_reads() {
-        let bitmap = map::unlock_bitmap(&[148, 145, 0, 991, 992, -1]);
+        let bitmap = player::unlock_bitmap(&[148, 145, 0, 991, 992, -1]);
 
         assert_eq!(
             bitmap.len(),
-            map::UNLOCKED_MAP_ZEROS.len(),
+            player::UNLOCKED_MAP_ZEROS.len(),
             "31 words: the width the reference sends, and instances 0 to 991"
         );
         // 145 and 148 share word 4, so each bit is asked for on its own rather than the whole word.
@@ -548,65 +599,37 @@ mod tests {
         );
     }
 
-    /// The instance table the client is given: the batches a live load carried, each framed at the row's
-    /// own layout (a `u8` count then `{u16 instance, u32 value}` pairs), and the same walker that frames
-    /// a client message consumes exactly the bytes the builder wrote.
     #[test]
-    fn the_instance_table_carries_what_the_capture_holds_and_frames_as_its_row_says() {
-        let batches: usize = game::instance_table::INSTANCE_TABLE.len();
-        assert_eq!(batches, 10, "the live load carried ten of these");
+    fn the_instance_table_is_walked_from_the_pack_and_framed_by_the_wire_layer() {
+        // The pairs are the pack's map folders (`instance_table`, `docs/38` D36): 137 maps, ordered by
+        // id, framed as `0x01A0` batches of at most fifteen.
+        let (table, notes) = crate::instance_table::table_for(&crate::instance_table::pack());
+        assert!(notes.is_empty(), "the committed pack parses: {notes:?}");
+        assert_eq!(table.pairs.len(), 137, "the maps the recording named");
+        assert!(table.pairs.contains(&(148, 0xBB14_F539)));
 
-        let pairs: usize = game::instance_table::INSTANCE_TABLE
-            .iter()
-            .map(|batch| batch.len())
-            .sum();
-        assert_eq!(
-            pairs, 137,
-            "137 of the live table's 147 pairs: every recorded message was four bytes short, and the \
-             ten values that were cut are absent rather than invented"
-        );
-        assert_eq!(
-            game::instance_table::INSTANCE_TABLE[0][0],
-            (148, 0xBB14_F539),
-            "the first pair is the instance the capture was taken in"
-        );
-
-        for batch in game::instance_table::INSTANCE_TABLE {
-            let frame = game::instance_table(batch);
-            let bytes = frame.encode();
+        let frames = table.frames();
+        assert_eq!(frames.len(), 10, "137 pairs in batches of fifteen");
+        for frame in &frames {
             assert_eq!(
-                bytes.len(),
-                2 + 1 + batch.len() * 6,
-                "a u8 count then {} pairs",
-                batch.len()
-            );
-            assert_eq!(
-                bytes[2] as usize,
-                batch.len(),
-                "the count is the number of pairs"
-            );
-            let (_, used) =
-                Frame::decode_game_message(&bytes, false).expect("the walker frames the table");
-            assert_eq!(
-                used,
-                bytes.len(),
-                "the row's layout and the builder agree byte for byte"
+                frame.header(),
+                crate::game::INSTANCE_TABLE,
+                "the table's own header"
             );
         }
     }
-
     #[test]
     fn the_player_block_carries_the_name_in_the_two_messages_that_name_a_character() {
-        let frames = player_block(
-            "Asura",
-            Standing::from_map(&test_map()),
-            &db_inventory::default_inventory(),
-            Instant::now(),
-            PLAYER_ID,
-            AGENT_ID,
-            db_game::Traits::default(),
-            crate::map::UNLOCKED_MAP_ZEROS,
-        );
+        let frames = player_block(&PlayerBlock {
+            name: "Asura",
+            standing: Standing::from_map(&test_map()),
+            inventory: &db_inventory::default_inventory(),
+            started: Instant::now(),
+            player_id: PLAYER_ID,
+            agent_id: AGENT_ID,
+            traits: db_game::Traits::default(),
+            unlocked: crate::player::UNLOCKED_MAP_ZEROS,
+        });
         let named: Vec<u16> = frames
             .iter()
             .filter(|frame| {
@@ -697,7 +720,8 @@ mod tests {
             Standing::resume(&map, Some(saved)),
             Standing {
                 position: (6700.0, 4400.0),
-                plane: 3
+                plane: 3,
+                direction: (1.0, 0.0)
             }
         );
 
@@ -716,11 +740,185 @@ mod tests {
     }
 
     #[test]
+    fn an_outpost_is_entered_at_a_random_point_of_its_own_spawn_list() {
+        let mut map = test_map();
+        // Far enough apart that the 250-unit scatter cannot reach from one to the other.
+        map.spawns = vec![
+            crate::map_spawns::MapSpawn {
+                idx: 0,
+                x: 0.0,
+                y: 0.0,
+                plane: 0,
+                angle: Some(0.0),
+            },
+            crate::map_spawns::MapSpawn {
+                idx: 1,
+                x: 1000.0,
+                y: 0.0,
+                plane: 0,
+                angle: Some(std::f32::consts::PI),
+            },
+        ];
+        // A saved position from the same map is ignored: a travel never resumes one.
+        let saved = db_game::Position {
+            map_id: map.map_id,
+            x: 9.0,
+            y: 9.0,
+            plane: 0,
+        };
+        let mut seen = [false; 2];
+        for _ in 0..64 {
+            let standing = Standing::arrival(&map, Some(saved)).expect("a spawn point");
+            let from_first = standing.position.0.hypot(standing.position.1);
+            let from_second = (standing.position.0 - 1000.0).hypot(standing.position.1);
+            if from_first <= crate::spawn_scatter() + 0.5 {
+                seen[0] = true;
+                assert_eq!(standing.direction, (1.0, 0.0), "the point's own angle");
+            } else if from_second <= crate::spawn_scatter() + 0.5 {
+                seen[1] = true;
+                assert!(
+                    standing.direction.1.abs() < 1e-6
+                        && (standing.direction.0 + 1.0).abs() < 1e-6,
+                    "half a turn faces -x: {:?}",
+                    standing.direction
+                );
+            } else {
+                panic!(
+                    "entered at {:?}, which is not inside either point's scatter circle",
+                    standing.position
+                );
+            }
+        }
+        assert!(
+            seen[0] && seen[1],
+            "both points of the list are reachable: {seen:?}"
+        );
+    }
+
+    #[test]
+    fn a_doorway_arrival_is_placed_where_the_receiving_map_states_it() {
+        // The pack states, for 148, where a character arriving from another map stands and faces. A
+        // saved position equal to that point is that arrival, and it wins over the outpost's random
+        // spawn (an outpost's *other* entries are a random point of its spawn list).
+        let Some(arrival) = crate::portals::table_pack()
+            .get(&148)
+            .and_then(|map| map.arrivals.first())
+            .copied()
+        else {
+            panic!("the committed pack states an arrival for Ascalon City");
+        };
+        let mut map = test_map();
+        map.map_id = 148;
+        map.spawns = vec![crate::map_spawns::MapSpawn {
+            idx: 0,
+            x: 1.0,
+            y: 2.0,
+            plane: 0,
+            angle: None,
+        }];
+        let saved = db_game::Position {
+            map_id: 148,
+            x: arrival.x,
+            y: arrival.y,
+            plane: 0,
+        };
+        let standing = Standing::arrival(&map, Some(saved)).expect("an arrival");
+        assert_eq!(
+            standing.position,
+            (arrival.x, arrival.y),
+            "the stated arrival point, not a random spawn"
+        );
+        assert_eq!(
+            standing.direction,
+            arrival.direction(),
+            "facing the arrival's own angle"
+        );
+    }
+
+    #[test]
+    fn an_outpost_without_a_list_and_every_other_map_keep_the_persistence_rule() {
+        let saved = db_game::Position {
+            map_id: 146,
+            x: 6700.0,
+            y: 4400.0,
+            plane: 0,
+        };
+        // An outpost the pack states no list for: the old answer, the saved position.
+        let outpost = test_map();
+        assert_eq!(
+            Standing::arrival(&outpost, Some(saved)).expect("a standing"),
+            Standing::resume(&outpost, Some(saved)),
+            "nothing to randomise from"
+        );
+
+        // An explorable with a list is not randomised either: its arrival is the doorway's landing,
+        // which arrives as the saved position, or the map's own spawn.
+        let mut explorable = test_map();
+        explorable.map_type = 1;
+        explorable.spawns = outpost_list();
+        assert_eq!(
+            Standing::arrival(&explorable, Some(saved)).expect("a standing"),
+            Standing::resume(&explorable, Some(saved)),
+            "an explorable keeps where it left"
+        );
+    }
+
+    fn outpost_list() -> Vec<crate::map_spawns::MapSpawn> {
+        vec![crate::map_spawns::MapSpawn {
+            idx: 0,
+            x: 1.0,
+            y: 2.0,
+            plane: 0,
+            angle: None,
+        }]
+    }
+
+    #[test]
+    fn the_spawn_points_angle_is_what_the_agent_is_created_facing() {
+        // A spawn entry that states an angle arrives as the direction the agent is created with
+        // (`0x0020`, direction x then y), not the default (1, 0) the world used to always send.
+        let standing = Standing {
+            position: (1.0, 2.0),
+            plane: 0,
+            direction: (0.0, 1.0),
+        };
+        let inventory = db_inventory::default_inventory();
+        let frames = player_block(&PlayerBlock {
+            name: "Asura",
+            standing,
+            inventory: &inventory,
+            started: Instant::now(),
+            player_id: PLAYER_ID,
+            agent_id: AGENT_ID,
+            traits: db_game::Traits::default(),
+            unlocked: crate::player::UNLOCKED_MAP_ZEROS,
+        });
+        let agent = frames
+            .iter()
+            .find(|frame| frame.header() == game::WORLD_CREATE_AGENT)
+            .expect("an agent");
+        let float_at = |at: usize| {
+            f32::from_le_bytes([
+                agent.body()[at],
+                agent.body()[at + 1],
+                agent.body()[at + 2],
+                agent.body()[at + 3],
+            ])
+        };
+        assert_eq!(
+            (float_at(20), float_at(24)),
+            (0.0, 1.0),
+            "the spawn point's facing, not the default"
+        );
+    }
+
+    #[test]
     fn the_spawn_point_is_the_standing_position() {
         let map = test_map();
         let standing = Standing {
             position: (6700.0, 4400.0),
             plane: 2,
+            direction: (1.0, 0.0),
         };
         let frames = spawn_block(&map, standing);
         assert_eq!(frames.len(), 1);
@@ -754,19 +952,22 @@ mod tests {
 
     #[test]
     fn the_chat_messages_a_line_produces_are_the_references_pair() {
-        // A spoken line is the text (a coded string, `game::player_chat_line`) and then the speaker.
-        // Plain text crashed the client on its coded-string assert; the coded body is the shape the
-        // Rurik project saw render on screen.
+        // The reference answers a spoken line with the text and then the speaker (`GameSrv_HandleLocal
+        // Message`); it gates the text *it* generates, not the text a player types, which is why the gate
+        // is not consulted for this pair.
         let frames = game::player_chat_line(PLAYER_ID, game::CHANNEL_ALL, "hello");
-        assert_eq!(frames.len(), 2);
         assert_eq!(frames[0].header(), game::CHAT_MESSAGE_CORE);
         assert_eq!(
             frames[0].len(),
             2 + 2 + 2 * 8,
-            "wrapper, literal start, five units of text, literal end"
+            "wrapper, literal start, five units, literal end"
         );
-        assert_eq!(frames[1].len(), 5, "a word for the player and a byte for the channel");
-        assert_eq!(u32::from(frames[1].body()[2]), game::CHANNEL_ALL);
+        assert_eq!(frames[1].len(), 5, "a word and a byte");
+        assert_eq!(
+            u16::from_le_bytes([frames[1].body()[0], frames[1].body()[1]]),
+            PLAYER_ID as u16
+        );
+        assert_eq!(frames[1].body()[2], game::CHANNEL_ALL as u8);
         assert_eq!(game::CHANNEL_GROUP, 11, "Channel_Group");
         assert_eq!(game::CHANNEL_TRADE, 12, "Channel_Trade");
     }

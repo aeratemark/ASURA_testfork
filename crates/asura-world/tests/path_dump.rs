@@ -36,6 +36,7 @@ fn map(map_id: i32) -> MapEntry {
         map_type: 1,
         spawn: (6602.0, 4485.0),
         spawn_plane: 0,
+        spawns: Vec::new(),
         name: "Lakeside County".to_string(),
         capacity: 2,
     }
@@ -209,6 +210,9 @@ async fn the_dump_command_writes_a_loadable_file() {
                 map_type: configured.map_type,
                 spawn: (configured.spawn_x, configured.spawn_y),
                 spawn_plane: configured.spawn_plane as u16,
+                spawns: asura_world::map_spawns::for_map(map_id)
+                    .map(<[_]>::to_vec)
+                    .unwrap_or_default(),
                 name: configured.name.clone(),
                 capacity: 2,
             });

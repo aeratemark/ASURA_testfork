@@ -38,7 +38,7 @@ never depends on knowing them already.
 
 | word | what it means here |
 |---|---|
-| **service** | one program with one job (`asura-auth`, `asura-world`, `asura-webgate`), or the database. "Service" does not imply "small" - a world server is a large service. |
+| **service** | one program with one job (`asura-gateway`, `asura-world`, `asura-webgate`), or the database. "Service" does not imply "small" - a world server is a large service. |
 | **process** | one running copy of a program. Two world servers on a machine are two processes of one service type. |
 | **supervisor** | a program whose only job is to start other programs, watch them, restart them when they die, and stop them cleanly. It is not part of the game; if it dies, the game keeps running until the next restart. |
 | **orchestrator** | a program that decides *which machine* each process runs on, starts new builds, moves traffic, and shuts old builds down. A supervisor manages processes on one machine; an orchestrator manages machines. |
@@ -95,7 +95,7 @@ supervisor below them.
 |---|---|---|---|
 | PostgreSQL | a Windows service or a systemd unit, managed elsewhere; the supervisor checks it and waits, never starts it | a reachable connection | OS service recovery, outside this repository |
 | `asura-webgate` :6601 | `asura-supervisor start`, from `config/services.toml` | a TCP connect on the port | bounded retry: 5 attempts, 2 s apart, then FAILED |
-| `asura-auth` :6112 | the same | a TCP connect on the port | the same |
+| `asura-gateway` :6112 | the same | a TCP connect on the port | the same |
 | `asura-world` :6113 (world `8001`) | the same; registers itself in `world`, heartbeats every 5 s, publishes `world_pool` capacity | the world's own row is fresh | the same |
 
 Facts worth carrying into the decision:
@@ -107,7 +107,7 @@ Facts worth carrying into the decision:
   `find_worlds` reads both, `set_draining` writes one, and `asura-supervisor deploy-world --old --new`
   performs the rolling deploy (`crates/asura-db/src/placement.rs:439-463`,
   `crates/asura-supervisor/src/supervise.rs:525`).
-- **`asura-auth` is also the game-connection front door** (`crates/asura-auth/src/frontdoor.rs`):
+- **The socket layer is also the game-connection front door** (`crates/asura-gateway/src/relay.rs`):
   the real client dials the auth address regardless of what `GAME_SERVER_INFO` names, and auth
   routes the socket to the world it handed out. That is a routing responsibility sitting inside a
   service the architecture describes as "not in the data path".
@@ -189,7 +189,7 @@ deployment, not about the code** - the protocol already survives a world living 
 
 | their design | ours today | gap |
 |---|---|---|
-| login separate from worlds | `asura-auth` vs `asura-world` | none |
+| login separate from worlds | `asura-gateway` and `asura-auth` vs `asura-world` | none |
 | worlds self-register; consumers read the registry | `world` + `world_pool`, heartbeat, reaper, reconciler | the model is right; only worlds have it |
 | restartable worlds, disposable and interchangeable | a world rebuilds from the database; a dead one is skipped and reaped | nothing restarts a dead one automatically |
 | build + drain described in the registry | `build` and `draining` columns exist | nothing performs a build or a drain |

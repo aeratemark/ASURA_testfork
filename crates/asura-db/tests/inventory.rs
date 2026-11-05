@@ -184,7 +184,7 @@ async fn a_drop_finds_only_what_the_reference_would_find() {
         .find(|bag| bag.bag_model_id == 7)
         .expect("storage 1");
     let stored: i32 = sqlx::query_scalar(
-        "INSERT INTO item (character_id, bag_id, slot, file_id, item_type, model_id, quantity)
+        "INSERT INTO t_item (character_id, bag_id, slot, file_id, item_type, model_id, quantity)
          VALUES ($1, $2, 0, 0x47C34, 9, 22269, 1) RETURNING id",
     )
     .bind(character)
@@ -523,7 +523,7 @@ async fn the_character_settings_come_back_from_the_row_the_creation_wrote() {
         .await
         .expect("read the settings")
         .expect("the character exists");
-    assert_eq!(settings.last_outpost, MAP as u16, "where it was created");
+    // Two facts, two fields: `map_id` is the map the row names (where it was created), and`r`n    // `last_outpost` is the outpost memory the login rule writes, which a creation does not set.`r`n    assert_eq!(settings.map_id, MAP, "the map the creation wrote");`r`n    assert_eq!(settings.last_outpost, 0, "no outpost placement yet");
     assert_eq!(settings.appearance, 0x0310_0000, "the appearance it chose");
     assert_eq!(settings.campaign, 1, "Prophecies");
     assert_eq!(settings.level, 1, "the reference's creation level");
@@ -600,7 +600,7 @@ async fn an_instance_is_unlocked_by_arriving_once() {
 
 /// The account id behind a username, for a test that needs to create a character on it.
 async fn account_of(pool: &PgPool, username: &str) -> Uuid {
-    sqlx::query_scalar("SELECT id FROM account WHERE username = $1")
+    sqlx::query_scalar("SELECT id FROM t_account WHERE username = $1")
         .bind(username)
         .fetch_one(pool)
         .await

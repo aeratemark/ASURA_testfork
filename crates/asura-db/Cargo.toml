@@ -14,3 +14,9 @@ uuid = { workspace = true }
 # The integration tests drive the live database from concurrent tasks; the ordinary
 # `cargo test` path still works without a database.
 tokio = { workspace = true }
+# `examples/export-map-content.rs` writes the content rows into the world pack as JSON: the first step
+# of the move `docs/38-layer-decisions.md` D22 records.
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

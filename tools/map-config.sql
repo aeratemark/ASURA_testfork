@@ -8,7 +8,7 @@
 -- have a config with no spawn point, so a client sent to one has nowhere to stand. They are listed
 -- at the bottom of this file as a comment rather than as rows nothing can use.
 
-INSERT INTO map_config (map_id, map_type, map_file_id, spawn_count, spawn_x, spawn_y, spawn_plane, name)
+INSERT INTO t_map_config (map_id, map_type, map_file_id, spawn_count, spawn_x, spawn_y, spawn_plane, name)
 VALUES
     (145, 1, 380646, 1, 14442., 2135., 0, 'The Catacombs'),
     (146, 1, 113021, 1, 6602., 4485., 0, 'Lakeside County'),

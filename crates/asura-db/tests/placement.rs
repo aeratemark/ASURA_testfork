@@ -413,7 +413,7 @@ async fn the_newest_build_is_the_only_one_offered() {
     )
     .await
     .expect("register new");
-    sqlx::query("UPDATE world SET started_at = now() - interval '1 minute' WHERE id = $1")
+    sqlx::query("UPDATE t_world SET started_at = now() - interval '1 minute' WHERE id = $1")
         .bind(old_world)
         .execute(&pool)
         .await

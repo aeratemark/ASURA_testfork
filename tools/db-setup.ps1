@@ -106,7 +106,25 @@ $migrations = Get-ChildItem (Join-Path (Split-Path -Parent $PSScriptRoot) "crate
 if (-not $migrations) { throw "no migrations found under crates\asura-db\migrations" }
 
 $env:PGPASSWORD = $AsuraPassword
+
+# Apply only what the database has not recorded. Re-applying every file was safe while each one only
+# created things under its own name; it stopped being safe with `0026_t_prefix.sql`, which renames the
+# tables, because the files before it would then create the old names again and leave two schemas.
+$recorded = @()
+$hasVersionTable = Invoke-Psql -User $Role -DatabaseName $Database `
+    -Arguments "-t -A -c `"SELECT to_regclass('public.schema_version') IS NOT NULL`""
+if ($hasVersionTable.Trim() -eq "t") {
+    $recorded = Invoke-Psql -User $Role -DatabaseName $Database `
+        -Arguments "-t -A -c `"SELECT version FROM schema_version ORDER BY version`""
+    $recorded = @($recorded.Trim() -split "`r?`n" | Where-Object { $_ -ne "" } | ForEach-Object { [int]$_ })
+}
+
 foreach ($migration in $migrations) {
+    $version = [int]($migration.BaseName.Substring(0, 4))
+    if ($recorded -contains $version) {
+        Write-Host "skipped $($migration.Name) (recorded)"
+        continue
+    }
     # -1: the whole file in one transaction, so a failure part-way leaves neither the change nor the
     # schema_version row that records it (crates/asura-db/src/migrations.rs).
     Invoke-Psql -User $Role -DatabaseName $Database -Arguments "-1 -f `"$($migration.FullName)`"" | Out-Null
@@ -120,7 +138,7 @@ $tables = Invoke-Psql -User $Role -DatabaseName $Database -Arguments "-c `"SELEC
 $tables.Trim() -split "`r?`n" | Where-Object { $_ -ne "" } | ForEach-Object { "  $_" }
 
 Write-Host ""
-$pool = Invoke-Psql -User $Role -DatabaseName $Database -Arguments "-c `"SELECT count(*) FROM world_pool`""
+$pool = Invoke-Psql -User $Role -DatabaseName $Database -Arguments "-c `"SELECT count(*) FROM t_world_pool`""
 Write-Host "world_pool rows: $($pool.Trim())"
 
 Write-Host ""

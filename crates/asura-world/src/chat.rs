@@ -62,7 +62,7 @@ pub fn maps_answer(maps: &[MapEntry]) -> MappedMaps {
     for map in maps {
         // A creation instance is not a place: it is where a character is made, it has no alias, and
         // nobody travels to it. It stays out of the teleport table.
-        if map.map_type == crate::MAP_TYPE_CHARACTER_CREATION {
+        if map.map_type == crate::map_kinds().character_creation {
             continue;
         }
         if seen.contains(&map.map_id) {
@@ -233,11 +233,11 @@ pub async fn handle_chat_message(
             if trace {
                 eprintln!("world: {speaker} {spoken:?} on channel {channel}");
             }
-            // The body is a coded string (`game::player_chat_line`): plain text crashed the client
-            // on its coded-string assert, which is why no chat line had ever rendered here.
+            // The body is a coded string (`game::player_chat_line`): plain text hit the client's
+            // coded-string assert, which is why no chat line had ever rendered here. Everyone in the
+            // instance hears `!` and `$`; `#` is the party channel, and a party here is the speaker
+            // alone, so it goes back to the speaker only.
             let line = game::player_chat_line(player.player_id, channel, &spoken);
-            // Everyone in the instance hears `!` and `$`. `#` is the party channel, and a party here
-            // is the speaker alone, so it goes back to the speaker only.
             if speaker != '#' {
                 player.instance.broadcast(player.player_id, &line);
             }
@@ -312,6 +312,9 @@ pub async fn handle_chat_message(
                                         map_type: configured.map_type,
                                         spawn: (configured.spawn_x, configured.spawn_y),
                                         spawn_plane: configured.spawn_plane as u16,
+                                        spawns: crate::map_spawns::for_map(map_id)
+                                            .map(<[_]>::to_vec)
+                                            .unwrap_or_default(),
                                         name: configured.name.clone(),
                                         capacity: world.capacity,
                                     });

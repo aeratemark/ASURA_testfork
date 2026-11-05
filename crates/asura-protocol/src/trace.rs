@@ -10,7 +10,9 @@
 /// Whether to print the per-message trace.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Trace {
+    /// Print nothing.
     Off,
+    /// Print every message as it is read or written.
     On,
 }
 
