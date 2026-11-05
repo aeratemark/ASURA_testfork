@@ -44,6 +44,7 @@ use std::time::{Duration, Instant};
 pub use asura_db::cartography as db_cartography;
 pub use asura_db::game as db_game;
 pub use asura_db::inventory::{self as db_inventory, Inventory};
+pub use asura_db::titles as db_titles;
 pub use asura_db::{placement, PgPool, Uuid};
 pub use asura_protocol::client::game_version::GameVersion;
 pub use asura_protocol::client::handshake;
@@ -117,6 +118,10 @@ pub use dispatch::*;
 /// The exploration grid the client's map surfaces draw from: the `0x008B` + `0x008A` pair, which
 /// this server sent nothing of until a live client asserted its map view without it.
 pub mod cartography;
+
+/// Titles on the game connection: the load's title block, the shown rank, the two client requests and
+/// the hook point changes go through (`docs/40-titles-system-research.md`).
+pub mod titles;
 
 /// One agent's position, and the reference's rules for believing a client about it.
 pub mod agent;

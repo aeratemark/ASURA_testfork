@@ -1,0 +1,146 @@
+{
+  "doc": "The title definitions this server sends: one entry per title, each the values a track message (0x00F6) and its rank records (0x00F3) carry that do not change with play. Progress (points) is per character or per account in the database; this file says what a point count means. Experimental: the shape is docs/40-titles-system-research.md section 10, and where each value comes from is section 13 of that document. Coded strings are written as space-separated hex UTF-16 units, at most 7 per string.",
+  "enabled": {
+    "value": true,
+    "doc": "Whether a load sends the title block and the server answers title display requests. False sends nothing, which is what this server did before titles existed."
+  },
+  "fields": {
+    "title_id": "The client's title id, 0..47 (its own table has 48 rows).",
+    "name": "For the reader and for the /title command; the client draws the title's name from its own table, never from the wire.",
+    "aliases": "Other names the /title command accepts, e.g. ldoa.",
+    "scope": "character or account: whose progress the track shows.",
+    "flags": "0x00F6 field 2, the track's flag word, carried as written (bit 0 percentage track, (flags & 3) == 2 a count track).",
+    "mode_flags": "0x00F6 field 6, title_mode_flags: 0 none, 1 Dhuum's Covenant, 2 Reforged Mode.",
+    "base_rank_id": "0x00F6 field 10, the rank-1 record of the title's block in 14 of 15 captured tracks.",
+    "progress_template": "0x00F6 field 11, a coded string.",
+    "description_template": "0x00F6 field 12, a coded string.",
+    "display_from_rank": "The first rank number a player may show under its name, or null when not established (a request to show it is then refused and logged).",
+    "ranks": "Every rung from the unranked tier (rank number 0, minimum 0) to the last, ascending by minimum. The highest rank number sent in 0x00F6 field 9 is the count minus one.",
+    "ranks[].rank_id": "0x00F3 field 1, the global key into the client's rank table. One id is one record across every title.",
+    "ranks[].flags": "0x00F3 field 2: bit 0 set means value is a per-mille threshold.",
+    "ranks[].value": "0x00F3 field 3: the rank number shown in parentheses, or the per-mille threshold.",
+    "ranks[].minimum": "The points at which a track reaches this rung (0x00F6 field 5 when current, field 8 when next).",
+    "ranks[].name": "0x00F3 field 4, the coded name the Hero panel draws.",
+    "maxed": "The record a maxed track names as its next rung (value 4294967295), or null; a track that reaches its last rung without one is refused and logged rather than sent.",
+    "earned_by": "What earns the title points on its own: pre_searing_exploration (the share of pre-Searing's world-map rectangles explored, in per-mille), or absent for none."
+  },
+  "titles": [
+    {
+      "title_id": 1,
+      "name": "Tyrian Cartographer",
+      "aliases": ["cartographer", "carto", "explorer"],
+      "scope": "character",
+      "flags": 1,
+      "mode_flags": 0,
+      "base_rank_id": 180,
+      "progress_template": "7D85 9583 DDC4 79E1",
+      "description_template": "7D86 9AE5 928E 5E0D",
+      "display_from_rank": 1,
+      "ranks": [
+        { "rank_id": 179, "flags": 1, "value": 0, "minimum": 0, "name": "0101" },
+        { "rank_id": 180, "flags": 1, "value": 600, "minimum": 600, "name": "6C7D D89D BA33 4EFC" },
+        { "rank_id": 181, "flags": 1, "value": 700, "minimum": 700, "name": "0101" },
+        { "rank_id": 182, "flags": 1, "value": 800, "minimum": 800, "name": "0101" },
+        { "rank_id": 183, "flags": 1, "value": 900, "minimum": 900, "name": "0101" },
+        { "rank_id": 184, "flags": 1, "value": 950, "minimum": 950, "name": "0101" },
+        { "rank_id": 185, "flags": 1, "value": 1000, "minimum": 1000, "name": "0101" }
+      ],
+      "maxed": { "rank_id": 186, "flags": 0, "value": 4294967295, "name": "0101" },
+      "earned_by": "pre_searing_exploration"
+    },
+    {
+      "title_id": 7,
+      "name": "Drunkard",
+      "aliases": ["drunk"],
+      "scope": "character",
+      "flags": 0,
+      "mode_flags": 0,
+      "base_rank_id": 133,
+      "progress_template": "7E69 EAC4 F8F7 6E3C",
+      "description_template": "7E6A BCE3 E6C3 3065",
+      "display_from_rank": 1,
+      "ranks": [
+        { "rank_id": 132, "flags": 0, "value": 0, "minimum": 0, "name": "0101" },
+        { "rank_id": 133, "flags": 0, "value": 1, "minimum": 1000, "name": "7E6B E7B4 C2FE 4B26" },
+        { "rank_id": 134, "flags": 0, "value": 2, "minimum": 10000, "name": "7E6C BB0E C315 37C5" }
+      ],
+      "maxed": { "rank_id": 135, "flags": 0, "value": 4294967295, "name": "0101" }
+    },
+    {
+      "title_id": 9,
+      "name": "Survivor",
+      "aliases": ["legendary survivor"],
+      "scope": "character",
+      "flags": 0,
+      "mode_flags": 0,
+      "base_rank_id": 146,
+      "progress_template": "7E78 CB7E 9B15 5F4A",
+      "description_template": "7E79 FB9D AF2C 63A3",
+      "display_from_rank": 1,
+      "ranks": [
+        { "rank_id": 145, "flags": 0, "value": 0, "minimum": 0, "name": "0101" },
+        { "rank_id": 146, "flags": 0, "value": 1, "minimum": 140600, "name": "7E7A B15E C09D 371B" },
+        { "rank_id": 147, "flags": 0, "value": 2, "minimum": 587500, "name": "0101" },
+        { "rank_id": 148, "flags": 0, "value": 3, "minimum": 1337500, "name": "7E7C 864C 9BAF 7C45" }
+      ],
+      "maxed": { "rank_id": 149, "flags": 0, "value": 4294967295, "name": "0101" }
+    },
+    {
+      "title_id": 10,
+      "name": "Kind of a Big Deal",
+      "aliases": ["koabd", "big deal"],
+      "scope": "character",
+      "flags": 0,
+      "mode_flags": 0,
+      "base_rank_id": 151,
+      "progress_template": "7E7E BDB8 CDE4 2F6B",
+      "description_template": "7E7F A8E3 D4F3 764C",
+      "display_from_rank": 1,
+      "ranks": [
+        { "rank_id": 150, "flags": 0, "value": 0, "minimum": 0, "name": "0101" },
+        { "rank_id": 151, "flags": 0, "value": 1, "minimum": 5, "name": "7E80 EC30 926E 170E" },
+        { "rank_id": 152, "flags": 0, "value": 2, "minimum": 10, "name": "8101 49CC E300 E59E 02AC" },
+        { "rank_id": 153, "flags": 0, "value": 3, "minimum": 15, "name": "0101" },
+        { "rank_id": 154, "flags": 0, "value": 4, "minimum": 20, "name": "8101 675B 895C FA85 7F68" },
+        { "rank_id": 155, "flags": 0, "value": 5, "minimum": 25, "name": "0101" },
+        { "rank_id": 156, "flags": 0, "value": 6, "minimum": 30, "name": "8102 1439 D06B 8447 6792" }
+      ],
+      "maxed": { "rank_id": 157, "flags": 0, "value": 4294967295, "name": "0101" }
+    },
+    {
+      "title_id": 21,
+      "name": "Legendary Defender of Ascalon",
+      "aliases": ["ldoa"],
+      "scope": "character",
+      "flags": 2,
+      "mode_flags": 0,
+      "base_rank_id": 177,
+      "progress_template": "8101 5A03 9239 B2FE 4878",
+      "description_template": "8101 5A04 C9CD B0CC 07CB",
+      "display_from_rank": 1,
+      "ranks": [
+        { "rank_id": 176, "flags": 0, "value": 0, "minimum": 0, "name": "0101" },
+        { "rank_id": 177, "flags": 0, "value": 1, "minimum": 20, "name": "8101 5A05 A50B 8B97 2B8E" }
+      ],
+      "maxed": { "rank_id": 178, "flags": 0, "value": 4294967295, "name": "0101" }
+    },
+    {
+      "title_id": 34,
+      "name": "Sweet Tooth",
+      "aliases": ["sweets", "connoisseur of confectionaries"],
+      "scope": "character",
+      "flags": 0,
+      "mode_flags": 0,
+      "base_rank_id": 274,
+      "progress_template": "8101 6384 CD56 DFB4 5F84",
+      "description_template": "8101 6385 DA62 A798 4E8A",
+      "display_from_rank": 1,
+      "ranks": [
+        { "rank_id": 273, "flags": 0, "value": 0, "minimum": 0, "name": "0101" },
+        { "rank_id": 274, "flags": 0, "value": 1, "minimum": 1000, "name": "8101 6386 FBA8 EDBB 0C35" },
+        { "rank_id": 275, "flags": 0, "value": 2, "minimum": 10000, "name": "0101" }
+      ],
+      "maxed": { "rank_id": 276, "flags": 0, "value": 4294967295, "name": "0101" }
+    }
+  ]
+}

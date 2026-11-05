@@ -40,6 +40,9 @@ pub mod appearance;
 /// Re-exported so `Appearance::...` reads the same as it did when the type lived here.
 pub use appearance::Appearance;
 
+/// The title family's six messages (`0x00F3`-`0x00F6`, `0x8058`, `0x8059`): builders and the one reader.
+pub mod title;
+
 /// `GAME_SMSG_INSTANCE_LOAD_HEAD` (`0x017C`): 6 bytes. The first message a client receives on the
 /// game connection.
 pub const INSTANCE_LOAD_HEAD: u16 = crate::packets::game::GAME_SMSG_INSTANCE_LOAD_HEAD;

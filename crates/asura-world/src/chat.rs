@@ -157,6 +157,12 @@ pub const COMMANDS: &[Command] = &[
         takes_argument: false,
         answer: "AGENT_UPDATE_POSITION for the agent -- a position, not AGENT_STOP_MOVING",
     },
+    Command {
+        names: &["title"],
+        reference: "none -- an ASURA test command (owner, 2026-11-05), not in the reference",
+        takes_argument: true,
+        answer: "sets a title's points: 0x00F5, or 0x00F3 x2 then 0x00F6, as a point change sends them",
+    },
 ];
 
 /// The command a player typed, if this world answers it.
@@ -339,6 +345,13 @@ pub async fn handle_chat_message(
                     // measured (`docs/03-protocol.md` #5) and the reference's refusals are here
                     // verbatim, so this is a port rather than an invention.
                     teleport(stream, session, world, player, argument, trace).await
+                }
+                Some(named) if named.names.contains(&"title") && !argument.is_empty() => {
+                    // Not the reference's: the owner's test command for titles (`crate::titles`).
+                    crate::titles::handle_title_command(
+                        stream, session, world, player, argument, trace,
+                    )
+                    .await
                 }
                 _ => {
                     // `GameSrv_SendInvalidCommand`: the reference's text is "Unknown command". That
