@@ -300,11 +300,53 @@ pub async fn handle_connection(
     // carries them.
     let equipped = inventory.equipped_item_ids();
     let (outbox, mut inbox) = tokio::sync::mpsc::unbounded_channel();
+    // What other connections tell this one to do: a party's travel (`travel::Order`).
+    let (orders, mut to_do) = tokio::sync::mpsc::unbounded_channel();
+    // The character's travelling party, when this connection is its arrival here: the ledger names this
+    // map on this world, and the character as on its way in or held (`crate::party::arrive`). A ledger
+    // row that names somewhere else is stale - the character came alone - and is forgotten. A creation
+    // instance has no party to arrive in.
+    let ledger = if map.map_type == map_kinds().character_creation {
+        None
+    } else {
+        match asura_db::parties::membership(&world.pool, character).await {
+            Ok(ledger) => ledger,
+            Err(err) => {
+                eprintln!("world: party: could not read the party ledger: {err}");
+                None
+            }
+        }
+    };
+    let arriving = ledger.filter(|ledger| {
+        ledger.map_id == map.map_id
+            && ledger.world_id == world.world_id
+            && ledger.member(character).is_some_and(|me| {
+                me.state == asura_db::parties::TRAVELLING
+                    || (me.state == asura_db::parties::HELD && me.hold_live)
+            })
+    });
     // The map as a running object, not a row: the instance keeps who is in it, owns each player's
     // agent, and starts its clock the first time somebody joins (`Instance::run`).
     let instance = world.instances.for_map(&map);
     let marks = cartography::spawn_marker(outbox.clone());
-    let (player_id, agent_id) = instance.join(name.clone(), standing, equipped, outbox);
+    let (player_id, agent_id) =
+        instance.join(name.clone(), character, standing, equipped, outbox, orders);
+    // Every player is in a party from the moment it joins: its travelling party when it is arriving with
+    // one, otherwise one of its own (`crate::party`).
+    let awaited = crate::party::arrive(&instance, player_id, character, arriving.as_ref(), trace);
+    for member in awaited {
+        crate::party::expire_later(instance.clone(), world.pool.clone(), member, trace);
+    }
+    if map.map_type != map_kinds().character_creation {
+        let written = if arriving.is_some() {
+            asura_db::parties::arrived(&world.pool, character).await
+        } else {
+            asura_db::parties::forget(&world.pool, character).await
+        };
+        if let Err(err) = written {
+            eprintln!("world: party: could not write the party ledger: {err}");
+        }
+    }
     let map_type = map.map_type;
     // What this character has explored of the continent it is arriving on. A row whose dims no
     // longer match the grid this server would send is treated as absent rather than reshaped:
@@ -355,11 +397,32 @@ pub async fn handle_connection(
         } else {
             crate::titles::load(&world.pool, character, transfer.account_id).await
         },
+        // A creation instance has no character to be in a guild yet.
+        guild: if map_type == map_kinds().character_creation {
+            None
+        } else {
+            crate::guild::load(&world.pool, character).await
+        },
+        said_goodbye: false,
     };
+    // Its guild, so a player who joins after it is introduced with the guild's badge.
+    player.instance.wear_guild(
+        player.player_id,
+        crate::guild::badge(&player.instance, player.guild.as_ref()),
+    );
     // The rank this character shows, so a player who joins after it is introduced with it.
     player
         .instance
         .show_title(player.player_id, player.titles.shown_rank().cloned());
+    // And how it is drawn: appearance, professions and level, for the same introductions.
+    player.instance.describe(
+        player.player_id,
+        crate::instance::Look::from_traits(&player.traits),
+    );
+    player.instance.dress(
+        player.player_id,
+        crate::instance::wearing(&player.inventory),
+    );
     if move_trace_on() {
         eprintln!(
             "move[spawn] agent {} starts on map {} at (x={:.1}, y={:.1}, plane={}) with speed {} \
@@ -422,6 +485,7 @@ pub async fn handle_connection(
         world,
         &mut player,
         &mut inbox,
+        &mut to_do,
         trace,
     )
     .await;
@@ -442,6 +506,40 @@ pub async fn handle_connection(
         .instance
         .move_stats(player.player_id)
         .unwrap_or_default();
+
+    // Its party first, while the others are still reachable through the instance (`crate::party`). A
+    // travel is quiet when the whole party goes; a network drop in an explorable keeps its place
+    // (experimental); anything else is a leave.
+    let leaving = if player.moved {
+        crate::party::Leaving::Travelled
+    } else if player.said_goodbye {
+        crate::party::Leaving::LoggedOut
+    } else {
+        crate::party::Leaving::Dropped
+    };
+    let hold = crate::party::left_instance(
+        &player.instance,
+        player.player_id,
+        player.character,
+        leaving,
+        trace,
+    );
+    if player.instance.map.map_type != map_kinds().character_creation {
+        let written = match (&hold, crate::party::hold_secs()) {
+            (Some(_), Some(seconds)) => {
+                asura_db::parties::hold(&world.pool, player.character, f64::from(seconds)).await
+            }
+            // A travel's ledger is the move's own, written when it started; leave it be.
+            _ if player.moved => Ok(true),
+            _ => asura_db::parties::forget(&world.pool, player.character).await,
+        };
+        if let Err(err) = written {
+            eprintln!("world: party: could not write the party ledger on the way out: {err}");
+        }
+    }
+    if let Some(hold) = hold {
+        crate::party::expire_later(player.instance.clone(), world.pool.clone(), hold, trace);
+    }
 
     // The player left: the instance loses the agent before the slot goes back, so a client that is
     // being told about the departure never sees an agent whose seat is already free.
@@ -542,6 +640,7 @@ pub async fn run(
     world: &World,
     player: &mut Player,
     inbox: &mut tokio::sync::mpsc::UnboundedReceiver<Vec<Frame>>,
+    to_do: &mut tokio::sync::mpsc::UnboundedReceiver<crate::travel::Order>,
     trace: bool,
 ) -> Result<(), GameError> {
     // The instance's clock is **not** released here. It is released by the players block, whose last
@@ -553,8 +652,8 @@ pub async fn run(
     let mut ping = tokio::time::interval(ping_interval());
     // The walking reveal, on the world-tick cadence. A server-side walk is advanced by the instance
     // tick and sends no position reports until it ends, so the reports alone would reveal nothing
-    // until the arrival. This polls the server's own copy of the position and does nothing else:
-    // the doorway test keeps its own trigger in the movement arms.
+    // until the arrival. This polls the server's own copy of the position, and the doorway test runs on
+    // the step it finds as well as in the movement arms.
     let mut walk = tokio::time::interval(tick_interval());
     let mut walked_from = player.standing().position;
     let mut buffer = [0u8; 8192];
@@ -568,6 +667,11 @@ pub async fn run(
             // other connection's task writes into this channel.
             Some(frames) = inbox.recv() => {
                 send(stream, session, frames, trace).await?;
+            }
+
+            // Something another connection told this one to do: its party is travelling.
+            Some(order) = to_do.recv() => {
+                crate::travel::carry_out(stream, session, world, player, order, trace).await?;
             }
 
             read = stream.read(&mut buffer) => {
@@ -610,7 +714,13 @@ pub async fn run(
             _ = walk.tick() => {
                 let here = player.standing().position;
                 if here != walked_from {
+                    let from = walked_from;
                     walked_from = here;
+                    // A server-side walk crosses a doorway too: a click through a gate moves the agent on
+                    // the instance's tick, and the next report already stands past the wall (2026-11-06,
+                    // `logs/world-8001.log`: Asura walked through Ascalon's gate and nothing crossed).
+                    crate::travel::portal_crossed(stream, session, world, player, from, here, trace)
+                        .await?;
                     player::walked(world, player, trace).await;
                 }
             }

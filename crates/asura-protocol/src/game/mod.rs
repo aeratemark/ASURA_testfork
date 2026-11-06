@@ -43,6 +43,9 @@ pub use appearance::Appearance;
 /// The title family's six messages (`0x00F3`-`0x00F6`, `0x8058`, `0x8059`): builders and the one reader.
 pub mod title;
 
+/// The guild family (`0x0118`-`0x0133`, `0x8036`, `0x80B5`, `0x80BB`, `0x80BE`): builders and readers.
+pub mod guild;
+
 /// `GAME_SMSG_INSTANCE_LOAD_HEAD` (`0x017C`): 6 bytes. The first message a client receives on the
 /// game connection.
 pub const INSTANCE_LOAD_HEAD: u16 = crate::packets::game::GAME_SMSG_INSTANCE_LOAD_HEAD;
@@ -123,6 +126,11 @@ pub const CREATE_NAMED_ITEM: u16 = crate::packets::game::GAME_SMSG_CREATE_NAMED_
 /// sends this one for bag slots and equipped items (`GmItem.c:111-160`) and the named one for the
 /// inventory stream (`GameSrv_SendItemById`).
 pub const CREATE_UNNAMED_ITEM: u16 = crate::packets::game::GAME_SMSG_CREATE_UNNAMED_ITEM;
+/// `GAME_SMSG_ITEM_LOW_DETAIL` (`0x015E`): 25 bytes, the same fields as `CREATE_UNNAMED_ITEM`. This is
+/// the one retail sends for **another player's** equipped items: 118 sightings in
+/// `recordings/client/feature/maps/pre-searing-load-3.jsonl` (seq 203-207, 222-226, 309-315, 1347-1351),
+/// each run followed by an `0x006E` that names the same item ids, and **no** `0x015F` anywhere in it.
+pub const ITEM_LOW_DETAIL: u16 = crate::packets::game::GAME_SMSG_ITEM_LOW_DETAIL;
 /// `GAME_SMSG_ITEM_MOVE_TO_LOCATION` (`0x013E`): 11 bytes.
 pub const ITEM_MOVE_TO_LOCATION: u16 = crate::packets::game::GAME_SMSG_ITEM_MOVED_TO_LOCATION;
 /// `GAME_SMSG_ITEM_REMOVE` (`0x014D`): 8 bytes. Takes an item out of the client's inventory model.
@@ -725,6 +733,34 @@ pub struct NamedItem {
 /// client is not told a name it can already resolve.
 pub fn create_unnamed_item(item: &NamedItem) -> crate::client::Frame {
     Builder::new(CREATE_UNNAMED_ITEM)
+        .u32(item.id)
+        .u32(item.file_id)
+        .u8(item.item_type)
+        .u8(item.dye_tint)
+        .u16(item.dye_colors)
+        .u16(item.materials)
+        .u8(item.unk1)
+        .u32(item.flags)
+        .u32(item.value)
+        .frame()
+}
+
+/// `GAME_SMSG_AGENT_UPDATE_PROFESSION` (`0x00A6`): an agent's primary and secondary profession. Retail
+/// sends it for every other player it introduces, before the agent is created:
+/// `a6000000 | 28000000 | 02000000 | 00000000` - agent 0x28, primary 2, secondary 0
+/// (`recordings/client/feature/maps/pre-searing-load-3.jsonl` seq 215).
+pub fn agent_update_profession(agent_id: u32, primary: u8, secondary: u8) -> crate::client::Frame {
+    Builder::new(crate::packets::game::GAME_SMSG_AGENT_UPDATE_PROFESSION)
+        .u32(agent_id)
+        .u8(primary)
+        .u8(secondary)
+        .frame()
+}
+
+/// `GAME_SMSG_ITEM_LOW_DETAIL` (`0x015E`): another player's item, as retail introduces it (see
+/// [`ITEM_LOW_DETAIL`]). The field layout is `create_unnamed_item`'s; only the header differs.
+pub fn item_low_detail(item: &NamedItem) -> crate::client::Frame {
+    Builder::new(ITEM_LOW_DETAIL)
         .u32(item.id)
         .u32(item.file_id)
         .u8(item.item_type)
@@ -1375,54 +1411,262 @@ pub fn character_update_party(party_id: u16, unknown: u8) -> crate::client::Fram
         .frame()
 }
 
-/// `GAME_SMSG_PLAYER_UPDATE_PARTY_SIZE`: how many members a player's party has.
-///
-/// **Twelve bytes, and the generated table disagrees twice.** The client's table says five
-/// (`MsgHeader`, `Word`, `Byte`, from its `stoc.h` struct) with a two-byte header; a live capture
-/// carries twelve every time a map loads - `b0 00 00 00 | 01 00 00 00 | 01 00 00 00`, 48 of 48
-/// occurrences. The fourth byte is the upper half of a **four-byte game header**, which the reference
-/// calls `TYPE_MSG_HEADER_GAME` (`msgdefs.h:19-23`) and applies per message on evidence. Its own
-/// precedence rule is "a capture beats every table" (`PreSearing/docs/07-packet-scope.md`), and the
-/// same rule settled `TRANSFER_GAME_SERVER_INFO`.
-///
-/// So the two leading zero bytes are written as body, not header: `Frame` always encodes a two-byte
-/// header, and the bytes on the wire are then identical to the capture.
-pub fn player_update_party_size(player_id: u32, party_size: u32) -> crate::client::Frame {
-    Builder::new(PLAYER_UPDATE_PARTY_SIZE)
-        .u16(0) // the upper half of the four-byte game header
-        .u32(player_id)
-        .u32(party_size)
+// ---- party invitations ------------------------------------------------------------------------
+//
+// Six one-word messages, each naming **the other party**, from the point of view of the client that
+// receives it. Layouts are the client's table (`MsgHeader`, `Word`); names and meanings are measured
+// in `docs/44-party-invites.md`. The packet table's names for 0x01C5-0x01CA are right for this build;
+// the sniffer's own labels for the same headers are one opcode off.
+
+/// `GAME_SMSG_PARTY_INVITE_ADD` (`0x01C5`): this client's party has invited `party_id`. Sent to the
+/// inviter after the invited party's member stream
+/// (`titles-live-20261106-032434.jsonl` seq 380-384).
+pub fn party_invite_add(party_id: u16) -> crate::client::Frame {
+    Builder::new(crate::packets::game::GAME_SMSG_PARTY_INVITE_ADD)
+        .u16(party_id)
         .frame()
 }
 
-/// `GAME_SMSG_PLAYER_UPDATE_PARTY`: which player leads the party this player is in.
+/// `GAME_SMSG_PARTY_JOIN_REQUEST` (`0x01C6`): `party_id` invites this client's party. Sent to the
+/// invited after the inviting party's member stream (`titles-live-20261106-025940.jsonl` seq
+/// 2539-2542).
+pub fn party_join_request(party_id: u16) -> crate::client::Frame {
+    Builder::new(crate::packets::game::GAME_SMSG_PARTY_JOIN_REQUEST)
+        .u16(party_id)
+        .frame()
+}
+
+/// `GAME_SMSG_PARTY_INVITE_CANCEL` (`0x01C7`): this client's invitation of `party_id` is withdrawn.
+/// The inviter's answer to its own cancel (`titles-live-20261106-032434.jsonl` seq 1295-1300).
+pub fn party_invite_cancel(party_id: u16) -> crate::client::Frame {
+    Builder::new(crate::packets::game::GAME_SMSG_PARTY_INVITE_CANCEL)
+        .u16(party_id)
+        .frame()
+}
+
+/// `GAME_SMSG_PARTY_REQUEST_CANCEL` (`0x01C8`): `party_id` withdrew its invitation of this client.
+/// **Not captured**: the invited side of a cancel is inferred from the inviter's `0x01C7`.
+pub fn party_request_cancel(party_id: u16) -> crate::client::Frame {
+    Builder::new(crate::packets::game::GAME_SMSG_PARTY_REQUEST_CANCEL)
+        .u16(party_id)
+        .frame()
+}
+
+/// `GAME_SMSG_PARTY_REQUEST_RESPONSE` (`0x01C9`): this client answered `party_id`'s invitation. The
+/// first message of the invited side's accept (`titles-live-20261106-025940.jsonl` seq 2622), and the
+/// whole of its decline (`titles-live-20261106-034507.jsonl` seq 2620-2626).
+pub fn party_request_response(party_id: u16) -> crate::client::Frame {
+    Builder::new(crate::packets::game::GAME_SMSG_PARTY_REQUEST_RESPONSE)
+        .u16(party_id)
+        .frame()
+}
+
+/// `GAME_SMSG_PARTY_INVITE_RESPONSE` (`0x01CA`): `party_id` answered this client's invitation. Alone
+/// for a decline (`titles-live-20261106-032434.jsonl` seq 2058), first of the accept's batch
+/// (`multiplay/party.jsonl` seq 160).
+pub fn party_invite_response(party_id: u16) -> crate::client::Frame {
+    Builder::new(crate::packets::game::GAME_SMSG_PARTY_INVITE_RESPONSE)
+        .u16(party_id)
+        .frame()
+}
+
+/// `GAME_SMSG_PARTY_PLAYER_REMOVE` (`0x01D1`): `player_id` is no longer in `party_id`. The first
+/// message of a leave (`titles-live-20261106-025940.jsonl` seq 2437).
+pub fn party_player_remove(party_id: u16, player_id: u16) -> crate::client::Frame {
+    Builder::new(crate::packets::game::GAME_SMSG_PARTY_PLAYER_REMOVE)
+        .u16(party_id)
+        .u16(player_id)
+        .frame()
+}
+
+/// `GAME_SMSG_PARTY_YOU_ARE_LEADER` (`0x01CB`), one byte: this client now leads its party. A live
+/// server sends `{1}` to the member that takes over when the leader goes, after the size and leader
+/// pairs (`titles-live-20261106-025940.jsonl` seq 627-631).
+pub fn party_you_are_leader(leads: u8) -> crate::client::Frame {
+    Builder::new(crate::packets::game::GAME_SMSG_PARTY_YOU_ARE_LEADER)
+        .u8(leads)
+        .frame()
+}
+
+/// `0x01D0`, unnamed in the packet table: two words, a party and one of its players, sent when that
+/// player leaves the map. Ledger E38's `MemberLeaveWorld`, one opcode up in this build. Measured first
+/// in the batch for an invited player who walked out of the outpost: `0x01D0 {party, player}`, its
+/// farewell, `0x01D1 {party, player}`, `0x01CA {party}` (`titles-live-20261106-034507.jsonl` seq
+/// 2645-2650). The layout is the table's (`MsgHeader`, `Word`, `Word`).
+pub const PARTY_MEMBER_LEAVE_WORLD: u16 = 0x01D0;
+
+/// See [`PARTY_MEMBER_LEAVE_WORLD`].
+pub fn party_member_leave_world(party_id: u16, player_id: u16) -> crate::client::Frame {
+    Builder::new(PARTY_MEMBER_LEAVE_WORLD)
+        .u16(party_id)
+        .u16(player_id)
+        .frame()
+}
+
+// ---- a member's state: the three messages beside `0x01D0` --------------------------------------
+//
+// `0x01CD`-`0x01D0` are four unnamed rows of the same shape (`MsgHeader`, `Word`, `Word`: a party and
+// one of its players). `0x01D0` is measured (above). The other three are named from ledger E38, one
+// opcode up in this build exactly as `0x01D0` is: `MemberConnectSoft` (460 -> `0x01CD`) clears the
+// soft-disconnect flag (player flags bit `0x04`), `MemberDisconnectSoft` (461 -> `0x01CE`) sets it,
+// `MemberEnterWorld` (462 -> `0x01CF`) sets the in-world bit `0x01`. Headquarter's table agrees on the
+// block: its party add is 459 and its remove 464, with the four between them unnamed. **None of the
+// three is captured**; party travel and the explorable disconnect hold send them, both experimental.
+
+/// `0x01CD`: `player_id` of `party_id` is connected again (ledger E38 `MemberConnectSoft`).
+pub const PARTY_MEMBER_CONNECT_SOFT: u16 = 0x01CD;
+
+/// `0x01CE`: `player_id` of `party_id` lost its connection and is held (ledger E38
+/// `MemberDisconnectSoft`); the party window draws it grey.
+pub const PARTY_MEMBER_DISCONNECT_SOFT: u16 = 0x01CE;
+
+/// `0x01CF`: `player_id` of `party_id` is in the map now (ledger E38 `MemberEnterWorld`).
+pub const PARTY_MEMBER_ENTER_WORLD: u16 = 0x01CF;
+
+/// See [`PARTY_MEMBER_CONNECT_SOFT`]. **Not captured.**
+pub fn party_member_connect_soft(party_id: u16, player_id: u16) -> crate::client::Frame {
+    Builder::new(PARTY_MEMBER_CONNECT_SOFT)
+        .u16(party_id)
+        .u16(player_id)
+        .frame()
+}
+
+/// See [`PARTY_MEMBER_DISCONNECT_SOFT`]. **Not captured.**
+pub fn party_member_disconnect_soft(party_id: u16, player_id: u16) -> crate::client::Frame {
+    Builder::new(PARTY_MEMBER_DISCONNECT_SOFT)
+        .u16(party_id)
+        .u16(player_id)
+        .frame()
+}
+
+/// See [`PARTY_MEMBER_ENTER_WORLD`]. **Not captured.**
+pub fn party_member_enter_world(party_id: u16, player_id: u16) -> crate::client::Frame {
+    Builder::new(PARTY_MEMBER_ENTER_WORLD)
+        .u16(party_id)
+        .u16(player_id)
+        .frame()
+}
+
+/// `GAME_SMSG_INSTANCE_TRAVEL_TIMER` (`0x01BC`): the party is about to travel. The client's table gives
+/// `Word`, `Byte`, `String16[122]`; Headquarter decodes the same message (its `0x01BB`, one opcode down
+/// as its whole party block is) as `time_in_sec`, an unnamed byte, and a 122-unit message. **Not
+/// captured**: the seconds are this server's countdown, the byte is 0 and the text is empty, all three
+/// guesses until a live leader travel is recorded.
+pub fn instance_travel_timer(seconds: u16, unknown: u8, text: &str) -> crate::client::Frame {
+    Builder::new(crate::packets::game::GAME_SMSG_INSTANCE_TRAVEL_TIMER)
+        .u16(seconds)
+        .u8(unknown)
+        .text(text, 122)
+        .frame()
+}
+
+/// The first three fields of `GAME_CMSG_PARTY_TRAVEL` (`0x80B1`): the client's table gives `Word` map,
+/// `Byte` region, `Word` district, `Byte` language, `Byte` flag, nine bytes on the wire (ledger E220).
+/// The map is all this server acts on; the rest are returned for the log.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PartyTravelRequest {
+    /// The destination instance.
+    pub map_id: u16,
+    /// The region byte (`-2` international in the captures, as a byte).
+    pub region: u8,
+    /// The district; 0 is "the server picks".
+    pub district: u16,
+    /// The language.
+    pub language: u8,
+    /// The trailing flag, 1 in every capture.
+    pub flag: u8,
+}
+
+/// Read a `GAME_CMSG_PARTY_TRAVEL` body. `None` when the body is shorter than the map field; the fields
+/// after it read as 0 when a body stops early.
+pub fn read_party_travel(body: &[u8]) -> Option<PartyTravelRequest> {
+    let map: [u8; 2] = body.get(..2)?.try_into().ok()?;
+    let byte = |at: usize| body.get(at).copied().unwrap_or(0);
+    Some(PartyTravelRequest {
+        map_id: u16::from_le_bytes(map),
+        region: byte(2),
+        district: u16::from_le_bytes([byte(3), byte(4)]),
+        language: byte(5),
+        flag: byte(6),
+    })
+}
+
+/// `0x01E0` (`GAME_SMSG_PARTY_SEARCH_SEEK` in the table), one word. A live server sends `{0}` after
+/// `CHARACTER_UPDATE_PARTY` whenever a client's own party changes (accept, leave:
+/// `titles-live-20261106-025940.jsonl` seq 2457, 2637). What the word means is not established.
+pub fn party_search_seek(value: u16) -> crate::client::Frame {
+    Builder::new(crate::packets::game::GAME_SMSG_PARTY_SEARCH_SEEK)
+        .u16(value)
+        .frame()
+}
+
+/// `0x01BF` (`GAME_SMSG_PARTY_SET_DIFFICULTY` in the table), one byte. Follows `0x01E0` in the same
+/// two batches, always `{0}`: normal mode, by the table's name.
+pub fn party_set_difficulty(mode: u8) -> crate::client::Frame {
+    Builder::new(crate::packets::game::GAME_SMSG_PARTY_SET_DIFFICULTY)
+        .u8(mode)
+        .frame()
+}
+
+/// `0x01BE`, unnamed in the packet table: one dword, always `{0}`. Every live load sends it right after
+/// `0x01BF`, in outposts and explorables, before and after the Searing
+/// (`titles-live-20261106-034507.jsonl` seq 850, `multiplay/party.jsonl` seq 2671,
+/// `titles-live-20261105-232508.jsonl` seq 5580). Ledger E43's `GlobalStateFlags`, one opcode up; what
+/// its bits switch is not established.
+pub const PARTY_GLOBAL_STATE_FLAGS: u16 = 0x01BE;
+
+/// See [`PARTY_GLOBAL_STATE_FLAGS`].
+pub fn party_global_state_flags(flags: u32) -> crate::client::Frame {
+    Builder::new(PARTY_GLOBAL_STATE_FLAGS).u32(flags).frame()
+}
+
+/// The one word a party request carries: a player id for `GAME_CMSG_PARTY_INVITE_PLAYER` (`0x80A0`)
+/// and `GAME_CMSG_PARTY_KICK_PLAYER` (`0x80A9`), a party id for accept, cancel and refuse (`0x809C`,
+/// `0x809D`, `0x809E`). Client's table: `MsgHeader`, `Word`.
+pub fn read_party_word(body: &[u8]) -> Option<u16> {
+    let bytes: [u8; 2] = body.get(..2)?.try_into().ok()?;
+    Some(u16::from_le_bytes(bytes))
+}
+
+/// `GAME_SMSG_PLAYER_UPDATE_PARTY_SIZE`: how many members a player's party has.
 ///
-/// Twelve bytes for the same reason as the size above, and captured in the same breath
-/// (`b1 00 00 00 | 07 00 00 00 | 07 00 00 00`: player 7 leading player 7's own party). The reference's
-/// builder (`GmPlayer.c:344-354`) has no caller - GWPS sends only the size message, and only when
-/// another player is visible - so these values come from the capture, not from GWPS.
+/// **Five bytes on the wire: a two-byte header, a `u16` player id and a `u8` size** - the client's own
+/// table (`MsgHeader`, `Word`, `Byte`) and Headquarter's (`GAME_SERVER_0176`). This builder used to write
+/// twelve, from a capture that reads `b0 00 00 00 | 01 00 00 00 | 01 00 00 00`; that capture is the
+/// *struct* layer (`tools/sniff-capture.py`, `header_len: 4`), which widens the header to four bytes
+/// and every field to four. Sent as twelve, a live client (build 39167) decoded it as player 0, size
+/// 1, framed the remaining seven bytes as a message `0x0000`, and dropped with error 7
+/// (`recordings/client/feature/multiplay/asdasd.jsonl` seq 258-260).
+pub fn player_update_party_size(player_id: u32, party_size: u32) -> crate::client::Frame {
+    Builder::new(PLAYER_UPDATE_PARTY_SIZE)
+        .u16(player_id as u16)
+        .u8(party_size as u8)
+        .frame()
+}
+
+/// `GAME_SMSG_PLAYER_UPDATE_PARTY`: which player leads the party this player is in. Six bytes: a
+/// two-byte header, a `u16` player id and a `u16` leader player id (the client's table and
+/// Headquarter's `GAME_SERVER_0177`). See [`player_update_party_size`] for why it is not twelve.
 pub fn player_update_party(player_id: u32, party_leader_player_id: u32) -> crate::client::Frame {
     Builder::new(PLAYER_UPDATE_PARTY)
-        .u16(0)
-        .u32(player_id)
-        .u32(party_leader_player_id)
+        .u16(player_id as u16)
+        .u16(party_leader_player_id as u16)
         .frame()
 }
 
 /// `GAME_SMSG_PLAYER_DESTROY`: a player has left the map (`GameSrv_BroadcastPlayerDestroy`,
-/// `GmPlayer.c:314`). Eight bytes: a four-byte header, then the player id - the client's own sniffer
-/// calls `0x5A` `AGENT_DESTROY_PLAYER`, and the capture carries `5a 00 00 00 | 0b 00 00 00`.
+/// `GmPlayer.c:314`). Six bytes: a two-byte header, then the player id (Headquarter's
+/// `GAME_SERVER_0090`). The `5a 00 00 00 | 0b 00 00 00` capture is the struct layer, as for
+/// [`player_update_party_size`].
 pub fn player_destroy(player_id: u32) -> crate::client::Frame {
-    Builder::new(PLAYER_DESTROY).u16(0).u32(player_id).frame()
+    Builder::new(PLAYER_DESTROY).u32(player_id).frame()
 }
 
 /// `GAME_SMSG_WORLD_REMOVE_AGENT`: an agent has left the map (`GameSrv_BroadcastAgentRemove`,
-/// `GmAgent.c:60`). Eight bytes, captured as `21 00 00 00 | <agent id>` eight times over.
+/// `GmAgent.c:60`). Six bytes: a two-byte header, then the agent id (Headquarter's
+/// `GAME_SERVER_0033`); the `21 00 00 00 | <agent id>` capture is the struct layer.
 pub fn world_remove_agent(agent_id: u32) -> crate::client::Frame {
-    Builder::new(WORLD_REMOVE_AGENT)
-        .u16(0)
-        .u32(agent_id)
-        .frame()
+    Builder::new(WORLD_REMOVE_AGENT).u32(agent_id).frame()
 }
 
 /// `GAME_SMSG_WORLD_SIMULATION_TICK`: the world's clock. The client expects one at least every 500 ms.
@@ -1662,12 +1906,12 @@ mod tests {
         assert_eq!(wire(&player_update_profession(1, 0, 0, 0)), 9);
         assert_eq!(wire(&player_update_unlocked_professions(1, 0)), 10);
         assert_eq!(wire(&world_update_load_time(0)), 6);
-        // Four-byte game headers: the table says 6 for the first two and 5/6 for the party pair, and
-        // the capture says 8 and 12. The capture wins (see the builders).
-        assert_eq!(wire(&player_destroy(7)), 8);
-        assert_eq!(wire(&world_remove_agent(7)), 8);
-        assert_eq!(wire(&player_update_party_size(1, 1)), 12);
-        assert_eq!(wire(&player_update_party(1, 1)), 12);
+        // Two-byte headers, as the client's table says: the 8 and 12 seen in captures were the struct
+        // layer, and a live client misframes the 12 (see the builders).
+        assert_eq!(wire(&player_destroy(7)), 6);
+        assert_eq!(wire(&world_remove_agent(7)), 6);
+        assert_eq!(wire(&player_update_party_size(1, 1)), 5);
+        assert_eq!(wire(&player_update_party(1, 1)), 6);
         assert_eq!(
             wire(&world_create_agent(&CreateAgent {
                 agent_id: 1,
@@ -1768,23 +2012,19 @@ mod tests {
     }
 
     #[test]
-    fn the_party_messages_are_the_bytes_a_live_server_sends() {
-        // Verbatim from `PreSearing/captures/zone-ref-005829.jsonl`, the only evidence there is: the
-        // client's own table says 5 and 6 bytes for these two, and live sends 12, and the client is
-        // happy with live. See the builders for the precedence rule this follows.
+    fn the_party_messages_are_the_bytes_the_client_decodes() {
+        // The client's own layouts (Headquarter `GAME_SERVER_0033`, `0090`, `0176`, `0177`). The
+        // twelve-byte form these used to pin made a live client misframe and drop (see the builders).
         assert_eq!(
             player_update_party_size(1, 1).encode(),
-            vec![0xb0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]
+            vec![0xb0, 0, 1, 0, 1]
         );
         assert_eq!(
             player_update_party(7, 7).encode(),
-            vec![0xb1, 0, 0, 0, 7, 0, 0, 0, 7, 0, 0, 0]
+            vec![0xb1, 0, 7, 0, 7, 0]
         );
-        assert_eq!(player_destroy(7).encode(), vec![0x5a, 0, 0, 0, 7, 0, 0, 0]);
-        assert_eq!(
-            world_remove_agent(7).encode(),
-            vec![0x21, 0, 0, 0, 7, 0, 0, 0]
-        );
+        assert_eq!(player_destroy(7).encode(), vec![0x5a, 0, 7, 0, 0, 0]);
+        assert_eq!(world_remove_agent(7).encode(), vec![0x21, 0, 7, 0, 0, 0]);
     }
 
     #[test]
@@ -1965,5 +2205,39 @@ mod tests {
         assert_eq!(&bytes[0..2], &0x0099u16.to_le_bytes());
         assert_eq!(&bytes[2..4], &146u16.to_le_bytes());
         assert_eq!(bytes[4], 0);
+    }
+
+    /// Each party travel message frames back through the client's own table at the size it was built
+    /// at: a builder that wrote one byte too many would leave the client framing a message `0x0000`.
+    #[test]
+    fn the_party_travel_messages_frame_through_the_clients_table() {
+        for frame in [
+            party_member_connect_soft(3, 7),
+            party_member_disconnect_soft(3, 7),
+            party_member_enter_world(3, 7),
+            party_member_leave_world(3, 7),
+            instance_travel_timer(10, 0, ""),
+            instance_travel_timer(10, 0, "Ascalon City"),
+        ] {
+            let bytes = frame.encode();
+            let (decoded, used) = crate::client::Frame::decode_game_message(&bytes, false)
+                .expect("the table frames it");
+            assert_eq!(used, bytes.len(), "header {:#06X}", frame.header());
+            assert_eq!(decoded.header(), frame.header());
+        }
+        assert_eq!(wire(&party_member_enter_world(3, 7)), 6);
+        assert_eq!(wire(&instance_travel_timer(10, 0, "")), 2 + 2 + 1 + 2);
+    }
+
+    #[test]
+    fn a_party_travel_request_reads_its_map_first() {
+        // `logs/world-8001.log`: `B1 80 | 94 00 | 02 | 00 00 | 00 | 01`, destination 148.
+        let request =
+            read_party_travel(&[0x94, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01]).expect("a full body");
+        assert_eq!(request.map_id, 148);
+        assert_eq!(request.region, 2);
+        assert_eq!(request.district, 0);
+        assert_eq!(request.flag, 1);
+        assert_eq!(read_party_travel(&[0x94]), None);
     }
 }

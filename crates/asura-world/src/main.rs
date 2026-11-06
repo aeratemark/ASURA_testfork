@@ -9,7 +9,8 @@
 //!
 //! 1. read the configuration: world id, bind address, the address to advertise, and the maps;
 //! 2. open the database pool;
-//! 3. **refuse to run against a database older than this build**;
+//! 3. **apply the migrations the database is missing**, then **refuse to run against a database still
+//!    older than this build** (a migration that failed);
 //! 4. load each map's config (a map without a `map_file_id` cannot be loaded by a client);
 //! 5. register in `world` and publish pool capacity, start the heartbeat, then accept connections.
 //!
@@ -161,6 +162,19 @@ async fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+
+    // Bring the schema up to this build before checking it: a feature whose tables were never created
+    // fails on its first query, mid-session, far from the cause (a guild creation that disconnected
+    // the client with error 7, 2026-11-06). Every migration is idempotent and recorded, so this is a
+    // no-op on a current database.
+    match migrations::apply_pending(&pool).await {
+        Ok(done) if done.applied.is_empty() => {}
+        Ok(done) => eprintln!("asura-world: applied migration(s) {:?}", done.applied),
+        Err(err) => {
+            eprintln!("asura-world: could not apply the pending migrations: {err}");
+            return ExitCode::FAILURE;
+        }
+    }
 
     match migrations::ensure_current(&pool).await {
         Ok(()) => {}

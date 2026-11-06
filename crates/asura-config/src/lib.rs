@@ -713,6 +713,71 @@ pub fn defaults() -> Result<&'static Defaults, String> {
         .map_err(|err| err.clone())
 }
 
+/// The file that holds what a new guild starts with and what guild requests cost.
+pub const GUILDS_FILE: &str = "config/Server/guilds.json";
+
+/// The variable that names a different guilds file.
+pub const GUILDS_VARIABLE: &str = "ASURA_GUILDS";
+
+/// What a new guild starts with, the `0x0133` counter's start and step, and the two prices.
+///
+/// Same rule as [`Defaults`]: every key is required and there is no built-in value. A world whose file is
+/// missing refuses guild requests with the reason logged, rather than making guilds out of numbers nobody
+/// chose (`docs/41-guild-system-research.md`).
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Guilds {
+    /// Gold a creation costs. A placeholder: not charged.
+    pub creation_price: Described<u32>,
+    /// Gold an invitation costs. A placeholder: not charged.
+    pub invite_fee: Described<u32>,
+    /// `0x0121`'s feature byte on a new guild.
+    pub new_guild_feature: Described<u8>,
+    /// `0x0121`'s territory byte on a new guild.
+    pub new_guild_territory: Described<u8>,
+    /// A new guild's allegiance.
+    pub new_guild_allegiance: Described<u8>,
+    /// A new guild's ladder rating.
+    pub new_guild_rating: Described<u32>,
+    /// A new guild's ladder position.
+    pub new_guild_rank: Described<u32>,
+    /// The `0x0133` value of the creation batch, and the counter's start.
+    pub revision_on_create: Described<u32>,
+    /// How far the counter moves per later change.
+    pub revision_step: Described<u32>,
+}
+
+impl Guilds {
+    /// Parse the file's text.
+    pub fn from_json(text: &str) -> Result<Guilds, String> {
+        serde_json::from_str(text).map_err(|err| err.to_string())
+    }
+}
+
+/// The guild settings in force, read once per process. An error when the file is missing or broken.
+pub fn guilds() -> Result<&'static Guilds, String> {
+    static IN_FORCE: OnceLock<Result<Guilds, String>> = OnceLock::new();
+    IN_FORCE
+        .get_or_init(|| {
+            let path = match std::env::var(GUILDS_VARIABLE) {
+                Ok(value) if !value.trim().is_empty() => value.trim().to_string(),
+                _ => GUILDS_FILE.to_string(),
+            };
+            let path = resolve(&path).display().to_string();
+            match std::fs::read_to_string(&path) {
+                Ok(text) => Guilds::from_json(&text)
+                    .map_err(|err| format!("{path} is not a valid guilds file: {err}"))
+                    .map(|guilds| {
+                        eprintln!("asura: guild settings from {path}");
+                        guilds
+                    }),
+                Err(err) => Err(format!("{path} is not readable: {err}")),
+            }
+        })
+        .as_ref()
+        .map_err(|err| err.clone())
+}
+
 /// The file that holds the title definitions.
 pub const TITLES_FILE: &str = "config/Server/titles.json";
 
@@ -1178,5 +1243,13 @@ mod tests {
             intervals.probe_timeout(),
             std::time::Duration::from_millis(750)
         );
+    }
+    #[test]
+    fn the_shipped_guilds_file_parses() {
+        let text = std::fs::read_to_string(super::resolve(super::GUILDS_FILE))
+            .expect("config/Server/guilds.json");
+        let guilds = super::Guilds::from_json(&text).expect("a valid guilds file");
+        assert_eq!(guilds.revision_on_create.value, 0x0200);
+        assert_eq!(guilds.revision_step.value, 0x0100);
     }
 }

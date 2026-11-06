@@ -2,7 +2,7 @@
 
 How this machine runs ASURA, as opposed to what the world contains.
 
-Six files today:
+Seven files today:
 
 - `config/services.toml`, one level up: which services start, their arguments, ports, health checks
   and log paths. It is the supervisor's own file.
@@ -33,6 +33,12 @@ Six files today:
   (`docs/40-titles-system-research.md`). Experimental, and here rather than under `config/World/` on
   the owner's instruction (2026-11-05). Adding a title is adding an entry, copied from a capture of a
   character that has the title.
+
+- `config/Server/guilds.json`: what a new guild starts with - the feature, territory, allegiance,
+  rating and rank bytes `0x0121` carries - and the `0x0133` counter's starting value and step. The two
+  prices (`creation_price`, `invite_fee`) are placeholders: guilds are free for now and no gold is
+  taken whatever they say (owner, 2026-11-06). Every key is required; a missing or broken file refuses
+  guild requests with the reason logged (`docs/41-guild-system-research.md`).
 
 What does not belong here: anything that describes the game. A map, a spawn point, a doorway or a
 quest is world content, and lives in a package under `config/World/`

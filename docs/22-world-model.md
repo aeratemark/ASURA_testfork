@@ -357,7 +357,8 @@ Compliance this sets for the code, to be done as the instance work lands (not a 
 consequence of the rules above):
 
 - an instance registry keyed by instance identity, with `map_id` as an attribute for lookups;
-- a party object that holds its own instance and is the travel unit in `asura-auth`;
+- a party that is the travel unit, crossing from instance to instance through the database's party
+  ledger rather than living in `asura-auth` (owner, 2026-11-06; D25; `docs/45-party-travel.md`);
 - a portal crossing that resolves the destination **once for the party** and brings every member into it,
   whoever crossed - not a per-character travel;
 - a district hop that is party-wide with a countdown for the leader, and party-leaving for a non-leader;

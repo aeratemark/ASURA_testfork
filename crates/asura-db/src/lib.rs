@@ -133,13 +133,20 @@ pub const SCHEMA_V27: &str = include_str!("../migrations/0027_character_cartogra
 /// shows (`docs/40-titles-system-research.md`, section 10.2).
 pub const SCHEMA_V28: &str = include_str!("../migrations/0028_titles.sql");
 
+/// Guilds: the guild, its members and its open invitations (`docs/41-guild-system-research.md`).
+pub const SCHEMA_V29: &str = include_str!("../migrations/0029_guilds.sql");
+
+/// Parties that travel: one row per move of a party, one per character's place in it
+/// (`docs/45-party-travel.md`).
+pub const SCHEMA_V30: &str = include_str!("../migrations/0030_parties.sql");
+
 /// Every migration, in application order. A developer applying the schema gets one string per
 /// migration file, so a new file is picked up without editing the tooling.
 pub const SCHEMA: &[&str] = &[
     SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8,
     SCHEMA_V9, SCHEMA_V10, SCHEMA_V11, SCHEMA_V12, SCHEMA_V13, SCHEMA_V14, SCHEMA_V15, SCHEMA_V16,
     SCHEMA_V17, SCHEMA_V18, SCHEMA_V19, SCHEMA_V20, SCHEMA_V21, SCHEMA_V22, SCHEMA_V23, SCHEMA_V24,
-    SCHEMA_V25, SCHEMA_V26, SCHEMA_V27, SCHEMA_V28,
+    SCHEMA_V25, SCHEMA_V26, SCHEMA_V27, SCHEMA_V28, SCHEMA_V29, SCHEMA_V30,
 ];
 
 /// The tables the coordination model depends on. Used by the startup check: a service refuses to run
@@ -160,6 +167,11 @@ pub const REQUIRED_TABLES: &[&str] = &[
     "t_character_cartography",
     "t_character_titles",
     "t_account_titles",
+    "t_guilds",
+    "t_guild_members",
+    "t_guild_invites",
+    "t_parties",
+    "t_party_members",
 ];
 
 /// The account row itself: the EULA version it accepted, and whatever later column a login needs.
@@ -184,6 +196,12 @@ pub mod cartography;
 
 /// Title progress: the points per title, per character and per account, and the title a character shows.
 pub mod titles;
+
+/// Guilds: the guild row, its members and its open invitations.
+pub mod guilds;
+
+/// Parties that travel: the ledger a party crosses from one instance into another with.
+pub mod parties;
 
 /// The inventory: a character's bags and items, the default set the reference seeds, and the one query
 /// a drop needs. Replaces the replayed item messages with rows.

@@ -1,0 +1,69 @@
+{
+  "note": "How many players a party may hold, per map id. A party grows by an invitation and its accept, and both are refused past this size. A map that is not listed has no answer, and no party grows there. The client draws its own party window from its own map table, so the size it shows can differ from this one; this one is what the server allows.",
+  "maps": {
+    "145": {
+      "value": 2,
+      "doc": "The Catacombs (pre-Searing): at most two players in a party."
+    },
+    "146": {
+      "value": 2,
+      "doc": "Lakeside County (pre-Searing): at most two players in a party."
+    },
+    "147": {
+      "value": 2,
+      "doc": "The Northlands (pre-Searing): at most two players in a party."
+    },
+    "148": {
+      "value": 2,
+      "doc": "Ascalon City (pre-Searing): at most two players in a party."
+    },
+    "149": {
+      "value": 2,
+      "doc": "Ascalon Academy (pre-Searing): at most two players in a party."
+    },
+    "150": {
+      "value": 2,
+      "doc": "Ascalon Academy (pre-Searing): at most two players in a party."
+    },
+    "151": {
+      "value": 2,
+      "doc": "Ascalon Academy (pre-Searing): at most two players in a party."
+    },
+    "160": {
+      "value": 2,
+      "doc": "Green Hills County (pre-Searing): at most two players in a party."
+    },
+    "161": {
+      "value": 2,
+      "doc": "Wizard's Folly (pre-Searing): at most two players in a party."
+    },
+    "162": {
+      "value": 2,
+      "doc": "Regent Valley (pre-Searing): at most two players in a party."
+    },
+    "163": {
+      "value": 2,
+      "doc": "The Barradin Estate (pre-Searing): at most two players in a party."
+    },
+    "164": {
+      "value": 2,
+      "doc": "Ashford Abbey (pre-Searing): at most two players in a party."
+    },
+    "165": {
+      "value": 2,
+      "doc": "Foible's Fair (pre-Searing): at most two players in a party."
+    },
+    "166": {
+      "value": 2,
+      "doc": "Fort Ranik (pre-Searing): at most two players in a party."
+    },
+    "877": {
+      "value": 2,
+      "doc": "Forsaken Tunnels, pre-Searing level 2 (pre-Searing): at most two players in a party."
+    },
+    "878": {
+      "value": 2,
+      "doc": "Forsaken Tunnels, pre-Searing level 3 (pre-Searing): at most two players in a party."
+    }
+  }
+}

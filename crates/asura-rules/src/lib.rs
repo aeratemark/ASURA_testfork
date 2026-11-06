@@ -19,6 +19,12 @@
 /// Titles: the rung a track is on, what a load and a point change send, and whether a title may be shown.
 pub mod titles;
 
+/// Parties: whether an invitation, an answer to one, or a departure may happen.
+pub mod party;
+
+/// Guilds: whether a guild may be created, a character invited, a guild left or its announcement set.
+pub mod guild;
+
 /// What the client asked for: a map id and the map type it named with it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Requested {

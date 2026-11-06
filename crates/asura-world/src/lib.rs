@@ -61,10 +61,8 @@ pub use tokio::net::{TcpListener, TcpStream};
 // facade that re-exports them, so `asura_world::MapEntry` and `asura_world::map::MapEntry` are
 // the same type. A domain's file is where to look: `item.rs` for items, `chat.rs` for chat.
 //
-// A noun gets its file when it first has code - no empty `party.rs`, `skill.rs` or `effects.rs`
-// standing in for something that does not exist yet. When the first party rule lands, it lands
-// in `party.rs`, and the dispatcher calls it; until then the noun is a name in a comment, not a
-// module.
+// A noun gets its file when it first has code - no empty `skill.rs` or `effects.rs` standing in
+// for something that does not exist yet; until then the noun is a name in a comment, not a module.
 // -------------------------------------------------------------------------------------------
 
 /// The map catalogue: one entry per map, and the questions a server answers about it.
@@ -83,6 +81,14 @@ pub mod item;
 pub mod instance_table;
 
 pub mod map;
+
+/// Parties in one instance: who leads, who is in, which invitations are open, and the requests that
+/// change them (`docs/44-party-invites.md`).
+pub mod party;
+
+/// Guilds: the load's guild block, a guilded peer's badge, and the create, invite, leave and announcement
+/// requests (`docs/41-guild-system-research.md`).
+pub mod guild;
 
 /// The spawn points a map carries, read from the world pack (`config/World/<pack>/.../spawns.json`).
 pub mod map_spawns;
@@ -439,6 +445,7 @@ mod tests {
             started: Instant::now(),
             player_id: PLAYER_ID,
             agent_id: AGENT_ID,
+            party_id: PARTY_ID,
             traits,
             unlocked: crate::player::UNLOCKED_MAP_ZEROS,
         });
@@ -466,6 +473,7 @@ mod tests {
             started: Instant::now(),
             player_id: PLAYER_ID,
             agent_id: AGENT_ID,
+            party_id: PARTY_ID,
             traits: db_game::Traits::default(),
             unlocked: crate::player::UNLOCKED_MAP_ZEROS,
         });
@@ -497,6 +505,7 @@ mod tests {
             started: Instant::now(),
             player_id: PLAYER_ID,
             agent_id: AGENT_ID,
+            party_id: PARTY_ID,
             traits: db_game::Traits::default(),
             unlocked: crate::player::UNLOCKED_MAP_ZEROS,
         });
@@ -632,6 +641,7 @@ mod tests {
             started: Instant::now(),
             player_id: PLAYER_ID,
             agent_id: AGENT_ID,
+            party_id: PARTY_ID,
             traits: db_game::Traits::default(),
             unlocked: crate::player::UNLOCKED_MAP_ZEROS,
         });
@@ -895,6 +905,7 @@ mod tests {
             started: Instant::now(),
             player_id: PLAYER_ID,
             agent_id: AGENT_ID,
+            party_id: PARTY_ID,
             traits: db_game::Traits::default(),
             unlocked: crate::player::UNLOCKED_MAP_ZEROS,
         });
@@ -1138,12 +1149,47 @@ mod tests {
         let map = test_map();
         let instance = Instance::new(map.clone());
         let (outbox, _inbox) = tokio::sync::mpsc::unbounded_channel();
-        let (_, player_agent) =
-            instance.join("test".to_string(), Standing::from_map(&map), [0; 9], outbox);
+        let (orders, _to_do) = tokio::sync::mpsc::unbounded_channel();
+        let (_, player_agent) = instance.join(
+            "test".to_string(),
+            Uuid::nil(),
+            Standing::from_map(&map),
+            [0; 9],
+            outbox,
+            orders,
+        );
         let first = instance.allocate_agent_id();
         let second = instance.allocate_agent_id();
         assert_eq!(first, player_agent + 1, "the player's id is taken");
         assert_ne!(first, second);
         assert_ne!(first, player_agent);
+    }
+
+    #[test]
+    fn a_kept_player_id_goes_to_its_character_and_to_nobody_else() {
+        // A party member still travelling in has its id kept (`crate::party::arrive`): a stranger who
+        // joins first must not take it, and the member must get it when it comes.
+        let map = test_map();
+        let instance = Instance::new(map.clone());
+        let member = Uuid::from_u128(7);
+        let kept = instance.reserve(member);
+        assert_eq!(kept, 1, "the lowest free id");
+        let join = |character: Uuid| {
+            let (outbox, _inbox) = tokio::sync::mpsc::unbounded_channel();
+            let (orders, _to_do) = tokio::sync::mpsc::unbounded_channel();
+            instance
+                .join(
+                    "test".to_string(),
+                    character,
+                    Standing::from_map(&map),
+                    [0; 9],
+                    outbox,
+                    orders,
+                )
+                .0
+        };
+        assert_eq!(join(Uuid::from_u128(1)), 2, "a stranger skips the kept id");
+        assert_eq!(join(member), kept, "the member gets its own");
+        assert_eq!(join(Uuid::from_u128(2)), 3);
     }
 }

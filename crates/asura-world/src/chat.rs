@@ -163,6 +163,12 @@ pub const COMMANDS: &[Command] = &[
         takes_argument: true,
         answer: "sets a title's points: 0x00F5, or 0x00F3 x2 then 0x00F6, as a point change sends them",
     },
+    Command {
+        names: &["guild"],
+        reference: "none -- an ASURA command (owner, 2026-11-06), standing in for the Guild Registrar",
+        takes_argument: true,
+        answer: "`/guild create` opens the Guild Registration window (0x00C4, 0x0084, 0x00CA, 0x00C3 {8, 0})",
+    },
 ];
 
 /// The command a player typed, if this world answers it.
@@ -352,6 +358,11 @@ pub async fn handle_chat_message(
                         stream, session, world, player, argument, trace,
                     )
                     .await
+                }
+                Some(named) if named.names.contains(&"guild") && !argument.is_empty() => {
+                    // Not the reference's: the owner's stand-in for the Guild Registrar (`crate::guild`).
+                    crate::guild::handle_guild_command(stream, session, player, argument, trace)
+                        .await
                 }
                 _ => {
                     // `GameSrv_SendInvalidCommand`: the reference's text is "Unknown command". That

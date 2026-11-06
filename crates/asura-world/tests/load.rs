@@ -1548,12 +1548,19 @@ async fn a_second_player_is_introduced_to_the_first_and_withdrawn_again() {
         "and its own party, as the reference sends it"
     );
     // And what it takes to draw them: `GameSrv_BroadcastPlayerEquippedItems` sends the equipped items in
-    // their *unnamed* form, then the visual equipment and the cape (`GameSrv.c:1648-1650`).
+    // their *unnamed* form, then the visual equipment and the cape (`GameSrv.c:1648-1650`). In this build
+    // that form is retail's `0x015E` low-detail record, not `0x015F` (`game::ITEM_LOW_DETAIL`).
     assert!(
         introduced
             .iter()
-            .any(|frame| frame.header() == game::CREATE_UNNAMED_ITEM),
-        "the newcomer's equipped items, unnamed"
+            .any(|frame| frame.header() == game::ITEM_LOW_DETAIL),
+        "the newcomer's equipped items, low-detail"
+    );
+    assert!(
+        introduced
+            .iter()
+            .all(|frame| frame.header() != game::CREATE_UNNAMED_ITEM),
+        "and never as 0x015F, which retail does not send in a load"
     );
     assert!(
         introduced

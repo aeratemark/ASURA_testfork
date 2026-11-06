@@ -1,0 +1,23 @@
+{
+  "note": "How a party travels as one (docs/45-party-travel.md). A leader's world-map travel in an outpost starts a countdown, and the whole party moves when it ends; any member crossing a doorway moves the whole party at once. Read once when the world starts: restart the world after changing it. Experimental.",
+  "countdown_secs": {
+    "value": 10,
+    "doc": "Seconds between a leader's world-map travel and the party's move. Members who travel elsewhere during it leave the party. The client is shown the number in 0x01BC."
+  },
+  "countdown_byte": {
+    "value": 0,
+    "doc": "The byte after the seconds in 0x01BC. Its meaning is not established and no capture shows it: 0 is a guess."
+  },
+  "countdown_text": {
+    "value": "",
+    "doc": "The text 0x01BC carries (up to 122 UTF-16 units). No capture shows it: empty is a guess."
+  },
+  "arrival_grace_secs": {
+    "value": 60,
+    "doc": "Seconds a member told to travel with its party has to arrive in the destination before the party drops it from the member list."
+  },
+  "disconnect_hold_secs": {
+    "value": 900,
+    "doc": "Seconds a party in an explorable keeps the place of a member whose connection dropped: 15 minutes, the game's rule (docs/36-game-rules-ledger.md, R11). A clean logout is a leave and is not held."
+  }
+}

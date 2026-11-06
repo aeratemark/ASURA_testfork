@@ -1,0 +1,38 @@
+{
+  "creation_price": {
+    "value": 0,
+    "doc": "Gold a guild's creation costs. A placeholder: gold is not charged yet, so creation is free whatever this says; a value other than 0 is read and logged, never taken."
+  },
+  "invite_fee": {
+    "value": 0,
+    "doc": "Gold an invitation costs, given back when the invitation is refused. A placeholder like creation_price: invitations are free whatever this says."
+  },
+  "new_guild_feature": {
+    "value": 0,
+    "doc": "The feature byte a new guild's GUILD_GENERAL_INFO (0x0121) carries until something changes it. Its meaning is not established."
+  },
+  "new_guild_territory": {
+    "value": 2,
+    "doc": "The territory byte a new guild's 0x0121 carries. Its meaning is not established."
+  },
+  "new_guild_allegiance": {
+    "value": 4,
+    "doc": "The allegiance a new guild starts with, as 0x0121 carries it."
+  },
+  "new_guild_rating": {
+    "value": 1000,
+    "doc": "The ladder rating a new guild starts with."
+  },
+  "new_guild_rank": {
+    "value": 0,
+    "doc": "The ladder position a new guild starts with: 0 is unranked."
+  },
+  "revision_on_create": {
+    "value": 512,
+    "doc": "The value the 0x0133 message carries in a guild's creation batch, and the counter the guild's row starts at."
+  },
+  "revision_step": {
+    "value": 256,
+    "doc": "How far the guild's 0x0133 counter moves on each later change: an invitation, a departure, an announcement."
+  }
+}

@@ -62,6 +62,13 @@ pub struct Player {
     /// The character's title progress as read when the connection was built, the title it shows, and
     /// which tracks and rank records this connection has been sent (`crate::titles`).
     pub titles: crate::titles::TitleState,
+    /// The character's guild and its own member row, as read when the connection was built and as this
+    /// connection has changed it since (`crate::guild`). `None` for a character in no guild.
+    pub guild: Option<crate::guild::Membership>,
+    /// Set when the client said goodbye (`GAME_CMSG_DISCONNECT`). A connection that ends without it,
+    /// and without a travel, is a network drop - the one ending an explorable party holds a place for
+    /// (`crate::party::left_instance`).
+    pub said_goodbye: bool,
 }
 
 #[allow(non_snake_case)]
@@ -179,6 +186,8 @@ pub struct PlayerBlock<'a> {
     pub player_id: u32,
     /// The agent id this connection was given.
     pub agent_id: u32,
+    /// The party this player is in (`crate::party`): its own party of one at a first load.
+    pub party_id: u16,
     /// The character's own row: appearance, campaign, level and the rest.
     pub traits: db_game::Traits,
     /// The unlocked-map bitmap, in the client's own encoding.
@@ -200,6 +209,7 @@ pub fn player_block(block: &PlayerBlock<'_>) -> Vec<Frame> {
         started,
         player_id,
         agent_id,
+        party_id,
         traits,
         unlocked,
     } = *block;
@@ -369,10 +379,10 @@ pub fn player_block(block: &PlayerBlock<'_>) -> Vec<Frame> {
     frames.push(game::world_update_controlled_agent(agent_id, 3));
 
     // The party: one member, this player, and the client's own party pointer.
-    frames.push(game::party_create(PARTY_ID));
-    frames.push(game::party_player_add(PARTY_ID, player_id as u16, 1));
-    frames.push(game::party_member_stream_end(PARTY_ID));
-    frames.push(game::character_update_party(PARTY_ID, 1));
+    frames.push(game::party_create(party_id));
+    frames.push(game::party_player_add(party_id, player_id as u16, 1));
+    frames.push(game::party_member_stream_end(party_id));
+    frames.push(game::character_update_party(party_id, 1));
 
     frames.push(game::instance_load_finish());
     frames
@@ -528,6 +538,12 @@ pub async fn handle_request_players(
                 started: player.started,
                 player_id: player.player_id,
                 agent_id: player.agent_id,
+                party_id: player
+                    .instance
+                    .parties
+                    .party_of(player.player_id)
+                    .map(|party| party.party_id)
+                    .unwrap_or(PARTY_ID),
                 traits: player.traits,
                 unlocked: &unlocked,
             });
@@ -539,10 +555,47 @@ pub async fn handle_request_players(
                 player.player_id,
                 &mut player.titles,
             );
+            // The party state every live load ends with (`crate::party::load_tail`).
+            crate::party::splice_load_tail(
+                &mut block,
+                player.instance.map.map_type == map_kinds().main_town,
+            );
+            // The guild block in front of the party block, where a live load carries it: `0x011C`
+            // alone for a character in no guild (`crate::guild`). Not in a creation instance, which no
+            // capture shows a guild message in.
+            if player.instance.map.map_type != map_kinds().character_creation {
+                let badge = crate::guild::badge(&player.instance, player.guild.as_ref());
+                let guild = crate::guild::load_frames(
+                    badge.as_ref(),
+                    player.guild.as_ref(),
+                    player.agent_id,
+                );
+                if !crate::guild::splice_into_player_block(&mut block, guild) {
+                    eprintln!(
+                        "world: guild: the player block has no PARTY_CREATE anchor; no guild block sent"
+                    );
+                }
+            }
             block
         }
     };
-    let others = player.instance.others(player.player_id);
+    // The players already in the map, as this one enters it: the ones its block introduces and the only
+    // ones it is introduced to (`Instance::enter`).
+    let entered = player.instance.enter(player.player_id);
+    let others: Vec<PeerView> = player
+        .instance
+        .others(player.player_id)
+        .into_iter()
+        .filter(|peer| entered.contains(&peer.player_id))
+        .collect();
+    // The player's party as the instance has it - a party that has just come through a doorway with its
+    // members still on the way included - behind the guild block, where a live load carries it, each
+    // member in the map only once this client has met it (`crate::party::load_section`). Not in a
+    // replayed block, which is the reference's own bytes.
+    let built = !replay.is_some_and(|replay| replay.pick.wants(crate::replay::BlockName::Players));
+    if built {
+        crate::party::splice_load_section(&mut block, &player.instance, player.player_id);
+    }
     eprintln!(
         "world: [+{} ms] load block for instance {here}: {} frame(s); reached list {} ms, block {} ms, total {} ms",
         crate::stamp_ms(),
@@ -554,6 +607,14 @@ pub async fn handle_request_players(
     for peer in &others {
         block.extend(introduction(peer));
     }
+    // The party members it was just introduced to are in the map (`crate::party::in_map_notices`).
+    if built {
+        block.extend(crate::party::in_map_notices(
+            &player.instance,
+            player.player_id,
+            &entered,
+        ));
+    }
     let me = PeerView {
         player_id: player.player_id,
         agent_id: player.agent_id,
@@ -561,31 +622,23 @@ pub async fn handle_request_players(
         standing: player.standing(),
         equipped: player.inventory.equipped_item_ids(),
         shown_title: player.titles.shown_rank().cloned(),
+        look: crate::instance::Look::from_traits(&player.traits),
+        wearing: crate::instance::wearing(&player.inventory),
+        party_leader: player.instance.parties.leader_and_size(player.player_id).0,
+        party_size: player.instance.parties.leader_and_size(player.player_id).1,
+        guild: crate::guild::badge(&player.instance, player.guild.as_ref()),
     };
-    if !others.is_empty() {
-        // The introduction, then what the others need in order to draw this player:
-        // `GameSrv_BroadcastPlayerEquippedItems` (`GmItem.c:129-160`, the *unnamed* item form),
-        // then `GameSrv_BroadcastUpdateAgentVisualEquipment` and `GameSrv_BroadcastAgentDisplayCape`
-        // - the reference's own order in the same handler (`GameSrv.c:1643-1650`).
-        let mut mine = introduction(&me);
-        let equipped_bag = player
-            .inventory
-            .bags
-            .iter()
-            .find(|bag| bag.bag_type == 2)
-            .map(|bag| bag.bag_id);
-        for item in player
-            .inventory
-            .items
-            .iter()
-            .filter(|item| item.bag_id == equipped_bag)
-        {
-            mine.push(game::create_unnamed_item(&named_item(item)));
-        }
-        mine.push(equipment_frame(player));
-        mine.push(game::agent_display_cape(player.agent_id, 1));
-        player.instance.broadcast(player.player_id, &mine);
+    // The same introduction the newcomer was just given for each of them, now the other way: the
+    // player, the agent, then its equipped items, visual equipment and cape
+    // (`GameSrv_BroadcastPlayerEquippedItems` and the two after it, `GameSrv.c:1643-1650`). Only to the
+    // players its block introduced: one still loading meets it in its own block.
+    let hello = introduction(&me);
+    for peer in &entered {
+        player.instance.send_to(*peer, &hello);
     }
+    // A party member that has just arrived: its party is told, now that its player exists on their
+    // clients (`crate::party::announce_arrival`).
+    crate::party::announce_arrival(&player.instance, player.player_id, &entered, trace);
     send(stream, session, block, trace).await?;
     // The load is over: the block's last message was `INSTANCE_LOAD_FINISH`. Only now may the instance's
     // clock tick this player - measured, not assumed: 36 live loads carry no `0x001E` between the client's

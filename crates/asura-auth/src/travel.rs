@@ -165,18 +165,70 @@ pub async fn answer(
             None
         }
     };
-    let (placed_map, substituted) = asura_rules::placement(
-        asura_rules::Requested {
-            map_id,
-            map_type: request.map_type,
-        },
-        character,
-        destination_type,
-        // Both from the defaults file, read above, plus the client's own map kinds.
-        defaults.default_outpost(),
-        empty,
-        defaults.map_kinds(),
-    );
+    // A character whose party holds its place after a dropped connection goes back to that party's
+    // map, on that party's world - the explorable instance lives there
+    // (`asura_rules::party::rejoin_held`, `docs/45-party-travel.md`, experimental). A visit to the
+    // creation screen is not a return to the game, so it is left alone. Any other login starts in a
+    // party of one, so whatever party the ledger still had it in is forgotten.
+    let ledger = match asura_db::parties::membership(pool, character_id).await {
+        Ok(ledger) => ledger,
+        Err(err) => {
+            eprintln!("auth: could not read the party ledger: {err}");
+            None
+        }
+    };
+    let held = ledger.as_ref().and_then(|ledger| {
+        ledger
+            .member(character_id)
+            .filter(|me| me.state == asura_db::parties::HELD)
+            .map(|me| asura_rules::party::Held {
+                map_id: ledger.map_id,
+                live: me.hold_live,
+            })
+    });
+    let creation_visit = request.map_type == defaults.map_kinds().character_creation as u32;
+    let mut rejoin = asura_rules::party::rejoin_held(held.filter(|_| !creation_visit));
+    let party_world = rejoin.and(ledger.as_ref().map(|ledger| ledger.world_id));
+    // A held place in a world that has gone silent cannot be reached: the ordinary rule answers instead.
+    if let Some(world_id) = party_world {
+        let fresh = placement::world_is_fresh(pool, world_id, world_max_age_secs())
+            .await
+            .unwrap_or(false);
+        if !fresh {
+            eprintln!(
+                "auth: the character's party is held on world {world_id}, which is not answering; the \
+                 ordinary placement answers"
+            );
+            rejoin = None;
+        }
+    }
+    let party_world = party_world.filter(|_| rejoin.is_some());
+    if rejoin.is_none() && ledger.is_some() {
+        if let Err(err) = asura_db::parties::forget(pool, character_id).await {
+            eprintln!("auth: could not forget the character's old party: {err}");
+        }
+    }
+    let (placed_map, substituted) = match rejoin {
+        Some(held_map) => {
+            eprintln!(
+                "auth: the character's party holds its place in map {held_map}; it goes back there \
+                 (asked for map {map_id})"
+            );
+            (held_map, None)
+        }
+        None => asura_rules::placement(
+            asura_rules::Requested {
+                map_id,
+                map_type: request.map_type,
+            },
+            character,
+            destination_type,
+            // Both from the defaults file, read above, plus the client's own map kinds.
+            defaults.default_outpost(),
+            empty,
+            defaults.map_kinds(),
+        ),
+    };
     match substituted {
         Some(asura_rules::Substituted::CreationNamedAsPlace(from)) => eprintln!(
             "auth: the client named the creation instance as a place; placing it in map \
@@ -195,9 +247,13 @@ pub async fn answer(
         None => {}
     }
     let map_id = placed_map;
-    let candidates = placement::find_worlds(pool, map_id, world_max_age_secs(), MAX_CANDIDATES)
+    let mut candidates = placement::find_worlds(pool, map_id, world_max_age_secs(), MAX_CANDIDATES)
         .await
         .map_err(ConnectionError::Database)?;
+    // A party's held place is in one world's instance; no other world has it.
+    if let Some(world_id) = party_world {
+        candidates.retain(|candidate| candidate.world_id == world_id);
+    }
 
     eprintln!(
         "auth: travel to map {map_id} (type {}, region {}, district {}, language {}): {} \

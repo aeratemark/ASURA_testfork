@@ -8,8 +8,122 @@
 //!
 //! The client-driven half of travel - `AUTH_CMSG_REQUEST_GAME_INSTANCE` and the front door - is
 //! in `asura-auth`; a world only decides where a player *already here* goes next.
+//!
+//! **A party travels as one** (`docs/45-party-travel.md`, experimental): any member crossing a doorway
+//! moves the whole party at once, a leader's world-map travel in an outpost moves it after a countdown,
+//! and anyone else's world-map travel leaves the party first (`asura_rules::party::travel_request`).
+//! A move writes the party ledger and hands every traveller's own connection an [`Order`], so each
+//! member runs the same cycle a lone travel runs, on its own socket.
 
 use crate::*;
+
+/// Something a connection is told to do by another player's connection: the channel each slot holds
+/// beside its outbox (`Instance::order`).
+#[derive(Debug, Clone)]
+pub enum Order {
+    /// Travel with the party: the destination the move resolved once for everyone, the arrival point a
+    /// doorway stated (or none), and every traveller's agent id, which each traveller's redirect batch
+    /// marks with the travel effect.
+    Travel {
+        /// Where the party goes.
+        destination: MapEntry,
+        /// Where it stands on arrival, when a doorway said so.
+        landing: Option<(f32, f32)>,
+        /// The agents of every traveller, this one's own included.
+        companions: Vec<u32>,
+    },
+}
+
+/// Carry out an order on this connection's own socket.
+pub async fn carry_out(
+    stream: &mut TcpStream,
+    session: &mut Session,
+    world: &World,
+    player: &mut Player,
+    order: Order,
+    trace: bool,
+) -> Result<bool, GameError> {
+    match order {
+        Order::Travel {
+            destination,
+            landing,
+            companions,
+        } => {
+            if player.moved {
+                return Ok(true);
+            }
+            let others: Vec<u32> = companions
+                .into_iter()
+                .filter(|agent| *agent != player.agent_id)
+                .collect();
+            let answer = begin_transfer(
+                stream,
+                session,
+                world,
+                player,
+                destination,
+                landing,
+                &others,
+                trace,
+            )
+            .await;
+            if !player.moved {
+                // Refused (no seat, no address): this member stays behind, alone.
+                crate::party::stays_behind(&player.instance, player.player_id, trace);
+            }
+            answer
+        }
+    }
+}
+
+/// Move a party that [`crate::party::begin_move`] has started: write the ledger the destination builds
+/// the party from (`asura_db::parties::depart`), then order every traveller's connection to go. A ledger
+/// that could not be written is logged and the travellers still go; they arrive as separate players.
+pub async fn move_party(
+    world: &World,
+    instance: &Instance,
+    mv: crate::party::Move,
+    destination: MapEntry,
+    landing: Option<(f32, f32)>,
+    trace: bool,
+) {
+    let characters: Vec<Uuid> = mv.travellers.iter().map(|(_, _, c)| *c).collect();
+    match asura_db::parties::depart(
+        &world.pool,
+        mv.leader,
+        world.world_id,
+        destination.map_id,
+        &characters,
+    )
+    .await
+    {
+        Ok(ledger) => eprintln!(
+            "world: party {} leaves map {} for map {} '{}' with {} traveller(s) (ledger {ledger})",
+            mv.party_id,
+            instance.map.map_id,
+            destination.map_id,
+            destination.label(),
+            mv.travellers.len()
+        ),
+        Err(err) => eprintln!(
+            "world: party {} could not write its ledger ({err}); its {} traveller(s) go and arrive \
+             as separate players",
+            mv.party_id,
+            mv.travellers.len()
+        ),
+    }
+    let companions: Vec<u32> = mv.travellers.iter().map(|(_, agent, _)| *agent).collect();
+    for (member, _, _) in &mv.travellers {
+        let order = Order::Travel {
+            destination: destination.clone(),
+            landing,
+            companions: companions.clone(),
+        };
+        if !instance.order(*member, order) && trace {
+            eprintln!("world: party: player {member} is gone before its travel order reached it");
+        }
+    }
+}
 
 /// The district number the reference always answers with (`AuthSrv_HandleRequestGameInstance`).
 pub const DISTRICT_NUMBER: u32 = 1;
@@ -267,7 +381,9 @@ pub async fn teleport(
         eprintln!("world: You are already here.");
         return Ok(true);
     }
-    begin_transfer(stream, session, world, player, target, None, trace).await
+    // A teleport is one character's: it leaves its party first, as a world-map travel by a member does.
+    crate::party::leave_to_travel(player, trace);
+    begin_transfer(stream, session, world, player, target, None, &[], trace).await
 }
 
 /// The client's own request, from the world map: `GAME_CMSG_PARTY_TRAVEL` (`0x80B1`).
@@ -297,13 +413,16 @@ pub async fn handle_party_travel(
     player: &mut Player,
     trace: bool,
 ) -> Result<bool, GameError> {
-    if frame.body().len() < 2 {
+    let Some(request) = game::read_party_travel(frame.body()) else {
         return Err(GameError::Framing(FrameError::Incomplete { needed: 9 }));
-    }
-    let map_id = i32::from(u16::from_le_bytes([frame.body()[0], frame.body()[1]]));
+    };
+    let map_id = i32::from(request.map_id);
     eprintln!(
-        "world: {:?} asked for instance {map_id} from the world map in map {}",
-        player.name, player.instance.map.map_id
+        "world: {:?} asked for instance {map_id} (district {}, language {}) from the world map in map {}",
+        player.name,
+        request.district,
+        request.language,
+        player.instance.map.map_id
     );
     let Some(destination) = resolve_instance(world, map_id).await? else {
         // A statement about this server, not about the client's rights: it has no row, no blob, or a
@@ -311,7 +430,102 @@ pub async fn handle_party_travel(
         eprintln!("world: instance {map_id} cannot be served by this world; the travel is refused");
         return Ok(true);
     };
-    begin_transfer(stream, session, world, player, destination, None, trace).await
+    // What the request does to the player's party (the owner's notes, 2026-11-06).
+    let (leader, size) = player.instance.parties.leader_and_size(player.player_id);
+    let in_outpost = player.instance.map.map_type == map_kinds().main_town;
+    match asura_rules::party::travel_request(in_outpost, leader == player.player_id, size as usize)
+    {
+        asura_rules::party::TravelRequest::Alone => {
+            begin_transfer(
+                stream,
+                session,
+                world,
+                player,
+                destination,
+                None,
+                &[],
+                trace,
+            )
+            .await
+        }
+        asura_rules::party::TravelRequest::LeavesParty => {
+            crate::party::leave_to_travel(player, trace);
+            begin_transfer(
+                stream,
+                session,
+                world,
+                player,
+                destination,
+                None,
+                &[],
+                trace,
+            )
+            .await
+        }
+        asura_rules::party::TravelRequest::PartyAfterCountdown => {
+            let Some((ticket, seconds)) = crate::party::start_countdown(player, trace) else {
+                return Ok(true);
+            };
+            let world = world.clone();
+            let instance = player.instance.clone();
+            let leader = player.player_id;
+            tokio::spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_secs(u64::from(seconds))).await;
+                if !crate::party::countdown_stands(&instance, leader, ticket) {
+                    if trace {
+                        eprintln!("world: party: the countdown of ticket {ticket} was voided");
+                    }
+                    return;
+                }
+                // Only members that have the outpost unlocked follow (owner, 2026-11-06); the others stay
+                // behind in parties of their own. The leader's own client offered the destination.
+                let mut left_out = Vec::new();
+                for (member, character) in crate::party::present_characters(&instance, leader) {
+                    if member == leader {
+                        continue;
+                    }
+                    let unlocked = match db_game::unlocked_instances(&world.pool, character).await {
+                        Ok(instances) => instances.contains(&destination.map_id),
+                        Err(err) => {
+                            eprintln!(
+                                "world: party: could not read player {member}'s unlocks: {err}"
+                            );
+                            false
+                        }
+                    };
+                    if !asura_rules::party::follows_to_outpost(unlocked) {
+                        eprintln!(
+                            "world: party: player {member} has not unlocked map {} and stays behind",
+                            destination.map_id
+                        );
+                        left_out.push(member);
+                    }
+                }
+                let size = crate::party::max_size(destination.map_id);
+                match crate::party::begin_move(&instance, leader, size, &left_out, trace) {
+                    Ok(mv) => move_party(&world, &instance, mv, destination, None, trace).await,
+                    Err(why) => {
+                        // Nobody left to take along, or no size for the destination: the leader goes
+                        // alone, which is what its own request asked for.
+                        eprintln!(
+                            "world: party: the leader's party does not move as one ({why:?}); the \
+                             leader travels alone"
+                        );
+                        let companions = Vec::new();
+                        instance.order(
+                            leader,
+                            Order::Travel {
+                                destination,
+                                landing: None,
+                                companions,
+                            },
+                        );
+                    }
+                }
+            });
+            Ok(true)
+        }
+    }
 }
 
 /// The instance a travel names, demand-loaded when this world hosts it only on demand.
@@ -397,7 +611,48 @@ pub async fn portal_crossed(
         );
         return Ok(true);
     };
-    begin_transfer(stream, session, world, player, destination, landing, trace).await
+    // Any member crossing brings the whole party through (ledger R9): the destination is resolved once,
+    // here, and every member's own connection is ordered to go.
+    let size = crate::party::max_size(destination.map_id);
+    match crate::party::begin_move(&player.instance, player.player_id, size, &[], trace) {
+        Ok(mv) => {
+            let instance = player.instance.clone();
+            move_party(world, &instance, mv, destination, landing, trace).await;
+            Ok(true)
+        }
+        Err(crate::party::NoMove::AlreadyMoving) => Ok(true),
+        Err(crate::party::NoMove::Alone) => {
+            begin_transfer(
+                stream,
+                session,
+                world,
+                player,
+                destination,
+                landing,
+                &[],
+                trace,
+            )
+            .await
+        }
+        Err(crate::party::NoMove::NoSizeForDestination) => {
+            eprintln!(
+                "world: party: map {to_instance} has no party size in the pack; {:?} crosses alone",
+                player.name
+            );
+            crate::party::leave_to_travel(player, trace);
+            begin_transfer(
+                stream,
+                session,
+                world,
+                player,
+                destination,
+                landing,
+                &[],
+                trace,
+            )
+            .await
+        }
+    }
 }
 
 /// The cycle itself: the arriving position, the seat on the destination, the transfer row, and the
@@ -411,6 +666,12 @@ pub async fn portal_crossed(
 /// `None`, which **clears** the saved position: a travel does not preserve where a character was, only
 /// a disconnect does, and an outpost arrival picks its own spawn point at random regardless
 /// (`Standing::arrival`).
+///
+/// `companions` are the agents of the other members travelling with this one: a live party crossing marks
+/// each traveller's agent with the travel effect in every traveller's batch, its own first
+/// (`multiplay/party.jsonl` seq 2512-2515: `0x00F1` for agents `0xF1` and `0x4C`, then `0x0028` for its
+/// own).
+#[allow(clippy::too_many_arguments)]
 async fn begin_transfer(
     stream: &mut TcpStream,
     session: &mut Session,
@@ -418,6 +679,7 @@ async fn begin_transfer(
     player: &mut Player,
     destination: MapEntry,
     landing: Option<(f32, f32)>,
+    companions: &[u32],
     trace: bool,
 ) -> Result<bool, GameError> {
     let to_map = destination.map_id;
@@ -484,7 +746,7 @@ async fn begin_transfer(
          is_explorable {is_explorable})",
         crate::stamp_ms()
     );
-    let frames = vec![
+    let mut frames = vec![
         // Four messages before the redirect and four after it, in the order and at the sizes a live
         // server sends them (`captures/zone-ref2-012225.jsonl`, one travel, seq 971 to 982):
         //
@@ -525,6 +787,13 @@ async fn begin_transfer(
         game::player_destroy(player.player_id),
         game::world_remove_agent(player.agent_id),
     ];
+    // The party's other travellers, each with the same effect, right after this one's own.
+    frames.splice(
+        1..1,
+        companions
+            .iter()
+            .map(|agent| game::agent_update_effects(*agent, TRAVEL_EFFECT)),
+    );
     send(stream, session, frames, trace).await?;
     // From here the session's seat belongs to the connection the client is about to open, so its own
     // teardown must not hand it back (see the release at the end of `handle_connection`).

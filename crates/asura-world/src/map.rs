@@ -19,6 +19,9 @@ pub fn spawn_block(map: &MapEntry, standing: Standing) -> Vec<Frame> {
     )]
 }
 
+/// The campaign mask of the account measured on the live servers (see [`load_block`]).
+pub const LIVE_CAMPAIGN_MASK: u8 = 0x1F;
+
 /// The four messages a world server sends without being asked, the moment it has the connection,
 /// followed by the exploration grid.
 ///
@@ -33,7 +36,12 @@ pub fn load_block(
     explored: &crate::cartography::Grid,
 ) -> Vec<Frame> {
     let mut frames = vec![
-        game::instance_load_head_default(),
+        // The campaign masks a live server sends this account in every load: `0x1F` for PvE and PvP
+        // (`multiplay/party interface check.jsonl` seq 3 and ten other loads), where the reference sends
+        // `0x3F`. The mask is per account - another account's live load carries `0x3F`
+        // (`maps/pre-searing-load-3.jsonl` seq 3) - so this is the measured account's value until accounts
+        // carry their own. The creation screen keeps the reference's.
+        game::instance_load_head(LIVE_CAMPAIGN_MASK, LIVE_CAMPAIGN_MASK),
         game::instance_player_data_start(),
         game::instance_load_player_name(name),
         game::instance_load_info(

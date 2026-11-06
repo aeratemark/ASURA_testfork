@@ -2,7 +2,7 @@
 //!
 //! The reference's `GameSrv.c` is one switch over headers and so is this; a client cannot be told
 //! about a command seam it does not speak. What this file is *not*: a home for domain logic. Each
-//! arm validates, then calls into `item`, `chat`, `travel`, `creation`, `player` or `map`; the
+//! arm validates, then calls into `item`, `chat`, `travel`, `creation`, `party`, `player` or `map`; the
 //! only state it touches is the one the message is about.
 //!
 //! A header with no arm is framed and ignored - named in the trace, never guessed at.
@@ -84,12 +84,38 @@ pub async fn answer(
             travel::handle_party_travel(stream, session, &frame, world, player, trace).await
         }
 
+        // The party window (`crate::party`, `docs/44-party-invites.md`).
+        msg::GAME_CMSG_PARTY_INVITE_PLAYER => party::handle_invite(&frame, player, trace),
+        msg::GAME_CMSG_PARTY_ACCEPT_INVITE => party::handle_accept(&frame, player, trace),
+        msg::GAME_CMSG_PARTY_ACCEPT_CANCEL => party::handle_cancel(&frame, player, trace),
+        msg::GAME_CMSG_PARTY_ACCEPT_REFUSE => party::handle_refuse(&frame, player, trace),
+        msg::GAME_CMSG_PARTY_LEAVE_GROUP => party::handle_leave(player, trace),
+        msg::GAME_CMSG_PARTY_KICK_PLAYER => party::handle_kick(&frame, player, trace),
+
+        // The guild panel and the registration window (`crate::guild`, `docs/41-guild-system-research.md`).
+        // The four headers are unnamed in the packet table, so they are the guild module's constants.
+        game::guild::GUILD_CREATE_REQUEST => {
+            guild::handle_create(stream, session, &frame, world, player, trace).await
+        }
+        game::guild::GUILD_INVITE_REQUEST => {
+            guild::handle_invite(stream, session, &frame, world, player, trace).await
+        }
+        game::guild::GUILD_LEAVE_REQUEST => {
+            guild::handle_leave(stream, session, &frame, world, player, trace).await
+        }
+        game::guild::GUILD_ANNOUNCEMENT_REQUEST => {
+            guild::handle_announcement(stream, session, &frame, world, player, trace).await
+        }
+
         msg::GAME_CMSG_SEND_CHAT_MESSAGE => {
             chat::handle_chat_message(stream, session, &frame, world, player, trace).await
         }
 
-        // The client is going away.
-        msg::GAME_CMSG_DISCONNECT => Ok(false),
+        // The client is going away, and said so: a logout, not a drop.
+        msg::GAME_CMSG_DISCONNECT => {
+            player.said_goodbye = true;
+            Ok(false)
+        }
 
         msg::GAME_CMSG_CHAR_CREATION_REQUEST_PLAYER => {
             creation::handle_request_player(stream, session, player, trace).await

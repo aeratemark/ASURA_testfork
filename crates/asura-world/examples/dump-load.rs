@@ -68,6 +68,7 @@ fn main() {
         started: std::time::Instant::now(),
         player_id: asura_world::PLAYER_ID,
         agent_id: asura_world::AGENT_ID,
+        party_id: asura_world::PARTY_ID,
         traits,
         unlocked: asura_world::player::UNLOCKED_MAP_ZEROS,
     }));

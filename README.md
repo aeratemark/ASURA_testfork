@@ -60,6 +60,23 @@ The Hero panel's Titles tab works, with retail's own data. Design and evidence:
 - **`/title <name or id> <points>`** sets a title's points for testing, e.g. `/title ldoa 20`,
   `/title drunkard 10000`. The answer is in the world log.
 
+### Party travel (2026-11-06, experimental)
+
+A party moves as one. Design and evidence: `docs/45-party-travel.md`.
+
+- **Doorways:** any member crossing brings the whole party, to the door's arrival point.
+- **World map:** the leader in an outpost starts a countdown (`0x01BC`, guessed layout), then the party
+  goes; anyone else - or anyone in an explorable - leaves the party and travels alone.
+- **Arrival:** the first member builds the party from the ledger, the others show as not in the map until
+  they arrive (as live sends it); one that never arrives is dropped after the grace time.
+- **Merges:** an invitation may name a party of more than one; the merge leader is the inviter on equal
+  sizes, otherwise the larger party's leader.
+- **Disconnect hold:** a member that drops in an explorable stays in the party, grey, for 15 minutes;
+  logging back in puts it back in the party's map.
+- **Storage:** migration `0030_parties.sql` (`t_parties`, `t_party_members`); run **Create tables
+  (schema)** once. **Values:** `config/World/Vanilla/party_travel.json`.
+- Not built: `/resign` and the wipe return (last), cancelling the countdown, one explorable per party.
+
 ### Other changes
 
 - **Outposts load as outposts:** `INSTANCE_LOAD_INFO` now sends `is_explorable 0` for a town (it sent 1

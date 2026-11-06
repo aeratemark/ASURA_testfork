@@ -20,8 +20,8 @@
 use crate::{
     PgPool, SCHEMA_V1, SCHEMA_V10, SCHEMA_V11, SCHEMA_V12, SCHEMA_V13, SCHEMA_V14, SCHEMA_V15,
     SCHEMA_V16, SCHEMA_V17, SCHEMA_V18, SCHEMA_V19, SCHEMA_V2, SCHEMA_V20, SCHEMA_V21, SCHEMA_V22,
-    SCHEMA_V23, SCHEMA_V24, SCHEMA_V25, SCHEMA_V26, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6,
-    SCHEMA_V7, SCHEMA_V8, SCHEMA_V9,
+    SCHEMA_V23, SCHEMA_V24, SCHEMA_V25, SCHEMA_V26, SCHEMA_V27, SCHEMA_V28, SCHEMA_V29, SCHEMA_V3,
+    SCHEMA_V30, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V9,
 };
 
 /// One migration: a version number (its file's number) and its statements.
@@ -140,10 +140,31 @@ pub const MIGRATIONS: &[Migration] = &[
         version: 26,
         sql: SCHEMA_V26,
     },
+    Migration {
+        version: 27,
+        sql: SCHEMA_V27,
+    },
+    Migration {
+        version: 28,
+        sql: SCHEMA_V28,
+    },
+    Migration {
+        version: 29,
+        sql: SCHEMA_V29,
+    },
+    Migration {
+        version: 30,
+        sql: SCHEMA_V30,
+    },
 ];
 
 /// The newest version this build knows about. A database reporting less is behind the code.
-pub const LATEST_VERSION: i32 = 26;
+pub const LATEST_VERSION: i32 = 30;
+
+/// The advisory lock [`apply_pending`] holds while it applies one migration, so that two services
+/// starting together against one database take turns instead of applying the same file at once.
+/// Any constant works; this one spells "ASUR".
+const MIGRATION_LOCK: i64 = 0x4153_5552;
 
 /// What [`apply_pending`] did.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -174,22 +195,39 @@ pub async fn pending_versions(pool: &PgPool) -> sqlx::Result<Vec<i32>> {
 /// Apply every migration the database is missing.
 ///
 /// Each one runs in its own transaction with the record of itself, so the database is never left
-/// claiming a change it did not get.
+/// claiming a change it did not get. The transaction first takes [`MIGRATION_LOCK`] and asks again
+/// whether the version is recorded: a world that boots while another is applying waits, then finds the
+/// work done and skips it. `applied` lists only what this call applied.
 pub async fn apply_pending(pool: &PgPool) -> sqlx::Result<Applied> {
-    let applied: Vec<i32> = pending_versions(pool).await?;
-    for version in &applied {
+    let pending: Vec<i32> = pending_versions(pool).await?;
+    let mut applied = Vec::new();
+    for version in &pending {
         let migration = MIGRATIONS
             .iter()
             .find(|migration| migration.version == *version)
             .expect("pending_versions only lists versions in MIGRATIONS");
 
         let mut tx = pool.begin().await?;
+        sqlx::query("SELECT pg_advisory_xact_lock($1)")
+            .bind(MIGRATION_LOCK)
+            .execute(&mut *tx)
+            .await?;
+        let recorded: Option<i32> =
+            sqlx::query_scalar("SELECT version FROM schema_version WHERE version = $1")
+                .bind(*version)
+                .fetch_optional(&mut *tx)
+                .await?;
+        if recorded.is_some() {
+            tx.rollback().await?;
+            continue;
+        }
         sqlx::raw_sql(migration.sql).execute(&mut *tx).await?;
         tx.commit().await?;
+        applied.push(*version);
     }
 
     Ok(Applied {
-        applied: applied.clone(),
+        applied,
         now_current: applied_versions(pool).await?,
     })
 }

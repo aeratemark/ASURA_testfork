@@ -89,7 +89,11 @@ pub fn items_block(map: &MapEntry, inventory: &db_inventory::Inventory, gold: u3
         // 10000, which is what the reference sends (`10 27 00 00`).
         frames.push(game::faction_max(faction, 10_000));
     }
-    frames.push(game::hard_mode_unlocked(1));
+    // No `GAME_SMSG_HARD_MODE_UNLOCKED` (`0x0070`). The reference sends `{1}` here, but no live load in
+    // `recordings/client/feature/` carries the message at all (eleven loads of a pre-Searing character,
+    // `multiplay/party interface check.jsonl` among them), and with it the client drew a normal / hard
+    // mode toggle in the party window of pre-Searing Ascalon that the live game does not draw (owner,
+    // 2026-11-06). A character that has unlocked hard mode is a later layer's question.
     // The reference sends an **empty** name here (`GameSrv_SendCharacterInfo`), not the character's:
     // the client already has the name from the load block.
     frames.push(game::character_update_info(""));

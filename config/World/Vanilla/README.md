@@ -4,7 +4,8 @@ The faithful base game: the maps, spawn points, doorways and later NPCs, quests 
 reproduce the live server ASURA is measured against.
 
 What is here today: `character_spawn.json` (who spawns where, read once by the world at start-up) and
-`character_defaults.json` (what a new character gets), both read through `asura-world`; and `maps/`, which
+`character_defaults.json` (what a new character gets) and `party_sizes.json` (how many players a party may
+hold on each map), all read through `asura-world`; and `maps/`, which
 is what the instance table is built from. The rest of the content is still in the database and moves here
 in the order `docs/38-layer-decisions.md` D22 records: write the package, switch the readers, drop the
 table last. `docs/37-rework-layers.md` layer 13 tracks what has moved.
