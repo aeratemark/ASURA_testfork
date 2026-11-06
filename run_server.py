@@ -82,12 +82,25 @@ def find_psql():
     if found:
         return found
     if IS_WIN:
-        base = os.environ.get("ProgramFiles", r"C:\Program Files")
-        root = Path(base) / "PostgreSQL"
-        if root.is_dir():
-            candidates = sorted(root.glob("*/bin/psql.exe"))
-            if candidates:
-                return str(candidates[-1])
+        # ProgramW6432 is the real 64-bit Program Files even inside a 32-bit Python,
+        # where ProgramFiles points at "Program Files (x86)". Check every spelling.
+        bases = []
+        for base in (os.environ.get("ProgramW6432"), os.environ.get("ProgramFiles"),
+                     r"C:\Program Files", os.environ.get("ProgramFiles(x86)")):
+            if base and base not in bases:
+                bases.append(base)
+
+        def version_key(exe):
+            # Folder names like "9.6" and "18": sort numerically so 18 beats 9.6.
+            nums = re.findall(r"\d+", exe.parent.parent.name)
+            return tuple(int(n) for n in nums)
+
+        for base in bases:
+            root = Path(base) / "PostgreSQL"
+            if root.is_dir():
+                candidates = sorted(root.glob("*/bin/psql.exe"), key=version_key)
+                if candidates:
+                    return str(candidates[-1])
     return None
 
 
