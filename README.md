@@ -77,6 +77,27 @@ A party moves as one. Design and evidence: `docs/45-party-travel.md`.
   (schema)** once. **Values:** `config/World/Vanilla/party_travel.json`.
 - Not built: `/resign` and the wipe return (last), cancelling the countdown, one explorable per party.
 
+### Guilds (2026-11-06, experimental)
+
+The guild panel and its registration window work from `/guild create`. Design and evidence:
+`docs/41-guild-system-research.md`.
+
+- **Wire:** `crates/asura-protocol/src/game/guild.rs` - builders for `0x0118`, `0x011C`, `0x0121`,
+  `0x0127`, `0x0128`, `0x012F`, `0x0131`, `0x0132`, `0x0133` and the registration window; readers for
+  the four requests (`0x8036` create, `0x80B5` invite, `0x80BB` leave, `0x80BE` announcement).
+- **Rules:** `crates/asura-rules/src/guild.rs` - who may create, invite, leave and announce.
+- **World:** `crates/asura-world/src/guild.rs` - the guild block in the load, a guilded peer's badge
+  right after its player create, and the four requests.
+- **`/guild create`** opens the Guild Registration window in place of a Guild Registrar NPC (owner,
+  2026-11-06). The window's own messages are a guess: no capture shows it.
+- **Storage:** migration `0029_guilds.sql` (`t_guilds`, `t_guild_members`, `t_guild_invites`); run
+  **Create tables (schema)** once. **Values:** `config/Server/guilds.json` - the bytes a new guild's
+  `0x0121` carries, and the `0x0133` counter's start and step.
+- **Free for now:** no gold message (`0x014F`) is sent for a creation or an invitation; the two prices
+  in the config are read and logged only.
+- Not built: the invitee's `0x0123` and the accept, kicks, promotions and demotions, guild chat, capes,
+  guild halls, and the roster beyond the founder's own row.
+
 ### Other changes
 
 - **Outposts load as outposts:** `INSTANCE_LOAD_INFO` now sends `is_explorable 0` for a town (it sent 1
