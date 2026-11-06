@@ -52,6 +52,16 @@ __pycache__/
 !/recordings/
 !/recordings/**
 
+# Local reference checkouts, never part of this repository: the game's own map export, the other
+# servers read as evidence (AGENTS.md, "The sources"), and the Construction Set's own tree. Backups and
+# stray screenshots from the same work stay out too.
+/GWMB/
+/Other_Repos_Research/
+/Py4GW_Stealth-master/
+/asura-cs/
+*.bak
+/*.jpeg
+
 # The oracles: host tools compiled out of the reference's own sources (tools/path-oracle.c,
 # tools/pack-oracle.c) by tools/build-oracle.ps1. What they print is committed as a fixture instead; a
 # binary is rebuilt when someone wants to check the fixture against the reference again.
