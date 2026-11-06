@@ -64,6 +64,9 @@ The Hero panel's Titles tab works, with retail's own data. Design and evidence:
 
 A party moves as one. Design and evidence: `docs/45-party-travel.md`.
 
+**Status: highly experimental, far from finished.** The rules below are what is built; the list at the
+end is what is not, and a case no capture covers is a guess.
+
 - **Doorways:** any member crossing brings the whole party, to the door's arrival point.
 - **World map:** the leader in an outpost starts a countdown (`0x01BC`, guessed layout), then the party
   goes; anyone else - or anyone in an explorable - leaves the party and travels alone.
@@ -81,6 +84,9 @@ A party moves as one. Design and evidence: `docs/45-party-travel.md`.
 
 The guild panel and its registration window work from `/guild create`. Design and evidence:
 `docs/41-guild-system-research.md`.
+
+**Status: highly experimental, far from finished.** Only the batches the two captures show are
+answered; everything else is a guess, and a live client decides.
 
 - **Wire:** `crates/asura-protocol/src/game/guild.rs` - builders for `0x0118`, `0x011C`, `0x0121`,
   `0x0127`, `0x0128`, `0x012F`, `0x0131`, `0x0132`, `0x0133` and the registration window; readers for
