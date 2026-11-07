@@ -12,7 +12,7 @@ INSERT INTO t_map_config (map_id, map_type, map_file_id, spawn_count, spawn_x, s
 VALUES
     (145, 1, 380646, 1, 14442., 2135., 0, 'The Catacombs'),
     (146, 1, 113021, 1, 6602., 4485., 0, 'Lakeside County'),
-    (147, 1, 2147871382, 1, -11679.181, -16305.796, 0, 'The Northlands'),
+    (147, 1, 116025, 1, -11679.181, -16305.796, 0, 'The Northlands'),
     (148, 0, 113021, 1, 9541.873, 4796.456, 0, 'Ascalon City (pre-Searing)'),
     (160, 1, 380713, 1, -7492.531, 1454.671, 0, 'Green Hills County'),
     (161, 1, 380647, 1, 633., 7270., 0, 'Wizard''s Folly'),

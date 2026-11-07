@@ -25,6 +25,8 @@
 //!   trapezoid list; a portal without a pair is a crash in the reference, refused here.
 //! - `PathCreateWaypoints` gives up after `0xBB8` steps (an assertion in the reference, so a debug abort).
 
+mod directional;
+
 use crate::map_data::{PathStaticData, Portal, Trapezoid, Vec2f};
 use crate::path_tables::{RECIPROCAL, SQUARE_ROOT};
 
@@ -1636,7 +1638,17 @@ impl PathGraphs {
         }
     }
 
-    /// Ask the finder for a walk to a point whose plane the caller does not know.
+    /// Follow manual input through adjacent walkable cells, rather than finding a route.
+    pub fn walk_direction(&self, map_id: i32, from: Pos, offset: (f32, f32)) -> Walk {
+        match self.with_finder(map_id, |finder| directional::walk(finder, from, offset)) {
+            Some(Some(points)) => Walk::Found(points),
+            Some(None) => Walk::NoPath,
+            None => Walk::NoGraph,
+        }
+    }
+
+    /// Find a route to a point on an unspecified plane. Manual movement uses walk_direction:
+    /// choosing a destination plane globally can send a player off a bridge to reach that point.
     ///
     /// A client's movement report names a position and a direction, not a surface: the point the walk is
     /// aimed at can sit on a bridge, a stair or a slope plane rather than on the one the character is

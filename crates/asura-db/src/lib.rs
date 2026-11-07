@@ -140,13 +140,16 @@ pub const SCHEMA_V29: &str = include_str!("../migrations/0029_guilds.sql");
 /// (`docs/45-party-travel.md`).
 pub const SCHEMA_V30: &str = include_str!("../migrations/0030_parties.sql");
 
+/// The source map of a doorway transfer; ordinary login and map travel carry no doorway origin.
+pub const SCHEMA_V31: &str = include_str!("../migrations/0031_transfer_arrival_origin.sql");
+
 /// Every migration, in application order. A developer applying the schema gets one string per
 /// migration file, so a new file is picked up without editing the tooling.
 pub const SCHEMA: &[&str] = &[
     SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8,
     SCHEMA_V9, SCHEMA_V10, SCHEMA_V11, SCHEMA_V12, SCHEMA_V13, SCHEMA_V14, SCHEMA_V15, SCHEMA_V16,
     SCHEMA_V17, SCHEMA_V18, SCHEMA_V19, SCHEMA_V20, SCHEMA_V21, SCHEMA_V22, SCHEMA_V23, SCHEMA_V24,
-    SCHEMA_V25, SCHEMA_V26, SCHEMA_V27, SCHEMA_V28, SCHEMA_V29, SCHEMA_V30,
+    SCHEMA_V25, SCHEMA_V26, SCHEMA_V27, SCHEMA_V28, SCHEMA_V29, SCHEMA_V30, SCHEMA_V31,
 ];
 
 /// The tables the coordination model depends on. Used by the startup check: a service refuses to run

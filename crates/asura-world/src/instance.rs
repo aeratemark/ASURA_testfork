@@ -14,6 +14,9 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+/// An actual movement segment that touched a doorway during simulation.
+pub type PortalStep = ((f32, f32), (f32, f32));
+
 /// One player in one instance: the agent it drives, what the client is told about it, and the
 /// channel that reaches its connection.
 pub struct Slot {
@@ -25,6 +28,8 @@ pub struct Slot {
     /// The channel that reaches its connection with something to *do* rather than to send: a party's
     /// travel, which each member's own connection carries out (`travel::Order`).
     pub orders: tokio::sync::mpsc::UnboundedSender<crate::travel::Order>,
+    /// Crossing events go to the connection that owns the transfer, without waiting for a report.
+    pub portal_outbox: Option<tokio::sync::mpsc::UnboundedSender<PortalStep>>,
     /// Movement counters, for the trace's closing summary.
     pub move_stats: MoveStats,
     /// Set at join and cleared when the connecting player has its load block, so the clock does not
@@ -191,6 +196,7 @@ impl Instance {
                 equipped,
                 outbox,
                 orders,
+                portal_outbox: None,
                 move_stats: MoveStats::default(),
                 loading: true,
                 entered: false,
@@ -222,6 +228,15 @@ impl Instance {
     /// Mark a player loaded: the load block is out, so the clock may tick it.
     pub fn loaded(&self, player_id: u32) {
         self.with_slot(player_id, |slot| slot.loading = false);
+    }
+
+    /// Connect simulation crossings to this player's connection before loading finishes.
+    pub fn watch_portals(
+        &self,
+        player_id: u32,
+        outbox: tokio::sync::mpsc::UnboundedSender<PortalStep>,
+    ) {
+        self.with_slot(player_id, |slot| slot.portal_outbox = Some(outbox));
     }
 
     /// Whether a player has finished loading.
@@ -384,6 +399,13 @@ impl Instance {
             let before = slot.agent.position;
             let before_plane = slot.agent.plane;
             let cross = slot.agent.advance(delta);
+            let after = slot.agent.position;
+            if before != after && crate::portals::crossed(self.map.map_id, before, after).is_some()
+            {
+                if let Some(outbox) = &slot.portal_outbox {
+                    let _ = outbox.send((before, after));
+                }
+            }
             if move_trace_on() {
                 slot.move_stats.ticks += 1;
                 if was_moving {

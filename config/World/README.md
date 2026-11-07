@@ -27,7 +27,9 @@ config/World/Vanilla/maps/<campaign>/<area>/<subarea>/<map id>/basic.json
   `Explorables`, `Missions`, `Outposts`. A dungeon level counts as `Explorables` - the client instances
   it the same way.
 - `<map id>` is the map's id, and the folder holds that map's own files: `basic.json` (id, name,
-  `map_type`, `map_file_id`, `instance_value`), `spawns.json` (the spawn list, and the only place a spawn
+  `map_type`, `map_file_id`, `instance_value`, and `name_id`: the client's string id of the map's name,
+  which a party countdown's window needs - a map without it gets no window; `tools/add-map-name-ids.py`
+  writes it from `Gw.exe`), `spawns.json` (the spawn list, and the only place a spawn
   is stated) and `portals.json` (the map's arches, and the landings it gives to arrivals).
 - The instance table this server sends is built by walking this tree, so a folder's position is what
   places a map; the walk is recursive and a map with no folder is a map the server does not know.

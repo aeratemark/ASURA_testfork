@@ -1,0 +1,10 @@
+{
+  "distance_slack": {
+    "value": 0.5,
+    "doc": "Distance added to the length of a manual movement direction offset, in map units."
+  },
+  "edge_tolerance": {
+    "value": 0.01,
+    "doc": "Map-unit precision for contact with connected walkable edges; this is not a position-correction allowance or a report interval."
+  }
+}

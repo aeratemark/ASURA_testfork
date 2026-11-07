@@ -40,10 +40,10 @@ pub struct Player {
     /// Set when this connection has been redirected to another map. Its teardown must then leave the
     /// lease alone: the seat it holds now belongs to the connection the client is about to open.
     pub moved: bool,
-    /// The segment the last accepted movement moved the agent along: where the server believed it stood
-    /// before the report or correction, and where it believes it stands now. The doorway test reads it
-    /// after the movement handler returns (`travel::portal_crossed`) - a doorway is a wall, and the step
-    /// that passes through it is the crossing.
+    /// The last client-reported position checked for doorways. Simulation ticks never change it:
+    /// a tick can cross a wall between reports, and that movement must remain in the next check.
+    pub portal_position: (f32, f32),
+    /// The segment between finite client reports or corrections, consumed by the doorway test.
     pub last_step: Option<((f32, f32), (f32, f32))>,
     /// What a character-creation connection has chosen so far: `Some` when this connection is in a
     /// creation instance (map type 11), which is the reference's `MapType_CharacterCreation`.
@@ -73,6 +73,23 @@ pub struct Player {
 
 #[allow(non_snake_case)]
 impl Player {
+    /// Preserve the full reported movement even when simulation ticks advanced the agent meanwhile.
+    pub fn record_portal_step(&mut self, position: (f32, f32)) {
+        if crate::move_trace_on() && self.portal_position != position {
+            eprintln!(
+                "move[portal] map {} client segment ({:.1}, {:.1}) -> ({:.1}, {:.1})",
+                self.instance.map.map_id,
+                self.portal_position.0,
+                self.portal_position.1,
+                position.0,
+                position.1
+            );
+        }
+        self.last_step =
+            (self.portal_position != position).then_some((self.portal_position, position));
+        self.portal_position = position;
+    }
+
     /// Where the agent is **now**, from the instance's own slot: what the reference answers the spawn
     /// and players requests with (`agent->position`). After the client has walked, that is no longer
     /// where it entered.

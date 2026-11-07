@@ -1,0 +1,6 @@
+{
+  "point_box_half_extent": {
+    "value": 250.0,
+    "doc": "Half the side length, in map units, of the axis-aligned box around a doorway with only x/y coordinates. Travel requires intersecting a box edge. Doorways with two endpoints use their stated wall instead."
+  }
+}

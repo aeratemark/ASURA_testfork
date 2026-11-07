@@ -1,5 +1,4 @@
-//! The travel portals of each instance: the pack's `portals.json` files first, the measured tables
-//! after that.
+//! The travel portals of each instance, read only from the selected pack's portals.json files.
 //!
 //! A map's doorways are content, one file per map folder (`config/World/<pack>/maps/.../<map
 //! id>/portals.json`, `docs/38-layer-decisions.md` D39): an **arch** is a wall the character crosses,
@@ -17,7 +16,7 @@
 //! ```
 //!
 //! A point-shaped arch (`x`/`y` and no `from_x`/`from_y`) is the older shape the archive and the
-//! database carry: it has no wall, so a step counts as crossing it when it passes within [`REACH`] of
+//! database carry: it has no wall, so a step counts as crossing it when it intersects a box edge at [`point_half_extent`] of
 //! the point. A wall-shaped arch counts a crossing only when the step passes through the segment, which
 //! is the owner's rule: "the portal is an invisible wall we cross ... should be a plane".
 //!
@@ -29,196 +28,39 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-/// One travel portal: where it stands, and which instance it leads to when that is known.
-#[derive(Debug, Clone, Copy)]
-pub struct Portal {
-    /// The instance the doorway is in.
-    pub from_instance: i32,
-    pub x: f32,
-    pub y: f32,
-    /// The instance it leads to, or `None` when no crossing has been measured there yet.
-    pub to_instance: Option<i32>,
-    /// Where the live server put the character down on the other side of this door, or `None` when no
-    /// crossing of this door was recorded. Per door, not per instance: two doors into one map can land in
-    /// different places, and the recording has one landing point per crossing.
-    pub arrive: Option<(f32, f32)>,
+/// Half the side of a single-coordinate doorway box, from the server configuration.
+pub fn point_half_extent() -> f32 {
+    asura_config::portal_box_half_extent()
 }
 
-/// How close a character has to be for a doorway to count as reached, in the map's own units.
-///
-/// A starting value, measured against nothing: the doorway prop is a few metres wide and a reported
-/// position is the body's centre, so the first walk with the trace on is what corrects this number.
-pub const REACH: f32 = 250.0;
-
-/// The doorways recorded from live crossings: where the character stood when the server changed the map,
-/// and the instance it woke up in. These are measured, not derived - the position is the crossing point
-/// itself (recording `doors-20261031-095754.jsonl`, 22 of its 28 crossings; the ones omitted had
-/// inherited the previous instance's last position report).
-#[rustfmt::skip]
-pub const CROSSED: &[Portal] = &[
-    Portal { from_instance: 146, x: 7198.0, y: 5177.0, to_instance: Some(148), arrive: Some((7739.0, 5900.0)) },
-    Portal { from_instance: 148, x: 7401.0, y: 5543.0, to_instance: Some(146), arrive: Some((6602.0, 4485.0)) },
-    Portal { from_instance: 146, x: -5499.0, y: 13795.0, to_instance: Some(147), arrive: Some((-11574.0, -16170.0)) },
-    Portal { from_instance: 147, x: -11635.0, y: -16776.0, to_instance: Some(146), arrive: Some((-5434.0, 11799.0)) },
-    Portal { from_instance: 146, x: -14124.0, y: 10037.0, to_instance: Some(160), arrive: Some((21932.0, 12966.0)) },
-    Portal { from_instance: 160, x: 21932.0, y: 12966.0, to_instance: Some(146), arrive: Some((-13891.0, 10107.0)) },
-    Portal { from_instance: 163, x: -7442.0, y: 1442.0, to_instance: Some(160), arrive: Some((-7459.0, 1458.0)) },
-    Portal { from_instance: 160, x: -7315.0, y: 1468.0, to_instance: Some(163), arrive: Some((-6940.0, 1430.0)) },
-    Portal { from_instance: 164, x: -11595.0, y: -6336.0, to_instance: Some(146), arrive: Some((-10853.0, -6221.0)) },
-    Portal { from_instance: 146, x: -10962.0, y: -6225.0, to_instance: Some(164), arrive: Some((-11672.0, -6209.0)) },
-    Portal { from_instance: 164, x: -13754.0, y: -7076.0, to_instance: Some(145), arrive: Some((14442.0, 2135.0)) },
-    Portal { from_instance: 145, x: 14442.0, y: 2135.0, to_instance: Some(164), arrive: Some((-13151.0, -7080.0)) },
-    Portal { from_instance: 164, x: -11716.0, y: -6244.0, to_instance: Some(146), arrive: Some((-10853.0, -6221.0)) },
-    Portal { from_instance: 146, x: -13460.0, y: -19979.0, to_instance: Some(161), arrive: Some((9449.0, 19702.0)) },
-    Portal { from_instance: 161, x: 10288.0, y: 19795.0, to_instance: Some(146), arrive: Some((-12914.0, -20062.0)) },
-    Portal { from_instance: 165, x: 223.0, y: 8069.0, to_instance: Some(161), arrive: Some((633.0, 7270.0)) },
-    Portal { from_instance: 161, x: 462.0, y: 7495.0, to_instance: Some(165), arrive: Some((159.0, 8456.0)) },
-    Portal { from_instance: 163, x: -7339.0, y: 1458.0, to_instance: Some(160), arrive: Some((-7459.0, 1458.0)) },
-    Portal { from_instance: 160, x: -6894.0, y: -16820.0, to_instance: Some(161), arrive: Some((-19103.0, 19512.0)) },
-    Portal { from_instance: 161, x: -19064.0, y: 19796.0, to_instance: Some(160), arrive: Some((-6742.0, -16419.0)) },
-    Portal { from_instance: 166, x: 22550.0, y: 7410.0, to_instance: Some(162), arrive: Some((22614.0, 6849.0)) },
-    Portal { from_instance: 162, x: 22623.0, y: 6993.0, to_instance: Some(166), arrive: Some((22798.0, 10205.0)) },
-];
-
-/// Every measured portal, one row per doorway of each instance that has one.
-///
-/// `to_instance` is filled only where a crossing was measured: today that is Ascalon City's door to
-/// Lakeside County, `(7378, 5429)` in instance 148 to 146, from a live walk recorded on 2026-10-31. The
-/// coordinates in the log's "is standing in a travel portal" line are what the next row comes from, and a
-/// doorway without one deliberately does nothing rather than guess a destination.
-#[rustfmt::skip]
-pub const PORTALS: &[Portal] = &[
-    // instance 145
-    Portal { from_instance: 145, x: 16823.0, y: -10892.0, to_instance: None, arrive: None },
-    Portal { from_instance: 145, x: 19411.0, y: 2990.0, to_instance: None, arrive: None },
-    Portal { from_instance: 145, x: 5961.0, y: -22656.0, to_instance: None, arrive: None },
-    // instance 146
-    Portal { from_instance: 146, x: 7378.0, y: 5429.0, to_instance: None, arrive: None },
-    Portal { from_instance: 146, x: 4384.0, y: -19844.0, to_instance: None, arrive: None },
-    Portal { from_instance: 146, x: -13897.0, y: -20108.0, to_instance: None, arrive: None },
-    Portal { from_instance: 146, x: -5488.0, y: 13494.0, to_instance: None, arrive: None },
-    Portal { from_instance: 146, x: -14540.0, y: 10054.0, to_instance: None, arrive: None },
-    Portal { from_instance: 146, x: -11309.0, y: -6226.0, to_instance: None, arrive: None },
-    // instance 147
-    Portal { from_instance: 147, x: 26113.0, y: 4767.0, to_instance: None, arrive: None },
-    Portal { from_instance: 147, x: -11632.0, y: -17226.0, to_instance: None, arrive: None },
-    Portal { from_instance: 147, x: -20684.0, y: -20666.0, to_instance: None, arrive: None },
-    // instance 148
-    Portal { from_instance: 148, x: 7378.0, y: 5429.0, to_instance: None, arrive: None },
-    Portal { from_instance: 148, x: 4384.0, y: -19844.0, to_instance: None, arrive: None },
-    Portal { from_instance: 148, x: -13897.0, y: -20108.0, to_instance: None, arrive: None },
-    Portal { from_instance: 148, x: -5488.0, y: 13494.0, to_instance: None, arrive: None },
-    Portal { from_instance: 148, x: -14540.0, y: 10054.0, to_instance: None, arrive: None },
-    Portal { from_instance: 148, x: -11309.0, y: -6226.0, to_instance: None, arrive: None },
-    // instance 160
-    // instance 161
-    // instance 162
-    Portal { from_instance: 162, x: -17120.0, y: 17020.0, to_instance: None, arrive: None },
-    Portal { from_instance: 162, x: -26040.0, y: -13185.0, to_instance: None, arrive: None },
-    Portal { from_instance: 162, x: 22595.0, y: 7257.0, to_instance: None, arrive: None },
-    // instance 163
-    Portal { from_instance: 163, x: 22967.0, y: -17036.0, to_instance: None, arrive: None },
-    Portal { from_instance: 163, x: 22324.0, y: 13126.0, to_instance: None, arrive: None },
-    Portal { from_instance: 163, x: 25555.0, y: -3154.0, to_instance: None, arrive: None },
-    Portal { from_instance: 163, x: 6822.0, y: -17963.0, to_instance: None, arrive: None },
-    Portal { from_instance: 163, x: -6793.0, y: -16845.0, to_instance: None, arrive: None },
-    Portal { from_instance: 163, x: -3250.0, y: 9209.0, to_instance: None, arrive: None },
-    Portal { from_instance: 163, x: -7361.0, y: 1435.0, to_instance: None, arrive: None },
-    // instance 164
-    Portal { from_instance: 164, x: 7378.0, y: 5429.0, to_instance: None, arrive: None },
-    Portal { from_instance: 164, x: 4384.0, y: -19844.0, to_instance: None, arrive: None },
-    Portal { from_instance: 164, x: -13897.0, y: -20108.0, to_instance: None, arrive: None },
-    Portal { from_instance: 164, x: -5488.0, y: 13494.0, to_instance: None, arrive: None },
-    Portal { from_instance: 164, x: -14540.0, y: 10054.0, to_instance: None, arrive: None },
-    Portal { from_instance: 164, x: -11309.0, y: -6226.0, to_instance: None, arrive: None },
-    // instance 165
-    Portal { from_instance: 165, x: 10679.0, y: 19828.0, to_instance: None, arrive: None },
-    Portal { from_instance: 165, x: 20040.0, y: -10113.0, to_instance: None, arrive: None },
-    Portal { from_instance: 165, x: -5466.0, y: 18901.0, to_instance: None, arrive: None },
-    Portal { from_instance: 165, x: 426.0, y: 7688.0, to_instance: None, arrive: None },
-    Portal { from_instance: 165, x: -19081.0, y: 20019.0, to_instance: None, arrive: None },
-    // instance 166
-    Portal { from_instance: 166, x: -17120.0, y: 17020.0, to_instance: None, arrive: None },
-    Portal { from_instance: 166, x: -26040.0, y: -13185.0, to_instance: None, arrive: None },
-    Portal { from_instance: 166, x: 22595.0, y: 7257.0, to_instance: None, arrive: None },
-    // instance 449
-    Portal { from_instance: 449, x: -6751.0, y: 19576.0, to_instance: None, arrive: None },
-    Portal { from_instance: 449, x: -6026.0, y: 16727.0, to_instance: None, arrive: None },
-    Portal { from_instance: 449, x: -9263.0, y: 16821.0, to_instance: None, arrive: None },
-    Portal { from_instance: 449, x: -3440.0, y: 16726.0, to_instance: None, arrive: None },
-    Portal { from_instance: 449, x: -7396.0, y: 17058.0, to_instance: None, arrive: None },
-    Portal { from_instance: 449, x: -5928.0, y: 14931.0, to_instance: None, arrive: None },
-    Portal { from_instance: 449, x: -7297.0, y: 6184.0, to_instance: None, arrive: None },
-];
-
-/// The doorways read from the database (`map_portal`) at start-up, when there are any.
-///
-/// Their **positions** are the point: a doorway is where a prop stands, a profile edits it, and a restart
-/// picks it up with no rebuild (docs/32, Phase 1). Nothing about how a crossing is detected changes: the
-/// predicates in `portal_at` and `portal_along` and `REACH` are untouched.
-static LOADED: std::sync::OnceLock<Vec<Portal>> = std::sync::OnceLock::new();
-
-/// Install the database's doorways. Called once, by `main`, before the world accepts a connection; a
-/// second call is ignored and answers `false`.
-pub fn install(portals: Vec<Portal>) -> bool {
-    LOADED.set(portals).is_ok()
-}
-
-/// Every doorway this world knows, in the order the trigger searches it: **`CROSSED` always first**, then
-/// the database's rows when it has any, otherwise the compiled `PORTALS`.
-///
-/// `CROSSED` is never displaced. Those are the positions a live server was watched changing the map at, and
-/// 14 of the 22 have no `map_portal` row anywhere near them; a table that replaced them would silently stop
-/// those crossings firing (measured 2026-11-05, which is why this is a chain and not a substitution). The
-/// database stands in for the compiled `PORTALS` half only - the doorways read from the archive.
-fn table() -> Box<dyn Iterator<Item = &'static Portal>> {
-    match LOADED.get() {
-        Some(rows) if !rows.is_empty() => Box::new(CROSSED.iter().chain(rows.iter())),
-        _ => Box::new(CROSSED.iter().chain(PORTALS.iter())),
+/// Whether actual movement intersects a finite edge of a point doorway's box.
+fn box_crossed(point: (f32, f32), from: (f32, f32), to: (f32, f32)) -> bool {
+    let extent = point_half_extent();
+    if extent <= 0.0 || from == to {
+        return false;
     }
-}
-
-/// The doorway a position in `from_instance` is standing in, if any.
-///
-/// A doorway without a destination still answers: the caller decides what to do with it, and today that is
-/// a log line naming the coordinates - the measurement that fills `to_instance` for the next session.
-pub fn portal_at(from_instance: i32, x: f32, y: f32) -> Option<&'static Portal> {
-    table().find(|portal| {
-        portal.from_instance == from_instance
-            && (portal.x - x).powi(2) + (portal.y - y).powi(2) <= REACH * REACH
-    })
-}
-
-/// The doorway a **walk passes through**, given where the character stands and where it is going.
-///
-/// This is the reliable form of the trigger. A doorway is a threshold, so what matters is whether the
-/// character's path meets it, not whether one position report happened to land inside it - and a report is
-/// only sent while the character moves, which is why a click that stopped inside a door could cross without
-/// firing. The test is the distance from the doorway's centre to the segment, so a path that merely passes
-/// beside a door within `REACH` crosses it, and the segment is the one the client asked for.
-pub fn portal_along(
-    from_instance: i32,
-    from: (f32, f32),
-    to: (f32, f32),
-) -> Option<&'static Portal> {
-    table()
-        .filter(|portal| portal.from_instance == from_instance)
-        .find(|portal| distance_to_segment((portal.x, portal.y), from, to) <= REACH)
-}
-
-/// How far a point is from the segment `a`-`b`, in the map's own units.
-fn distance_to_segment(point: (f32, f32), a: (f32, f32), b: (f32, f32)) -> f32 {
-    let (px, py) = point;
-    let (ax, ay) = a;
-    let (bx, by) = b;
-    let (dx, dy) = (bx - ax, by - ay);
-    let length_squared = dx * dx + dy * dy;
-    if length_squared <= f32::EPSILON {
-        return ((px - ax).powi(2) + (py - ay).powi(2)).sqrt();
+    let (left, right) = (point.0 - extent, point.0 + extent);
+    let (bottom, top) = (point.1 - extent, point.1 + extent);
+    // Test each finite edge. A report wholly inside the box crosses no boundary.
+    for x in [left, right] {
+        if from.0 != to.0 {
+            let t = (x - from.0) / (to.0 - from.0);
+            let y = from.1 + t * (to.1 - from.1);
+            if (0.0..=1.0).contains(&t) && (bottom..=top).contains(&y) {
+                return true;
+            }
+        }
     }
-    let t = (((px - ax) * dx + (py - ay) * dy) / length_squared).clamp(0.0, 1.0);
-    let (cx, cy) = (ax + t * dx, ay + t * dy);
-    ((px - cx).powi(2) + (py - cy).powi(2)).sqrt()
+    for y in [bottom, top] {
+        if from.1 != to.1 {
+            let t = (y - from.1) / (to.1 - from.1);
+            let x = from.0 + t * (to.0 - from.0);
+            if (0.0..=1.0).contains(&t) && (left..=right).contains(&x) {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 // ---- the pack's doorways: a wall to cross, and the arrival the target map owns -------------------
@@ -228,10 +70,6 @@ pub const MAPS: &str = "maps";
 
 /// The file inside a map folder that holds that map's doorways and arrivals.
 pub const PORTALS_FILE: &str = "portals.json";
-
-/// How far a point-shaped doorway reaches, in the map's own units: a step within this distance of the
-/// point crosses it. Wall-shaped doorways ignore this - they are crossed by passing through the segment.
-pub const WALL_REACH: f32 = REACH;
 
 /// How close a written arrival point has to be to a saved position to be the same arrival, in the map's
 /// own units. The position written for a crossing comes from the same entry, so this only absorbs the
@@ -261,16 +99,23 @@ impl Arch {
 
     /// Whether the step `step_from` -> `step_to` crosses this arch.
     ///
-    /// A wall is crossed when the step passes **through** the segment: the step's endpoints lie on
-    /// opposite sides of the wall's line *and* the wall's endpoints lie on opposite sides of the step's
-    /// line. Touching the wall, or walking beside it, is not crossing it. A point doorway has no wall,
-    /// so it is crossed when the step passes within [`WALL_REACH`] of the point.
+    /// Movement touching or crossing the finite wall starts travel, including its endpoints.
+    /// A point doorway uses the edges of its configured box.
     pub fn crossed_by(&self, step_from: (f32, f32), step_to: (f32, f32)) -> bool {
         if !self.is_wall() {
-            return distance_to_segment(self.from, step_from, step_to) <= WALL_REACH;
+            return box_crossed(self.from, step_from, step_to);
         }
-        side(self.from, self.to, step_from) * side(self.from, self.to, step_to) < 0.0
-            && side(step_from, step_to, self.from) * side(step_from, step_to, self.to) < 0.0
+        if step_from == step_to {
+            return false;
+        }
+        // Bounding boxes also reject disjoint collinear segments. Non-strict side checks include
+        // a step ending on the wall, an endpoint touch, and movement along the wall itself.
+        self.from.0.min(self.to.0) <= step_from.0.max(step_to.0)
+            && step_from.0.min(step_to.0) <= self.from.0.max(self.to.0)
+            && self.from.1.min(self.to.1) <= step_from.1.max(step_to.1)
+            && step_from.1.min(step_to.1) <= self.from.1.max(self.to.1)
+            && side(self.from, self.to, step_from) * side(self.from, self.to, step_to) <= 0.0
+            && side(step_from, step_to, self.from) * side(step_from, step_to, self.to) <= 0.0
     }
 }
 
@@ -370,7 +215,7 @@ struct PortalsFile {
 /// Every map's doorways under `pack`, keyed by map id.
 ///
 /// The walk is the same one `map_spawns` uses: only a folder named after a map id is a map. A folder
-/// without `portals.json` has no pack doorways, and the measured tables answer for it instead. A file
+/// without `portals.json` has no doorways. A file
 /// that does not parse, or a `map_id` that disagrees with its folder, is reported and skipped.
 pub fn walk(pack: &Path) -> (HashMap<i32, MapPortals>, Vec<String>) {
     let mut maps: HashMap<i32, MapPortals> = HashMap::new();
@@ -395,7 +240,10 @@ fn visit(dir: &Path, maps: &mut HashMap<i32, MapPortals>, notes: &mut Vec<String
         if !folder.is_dir() {
             continue;
         }
-        let name = folder.file_name().and_then(|name| name.to_str()).unwrap_or("");
+        let name = folder
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("");
         let Ok(folder_id) = name.parse::<i32>() else {
             visit(&folder, maps, notes);
             continue;
@@ -452,13 +300,7 @@ fn visit(dir: &Path, maps: &mut HashMap<i32, MapPortals>, notes: &mut Vec<String
             }
         }
         let arrivals = parsed.arrivals;
-        maps.insert(
-            folder_id,
-            MapPortals {
-                arches,
-                arrivals,
-            },
-        );
+        maps.insert(folder_id, MapPortals { arches, arrivals });
     }
 }
 
@@ -499,58 +341,27 @@ pub fn pack_arches(from_instance: i32) -> Option<&'static [Arch]> {
 
 /// The doorway the step `from` -> `to` crosses in `from_instance`.
 ///
-/// The **measured crossings come first and are never displaced**: they are the positions a live server
-/// was watched changing the map at, and 14 of the 22 have no `map_portal` row anywhere near them. After
-/// them the pack answers, when the map has a `portals.json`: its arches are that map's doorway table,
-/// and a wall is crossed only by passing through it. A map the pack does not describe falls back to the
-/// measured rows, whose doorways are points and are crossed within [`WALL_REACH`].
+/// **A map the pack describes is judged by its own walls, and nothing else.** Its `portals.json` is
+/// that map's doorway table, so a step that crosses none of its arches crosses nothing - even if it
+/// passes near a measured crossing point. No other table supplies a missing doorway.
 pub fn crossed(from_instance: i32, from: (f32, f32), to: (f32, f32)) -> Option<Crossed> {
-    if let Some(portal) = CROSSED
+    pack_arches(from_instance)?
         .iter()
-        .filter(|portal| portal.from_instance == from_instance)
-        .find(|portal| distance_to_segment((portal.x, portal.y), from, to) <= REACH)
-    {
-        return Some(Crossed {
-            to_instance: portal.to_instance,
+        .find(|arch| arch.crossed_by(from, to))
+        .map(|arch| Crossed {
+            to_instance: arch.to_instance,
             from_instance,
-        });
-    }
-    if let Some(arches) = pack_arches(from_instance) {
-        return arches
-            .iter()
-            .find(|arch| arch.crossed_by(from, to))
-            .map(|arch| Crossed {
-                to_instance: arch.to_instance,
-                from_instance,
-            });
-    }
-    portal_along(from_instance, from, to).map(|portal| Crossed {
-        to_instance: portal.to_instance,
-        from_instance,
-    })
+        })
 }
 
 /// Where a character arriving in `in_instance` from `from_instance` stands, when the data states it.
 ///
-/// The receiving map owns this fact: the pack's `arrivals` for the destination are asked first, and the
-/// measured tables' landing (`Portal::arrive`) answers for a map the pack does not describe.
+/// The receiving map owns this fact. A missing arrival remains unknown.
 pub fn arrival(in_instance: i32, from_instance: i32) -> Option<Arrival> {
-    if let Some(map) = table_pack().get(&in_instance) {
-        if let Some(arrival) = map.arrival_for(from_instance) {
-            return Some(*arrival);
-        }
-    }
-    table()
-        .filter(|portal| portal.to_instance == Some(in_instance))
-        .find(|portal| portal.from_instance == from_instance)
-        .and_then(|portal| {
-            portal.arrive.map(|(x, y)| Arrival {
-                from: portal.from_instance,
-                x,
-                y,
-                angle: None,
-            })
-        })
+    table_pack()
+        .get(&in_instance)?
+        .arrival_for(from_instance)
+        .copied()
 }
 
 /// The arrival in `in_instance` whose point is `position`, within [`ARRIVAL_MATCH`].
@@ -559,66 +370,15 @@ pub fn arrival(in_instance: i32, from_instance: i32) -> Option<Arrival> {
 /// redirect; the connection that then enters the map reads it back here, which is what carries the
 /// arrival's **facing** across the reconnect (the position is already in the saved row).
 pub fn arrival_at(in_instance: i32, position: (f32, f32)) -> Option<Arrival> {
-    if let Some(map) = table_pack().get(&in_instance) {
-        if let Some(arrival) = map.arrival_at(position) {
-            return Some(*arrival);
-        }
-    }
-    table()
-        .filter(|portal| portal.to_instance == Some(in_instance))
-        .filter_map(|portal| portal.arrive)
-        .find(|(x, y)| {
-            (x - position.0).abs() <= ARRIVAL_MATCH && (y - position.1).abs() <= ARRIVAL_MATCH
-        })
-        .map(|(x, y)| Arrival {
-            from: 0,
-            x,
-            y,
-            angle: None,
-        })
+    table_pack()
+        .get(&in_instance)?
+        .arrival_at(position)
+        .copied()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn a_doorway_is_found_where_it_stands_and_nowhere_else() {
-        let Some(portal) = PORTALS.first() else {
-            panic!("the table is generated from data/portals.json");
-        };
-        let found = portal_at(portal.from_instance, portal.x, portal.y).expect("its own position");
-        assert_eq!(found.x, portal.x);
-        assert_eq!(found.y, portal.y);
-
-        assert!(
-            portal_at(portal.from_instance, portal.x + REACH * 2.0, portal.y).is_none(),
-            "two reaches away is not the doorway"
-        );
-        assert!(
-            portal_at(portal.from_instance + 1, portal.x, portal.y).is_none(),
-            "a doorway belongs to the instance it stands in"
-        );
-    }
-
-    /// Several instances share one geometry blob, so the same coordinates are listed under more than one of
-    /// them - which is why the trigger is keyed by the instance as well as the position.
-    #[test]
-    fn one_blob_s_doors_are_listed_under_every_instance_that_shares_it() {
-        let mut shared = None;
-        for portal in PORTALS {
-            let count = PORTALS
-                .iter()
-                .filter(|other| other.x == portal.x && other.y == portal.y)
-                .count();
-            if count > 1 {
-                shared = Some((portal.x, portal.y, count));
-                break;
-            }
-        }
-        let (x, y, count) = shared.expect("146, 148 and 164 share the pre-Searing blob's doorways");
-        assert!(count >= 2, "({x}, {y}) belongs to {count} instances");
-    }
 
     fn wall() -> Arch {
         // A wall along y = 0 from x = 0 to x = 10.
@@ -632,7 +392,7 @@ mod tests {
     }
 
     #[test]
-    fn a_wall_is_crossed_only_by_passing_through_it() {
+    fn a_wall_triggers_on_crossing_or_touching() {
         assert!(
             wall().crossed_by((-1.0, -5.0), (5.0, 5.0)),
             "a step from one side to the other, inside the wall's length, crosses it"
@@ -646,25 +406,45 @@ mod tests {
             "a step beside the wall on the same side does not cross it"
         );
         assert!(
-            !wall().crossed_by((10.0, -1.0), (10.0, 1.0)),
-            "touching the wall at its endpoint is not passing through it"
+            wall().crossed_by((10.0, -1.0), (10.0, 1.0)),
+            "touching the wall at its endpoint starts travel"
+        );
+        assert!(
+            wall().crossed_by((5.0, -1.0), (5.0, 0.0)),
+            "landing on the wall triggers"
+        );
+        assert!(
+            !wall().crossed_by((-5.0, 0.0), (-1.0, 0.0)),
+            "disjoint collinear segments miss"
         );
     }
 
     #[test]
-    fn a_point_doorway_keeps_its_reach() {
+    fn the_failed_ascalon_reports_cross_the_authored_wall() {
+        // logs/world-8001.log:410655 and :410664: accepted reports crossed the wall, but the
+        // tick-advanced starting position lost the segment before it reached the doorway check.
+        let arch = table_pack().get(&148).unwrap().arches[0];
+        assert!(arch.crossed_by((7277.4, 5417.9), (7184.3, 5307.3)));
+    }
+
+    #[test]
+    fn a_point_doorway_uses_box_edges() {
         let point = Arch {
             from: (0.0, 0.0),
             to: (0.0, 0.0),
             ..wall()
         };
         assert!(
-            point.crossed_by((100.0, -200.0), (100.0, 200.0)),
-            "a step passing 100 units from the point is inside its reach"
+            point.crossed_by((100.0, -400.0), (100.0, 400.0)),
+            "a step through the box crosses its edges"
+        );
+        assert!(
+            !point.crossed_by((0.0, 0.0), (10.0, 10.0)),
+            "inside is not a crossing"
         );
         assert!(
             !point.crossed_by((400.0, -200.0), (400.0, 200.0)),
-            "400 units away is outside it"
+            "400 units away misses the box"
         );
     }
 
@@ -678,7 +458,10 @@ mod tests {
             .iter()
             .find(|arch| arch.to_instance == Some(146))
             .expect("the arch to Lakeside County");
-        assert!(arch.is_wall(), "the owner stated the arch as a wall: {arch:?}");
+        assert!(
+            arch.is_wall(),
+            "the owner stated the arch as a wall: {arch:?}"
+        );
         let arrival = arrival(148, 146).expect("where a character arriving from 146 stands");
         assert_eq!(arrival.from, 146);
         let docked = arrival_at(148, (arrival.x, arrival.y)).expect("the same point reads back");
@@ -688,11 +471,33 @@ mod tests {
 
     #[test]
     fn a_step_far_from_every_doorway_crosses_nothing() {
-        // Whatever answers for a map - the pack or the measured tables - a step nowhere near a doorway
-        // fires no crossing.
+        // A step nowhere near a doorway fires no crossing, whichever table answers for the map.
         assert!(
             crossed(449, (0.0, 0.0), (1.0, 0.0)).is_none(),
             "a step far from every doorway crosses nothing"
         );
+    }
+
+    #[test]
+    fn a_map_the_pack_describes_is_judged_by_its_own_walls() {
+        // 146's own wall to another map, and a step built to pass through it (the file's coordinates
+        // decide the direction, so editing the wall keeps this test honest). Nothing about the measured
+        // crossing table is consulted for a map the pack describes.
+        let arches = pack_arches(146).expect("146 has a portals.json");
+        let wall = arches
+            .iter()
+            .find(|arch| arch.is_wall())
+            .expect("146 draws a wall");
+        let midpoint = (
+            (wall.from.0 + wall.to.0) / 2.0,
+            (wall.from.1 + wall.to.1) / 2.0,
+        );
+        let (dx, dy) = (wall.to.0 - wall.from.0, wall.to.1 - wall.from.1);
+        let norm = (dx * dx + dy * dy).sqrt();
+        let (nx, ny) = (-dy / norm, dx / norm);
+        let step_from = (midpoint.0 + 50.0 * nx, midpoint.1 + 50.0 * ny);
+        let step_to = (midpoint.0 - 50.0 * nx, midpoint.1 - 50.0 * ny);
+        let crossed = crossed(146, step_from, step_to).expect("a step through the wall crosses it");
+        assert_eq!(crossed.to_instance, wall.to_instance);
     }
 }

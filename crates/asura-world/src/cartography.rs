@@ -118,6 +118,22 @@ pub const RETAIL_STREAM: [u8; 38] = [
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
+/// A live retail account's nearly fully explored continent-1 stream: 105 bytes, 2,140 blocks.
+///
+/// Captured 2026-11-06 from the account with nearly full pre-searing exploration in
+/// `recordings/client/feature/multiplay/multiplay-live-20261106-195109.jsonl`: `0x008B` declares
+/// 105 bytes and the `0x008A` count is 27 dwords. It covers bands 0-2 (y 0..47), unlike the
+/// synthetic fills, which the client rejects. This is the `ASURA_CARTOGRAPHY=full` stream.
+pub const FULL_STREAM: [u8; 105] = [
+    0x0f, 0x00, 0xff, 0xff, 0xa1, 0x06, 0x32, 0x0c, 0x31, 0x0d, 0x31, 0x0f, 0x2f, 0x0f, 0x2f,
+    0x10, 0x16, 0x2d, 0x00, 0x18, 0x10, 0x2e, 0x10, 0x2e, 0x0d, 0x23, 0x03, 0x03, 0x13, 0x22,
+    0x1a, 0x24, 0x1a, 0x24, 0x1a, 0x24, 0x1a, 0x24, 0x1a, 0x24, 0x1a, 0x24, 0x1a, 0x24, 0x1a,
+    0x24, 0x09, 0x00, 0x02, 0x00, 0x0b, 0x24, 0x09, 0x03, 0x0b, 0x04, 0x03, 0x1c, 0x19, 0x04,
+    0x06, 0x19, 0x25, 0x10, 0x1d, 0x00, 0x0e, 0x20, 0x1e, 0x20, 0x1e, 0x1f, 0x1f, 0x1f, 0x1f,
+    0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x14, 0x00, 0x09, 0x20, 0x0e,
+    0x30, 0x0e, 0x31, 0x05, 0xe9, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+];
+
 /// The grid of the continent `map_id` belongs to.
 ///
 /// Only Tyria's dimensions are assumed, so every map gets them: a map on another continent then
@@ -447,7 +463,8 @@ pub fn startup_blob(dims: (u32, u32)) -> Vec<u8> {
 /// not quietly wipe what a character has explored either.
 pub fn override_blob(dims: (u32, u32)) -> Option<Vec<u8>> {
     match std::env::var("ASURA_CARTOGRAPHY").ok().as_deref() {
-        Some("all" | "full") => Some(encode_grid(&Grid::known_good_revealed(dims))),
+        Some("all") => Some(encode_grid(&Grid::known_good_revealed(dims))),
+        Some("full") => Some(FULL_STREAM.to_vec()),
         Some(hex) if hex.len() >= 2 && hex.len() % 2 == 0 => (0..hex.len() / 2)
             .map(|at| u8::from_str_radix(&hex[at * 2..at * 2 + 2], 16))
             .collect::<Result<Vec<u8>, _>>()
@@ -1586,6 +1603,15 @@ mod tests {
             .iter()
             .all(|frame| frame.header() == game::MAP_EXPLORATION_MARK));
         assert!(frames.iter().all(|frame| frame.len() == 11));
+    }
+
+    #[test]
+    fn the_full_retail_stream_is_2140_blocks() {
+        let grid = decode_grid(&FULL_STREAM, TYRIA);
+        assert_eq!(grid.explored_count(), 2140);
+        assert!(grid.is_explored(0, 0), "band 0 is explored here");
+        assert!(grid.is_explored(0, 47), "band 2 is the last non-empty one");
+        assert!(!grid.is_explored(0, 48), "band 3 is empty");
     }
 
     #[test]

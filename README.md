@@ -68,17 +68,28 @@ A party moves as one. Design and evidence: `docs/45-party-travel.md`.
 end is what is not, and a case no capture covers is a guess.
 
 - **Doorways:** any member crossing brings the whole party, to the door's arrival point.
-- **World map:** the leader in an outpost starts a countdown (`0x01BC`, guessed layout), then the party
-  goes; anyone else - or anyone in an explorable - leaves the party and travels alone.
+- **World map:** the leader in an outpost starts a measured countdown (`0x01DA` then `0x01BC`, 10 s,
+  "travelling to <map>"), then the party goes; anyone else - or anyone in an explorable - leaves the
+  party and travels alone. The leader cancels with `0x80A3`, answered by the unlock `0x01DA {0, 0}`.
+- **Members left behind:** a member without the destination unlocked stays; the leader is asked first
+  with `0x01E7 {5}`, and a confirmed request moves the rest at once, without a countdown.
+- **Individual travel:** an unconfirmed world-map request is answered with `0x01E7 {4}`, the client's
+  "you will leave your party" popup; the confirmed request travels alone, and the members that stay
+  keep its name greyed.
 - **Arrival:** the first member builds the party from the ledger, the others show as not in the map until
   they arrive (as live sends it); one that never arrives is dropped after the grace time.
 - **Merges:** an invitation may name a party of more than one; the merge leader is the inviter on equal
   sizes, otherwise the larger party's leader.
 - **Disconnect hold:** a member that drops in an explorable stays in the party, grey, for 15 minutes;
   logging back in puts it back in the party's map.
-- **Storage:** migration `0030_parties.sql` (`t_parties`, `t_party_members`); run **Create tables
-  (schema)** once. **Values:** `config/World/Vanilla/party_travel.json`.
-- Not built: `/resign` and the wipe return (last), cancelling the countdown, one explorable per party.
+- **`/resign`:** a chat line, not a message. Each member dies after `resign_secs` (5 s) with `0x002D` +
+  `0x0026 {4}`; the last death sends `0x01D9`, and the leader's `0x80A7` returns the party to its last
+  outpost.
+- **Storage:** migration `0030_parties.sql` (`t_parties`, `t_party_members`) and `0031` (a doorway
+  transfer's source map); run **Create tables (schema)** once. **Values:**
+  `config/World/Vanilla/party_travel.json`.
+- Not built: one explorable per party, heroes and henchmen, the members' side of a cancel, and `0x01DA`
+  before a solo travel or a defeated party's return.
 
 ### Guilds (2026-11-06, experimental)
 
@@ -104,13 +115,35 @@ answered; everything else is a guess, and a live client decides.
 - Not built: the invitee's `0x0123` and the accept, kicks, promotions and demotions, guild chat, capes,
   guild halls, and the roster beyond the founder's own row.
 
+### Movement, doorways and maps (2026-11-07)
+
+- **Manual movement:** a reported direction is traced through connected walkable cells
+  (`crates/asura-world/src/pathfind/directional.rs`, `PathGraphs::walk_direction`) instead of routing to
+  a point on a distant plane; the distances are `config/Server/directional_movement.json`. Provisional:
+  the owner reports better movement but not perfect, and this is not client-confirmed.
+- **Doorways:** the pack's `portals.json` is the only source - the compiled tables, `map_portal` rows and
+  SQL fallback are gone. A wall triggers on a step that crosses or touches it, endpoints included, and
+  every simulated step is tested; a point doorway uses a box edge (`config/Server/portals.json`). The
+  last finite client report is kept separately from simulation ticks, so a clamped or refused report no
+  longer loses a crossing.
+- **Arrivals:** a doorway transfer writes its source map to `t_transfer.arrival_from_map_id` (migration
+  `0031`); a saved coordinate alone no longer selects an arrival. Outposts 165 and 166 name 161 and 162
+  as their source, not themselves.
+- **Maps:** the pack's `basic.json` `map_file_id` outranks `t_map_config` (Northlands 147 is 116025,
+  fixing the load crash), and every map carries `name_id`, the client's `AreaInfo` string id
+  (`tools/add-map-name-ids.py`); the party countdown needs it. Fort Ranik (166) moved from `Missions/` to
+  `Outposts/`.
+- **Cartography:** `ASURA_CARTOGRAPHY=full` now sends a captured 105-byte retail stream (2,140 blocks)
+  instead of the synthetic fill the client rejects (`crates/asura-world/src/cartography.rs`).
+
 ### Other changes
 
 - **Outposts load as outposts:** `INSTANCE_LOAD_INFO` now sends `is_explorable 0` for a town (it sent 1
   for every map), as the live server does (`crates/asura-world/src/map.rs`).
-- **Capture window:** `tools/sniff-capture-gui.py` runs `tools/sniff-capture.py` from a window (Start,
-  Stop, a list of the title records found). Needs the 32-bit Python 3.13. `sniff-capture.py` gained
-  `--stop-file` for the Stop button.
+- **Capture window:** `tools/sniff-capture-gui.py` runs `tools/sniff-capture.py` from a window. A
+  capture-type dropdown sets the folder under `recordings/client/feature/` and its header filter
+  (cartography, titles, movement, travel, maps, chat, items, guild, multiplay), and **Go** starts at
+  once (Stop ends it cleanly). Needs the 32-bit Python 3.13.
 - **Own logins:** `tools/seed-local.sql` (not committed, `.gitignore`) holds a machine's own accounts in
   `seed-dev.sql`'s shape; `asura-supervisor seed` applies it after `seed-dev.sql` when it exists.
 - **Docs:** doc 40 corrected (the `0x0059` it counted as a title hide is the server's `PLAYER_CREATE`)

@@ -41,7 +41,12 @@ fn main() {
     let inventory = asura_db::inventory::default_inventory();
 
     println!("# the four messages sent unasked");
-    dump(&load_block(&map, &name, asura_world::AGENT_ID));
+    dump(&load_block(
+        &map,
+        &name,
+        asura_world::AGENT_ID,
+        &asura_world::Grid::empty(asura_world::TYRIA),
+    ));
     println!("# the answer to 0x8091 (items)");
     dump(&items_block(&map, &inventory, 0));
     println!("# the answer to 0x8088 (spawn)");

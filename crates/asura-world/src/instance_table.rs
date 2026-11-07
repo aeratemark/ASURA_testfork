@@ -33,6 +33,11 @@ pub struct MapRecord {
     pub map_id: i32,
     /// The value a live load sent with it in `0x01A0`.
     pub instance_value: u32,
+    /// The client's string id of the map's name: the name id in `Gw.exe`'s `AreaInfo` entry for this
+    /// map. A party countdown to this map names it in its window (`party::travel_map_name`); a map
+    /// without one moves a party on the server's timer alone, with no window.
+    #[serde(default)]
+    pub name_id: Option<u32>,
     /// Free text for whoever opens the file.
     #[serde(default)]
     pub doc: Option<String>,
@@ -164,6 +169,24 @@ mod tests {
             table.pairs.windows(2).all(|pair| pair[0].0 < pair[1].0),
             "ordered by map id, so a load is stable between runs"
         );
+    }
+
+    /// A party countdown names its destination, and a map without `name_id` gets no window
+    /// (`party::travel_map_name`). Every pre-Searing outpost is a destination, so each must have one;
+    /// `tools/add-map-name-ids.py` writes them from the client.
+    #[test]
+    fn every_pre_searing_outpost_has_a_name_for_the_countdown() {
+        let (records, _) = walk(&pack());
+        for map_id in [148, 163, 164, 165, 166] {
+            let record = records
+                .iter()
+                .find(|record| record.map_id == map_id)
+                .unwrap_or_else(|| panic!("map {map_id} is in the pack"));
+            assert!(
+                record.name_id.is_some(),
+                "map {map_id} has no name_id: run tools/add-map-name-ids.py"
+            );
+        }
     }
 
     #[test]

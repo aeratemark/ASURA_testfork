@@ -169,6 +169,12 @@ pub const COMMANDS: &[Command] = &[
         takes_argument: true,
         answer: "`/guild create` opens the Guild Registration window (0x00C4, 0x0084, 0x00CA, 0x00C3 {8, 0})",
     },
+    Command {
+        names: &["resign"],
+        reference: "the client's own /resign chat line; the live server's batch is `multiplay-live-20261106-200638.jsonl`",
+        takes_argument: false,
+        answer: "the member resigns, then dies; when every member has resigned the party is defeated (0x01D9) and the leader's 0x80A7 returns it to its last outpost",
+    },
 ];
 
 /// The command a player typed, if this world answers it.
@@ -363,6 +369,18 @@ pub async fn handle_chat_message(
                     // Not the reference's: the owner's stand-in for the Guild Registrar (`crate::guild`).
                     crate::guild::handle_guild_command(stream, session, player, argument, trace)
                         .await
+                }
+                Some(named) if named.names.contains(&"resign") && argument.is_empty() => {
+                    // `/resign` is a chat line in the client, not a GAME_CMSG. Every member types
+                    // its own; each dies after the pack's delay, and the last death is what sends
+                    // `0x01D9` to the party (`docs/45-party-travel.md`).
+                    crate::party::resign(
+                        player.instance.clone(),
+                        player.player_id,
+                        player.agent_id,
+                        trace,
+                    );
+                    Ok(true)
                 }
                 _ => {
                     // `GameSrv_SendInvalidCommand`: the reference's text is "Unknown command". That

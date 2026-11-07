@@ -264,7 +264,10 @@ pub async fn handle_connection(
     let saved = db_game::position(&world.pool, character)
         .await
         .map_err(GameError::Database)?;
-    let standing = Standing::arrival(&map, saved)?;
+    let origin = transfer
+        .arrival_from_map_id
+        .filter(|_| character == transfer.character_id);
+    let standing = Standing::arrival(&map, saved, origin)?;
 
     eprintln!(
         "world: {name:?} joined map {} (file id {}) on world {}, standing at ({:.1}, {:.1}) plane \
@@ -331,6 +334,8 @@ pub async fn handle_connection(
     let marks = cartography::spawn_marker(outbox.clone());
     let (player_id, agent_id) =
         instance.join(name.clone(), character, standing, equipped, outbox, orders);
+    let (portal_outbox, mut portal_inbox) = tokio::sync::mpsc::unbounded_channel();
+    instance.watch_portals(player_id, portal_outbox);
     // Every player is in a party from the moment it joins: its travelling party when it is arriving with
     // one, otherwise one of its own (`crate::party`).
     let awaited = crate::party::arrive(&instance, player_id, character, arriving.as_ref(), trace);
@@ -376,6 +381,7 @@ pub async fn handle_connection(
         session_id: transfer.session_id,
         account_id: transfer.account_id,
         moved: false,
+        portal_position: standing.position,
         last_step: None,
         // A creation instance is its own map type (`MapType_CharacterCreation`, 11): a connection that
         // arrived in one is there to make a character, and one that arrived in anything else cannot.
@@ -486,6 +492,7 @@ pub async fn handle_connection(
         &mut player,
         &mut inbox,
         &mut to_do,
+        &mut portal_inbox,
         trace,
     )
     .await;
@@ -641,6 +648,7 @@ pub async fn run(
     player: &mut Player,
     inbox: &mut tokio::sync::mpsc::UnboundedReceiver<Vec<Frame>>,
     to_do: &mut tokio::sync::mpsc::UnboundedReceiver<crate::travel::Order>,
+    portal_inbox: &mut tokio::sync::mpsc::UnboundedReceiver<crate::instance::PortalStep>,
     trace: bool,
 ) -> Result<(), GameError> {
     // The instance's clock is **not** released here. It is released by the players block, whose last
@@ -661,6 +669,12 @@ pub async fn run(
     'session: loop {
         tokio::select! {
             biased;
+
+            // A simulated step touched the doorway. Process it ahead of ordinary broadcasts;
+            // travel needs no further client report and no additional timer.
+            Some((from, to)) = portal_inbox.recv() => {
+                travel::portal_crossed(stream, session, world, player, from, to, trace).await?;
+            }
 
             // Frames another player's connection pushed at us. This is the whole of the broadcast
             // mechanism: the reference writes into every other connection's buffer, and here every

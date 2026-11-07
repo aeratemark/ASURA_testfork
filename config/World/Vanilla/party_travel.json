@@ -5,12 +5,12 @@
     "doc": "Seconds between a leader's world-map travel and the party's move. Members who travel elsewhere during it leave the party. The client is shown the number in 0x01BC."
   },
   "countdown_byte": {
-    "value": 0,
-    "doc": "The byte after the seconds in 0x01BC. Its meaning is not established and no capture shows it: 0 is a guess."
+    "value": 1,
+    "doc": "The mode byte after the u32 seconds in 0x01BC. The live countdown sends 1 (recordings/client/feature/multiplay/multiplay-live-20261106-231251.jsonl seq 110); 0 is the cancel-side value."
   },
   "countdown_text": {
     "value": "",
-    "doc": "The text 0x01BC carries (up to 122 UTF-16 units). No capture shows it: empty is a guess."
+    "doc": "The text 0x01BC carries (up to 122 UTF-16 units). The live countdown sends an empty string: the destination is not in this message."
   },
   "arrival_grace_secs": {
     "value": 60,
@@ -19,5 +19,9 @@
   "disconnect_hold_secs": {
     "value": 900,
     "doc": "Seconds a party in an explorable keeps the place of a member whose connection dropped: 15 minutes, the game's rule (docs/36-game-rules-ledger.md, R11). A clean logout is a leave and is not held."
+  },
+  "resign_secs": {
+    "value": 5,
+    "doc": "Seconds between a member's /resign chat line and its death. The live capture recorded 11.334 s for the line and 16.888 s for the deaths, 5.55 s later (recordings/client/feature/multiplay/multiplay-live-20261106-200638.jsonl)."
   }
 }

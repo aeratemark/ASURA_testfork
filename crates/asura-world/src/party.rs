@@ -120,14 +120,16 @@ pub struct TravelSettings {
     pub note: Option<String>,
     /// Seconds between a leader's world-map travel and the party's move.
     pub countdown_secs: crate::character_defaults::Value<u16>,
-    /// The byte after the seconds in `0x01BC` (a guess: no capture).
+    /// Unused: the byte after the seconds in `0x01BC` is 1 for the leader and 0 for members (captured).
     pub countdown_byte: crate::character_defaults::Value<u8>,
-    /// The text `0x01BC` carries (a guess: no capture).
+    /// Unused: `0x01BC` carries "travelling to <map>" (`game::travel_timer_message`), not free text.
     pub countdown_text: crate::character_defaults::Value<String>,
     /// Seconds a member told to travel has to arrive before the party drops it.
     pub arrival_grace_secs: crate::character_defaults::Value<u32>,
     /// Seconds an explorable party keeps the place of a member whose connection dropped.
     pub disconnect_hold_secs: crate::character_defaults::Value<u32>,
+    /// Seconds between a member's `/resign` and its death.
+    pub resign_secs: crate::character_defaults::Value<u32>,
 }
 
 impl TravelSettings {
@@ -224,6 +226,12 @@ pub struct Party {
     /// Members that have just arrived and whose arrival the others are told once their player exists
     /// on those clients (after the introduction): `true` when the member was held.
     pub entering: HashMap<u32, bool>,
+    /// Members that have typed `/resign` and whose death is still due.
+    pub resigned: HashSet<u32>,
+    /// Members whose resigning death has been sent.
+    pub dead: HashSet<u32>,
+    /// The party has been told it is defeated (`0x01D9`); the leader's `0x80A7` is the return.
+    pub defeated: bool,
 }
 
 /// Why a member is not in the map.
@@ -333,6 +341,8 @@ impl Table {
                 party.members.retain(|m| *m != member);
                 party.absent.remove(&member);
                 party.entering.remove(&member);
+                party.resigned.remove(&member);
+                party.dead.remove(&member);
                 if party.leader == member {
                     if let Some(next) = party.members.first() {
                         party.leader = *next;
@@ -843,7 +853,7 @@ pub fn handle_leave(player: &Player, trace: bool) -> Result<bool, GameError> {
         if let Err(why) = rules::may_leave(old.members.len()) {
             return refused(player, "leaves", why);
         }
-        departure(&mut table, instance, &old, me)
+        departure(&mut table, instance, &old, me, false)
     };
     if trace {
         eprintln!("world: party: player {me} leaves its party");
@@ -852,8 +862,9 @@ pub fn handle_leave(player: &Player, trace: bool) -> Result<bool, GameError> {
     Ok(true)
 }
 
-/// A player leaves its party in order to travel alone (`rules::TravelRequest::LeavesParty`): the same
-/// batch as [`handle_leave`], in an outpost or an explorable. Returns whether it had company to leave.
+/// A player leaves its party in order to travel alone (`rules::TravelRequest::LeavesParty`): the
+/// same batch as [`handle_leave`], used by `/tp` and the portal fallback. Returns whether it had
+/// company to leave.
 pub fn leave_to_travel(player: &Player, trace: bool) -> bool {
     let me = player.player_id;
     let instance = &player.instance;
@@ -865,13 +876,162 @@ pub fn leave_to_travel(player: &Player, trace: bool) -> bool {
         if old.members.len() <= 1 {
             return false;
         }
-        departure(&mut table, instance, &old, me)
+        departure(&mut table, instance, &old, me, false)
     };
     if trace {
         eprintln!("world: party: player {me} leaves its party to travel alone");
     }
     deliver(instance, plan);
     true
+}
+
+/// The world-map form of a member's leave (`0x80B1` with its confirmation flag 0).
+///
+/// The departing player is still sent the full batch of a leave, because the client needs its new
+/// party of one before it will act on the redirect (the departure this server used before the grey
+/// change, and the path that loaded immediately). The members staying do **not** get the remove
+/// (`0x01D1`): a live server keeps the name in their party window and greys it, with the departing
+/// player's leader set to 0 (`0x00B1 {player, 0}` in `multiplay-live-20261106-200444.jsonl` seq 746).
+/// The grey flag is `0x01CE`, ledger E38's `MemberDisconnectSoft`; the staying side of a travel has
+/// not been captured, so that choice is a guess in `docs/45-party-travel.md`. Returns whether it had
+/// company to leave.
+pub fn leave_to_travel_grey(player: &Player, trace: bool) -> bool {
+    let me = player.player_id;
+    let instance = &player.instance;
+    let plan = {
+        let mut table = instance.parties.locked();
+        let Some(old) = table.party_of(me).cloned() else {
+            return false;
+        };
+        if old.members.len() <= 1 {
+            return false;
+        }
+        departure(&mut table, instance, &old, me, true)
+    };
+    if trace {
+        eprintln!(
+            "world: party: player {me} leaves its party to travel alone; the others see it grey"
+        );
+    }
+    deliver(instance, plan);
+    true
+}
+
+// ---- resign: every member's own death, then the party's return -------------------------------
+
+/// A member typed `/resign`: mark it, and schedule its own death after the pack's delay
+/// (`multiplayer-live-20261106-200638.jsonl`: the chat line at t=11.334 and both deaths at
+/// t=16.888, 5.55 s later; the pack's `resign_secs` is 5). When the last member in the map dies, the
+/// party is told it is defeated (`0x01D9`) and waits for the leader's
+/// `GAME_CMSG_PARTY_RETURN_TO_OUTPOST` (`0x80A7`).
+pub fn resign(instance: Arc<Instance>, me: u32, agent: u32, trace: bool) {
+    let Some(settings) = travel_settings() else {
+        eprintln!("world: party: /resign is refused: the pack states no {TRAVEL_FILE}");
+        return;
+    };
+    let party_id = {
+        let mut table = instance.parties.locked();
+        let Some(party_id) = table.of_player.get(&me).copied() else {
+            return;
+        };
+        let Some(party) = table.parties.get_mut(&party_id) else {
+            return;
+        };
+        if party.moving || !party.resigned.insert(me) {
+            return;
+        }
+        party_id
+    };
+    if trace {
+        eprintln!(
+            "world: party: player {me} resigned; its death is due in {} s",
+            settings.resign_secs.value
+        );
+    }
+    let instance = instance.clone();
+    let seconds = u64::from(settings.resign_secs.value);
+    tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_secs(seconds)).await;
+        resign_death(&instance, party_id, me, agent, trace);
+    });
+}
+
+/// Send one resigned member's death and, when it was the last member in the map, the party's defeat.
+/// The frames are the live ones: `0x002D {agent}`, `0x0026 {agent, 4}`
+/// (`multiplay-live-20261106-200638.jsonl` seq 52-55), then `0x01D9` when every member has resigned
+/// (seq 42). Returns whether this death defeated the party.
+fn resign_death(instance: &Instance, party_id: u16, me: u32, agent: u32, trace: bool) -> bool {
+    let (present, all, first_defeat) = {
+        let mut table = instance.parties.locked();
+        let Some(party) = table.parties.get_mut(&party_id) else {
+            return false;
+        };
+        if !party.members.contains(&me) || !party.dead.insert(me) {
+            return false;
+        }
+        let present = party.present();
+        let all =
+            !present.is_empty() && present.iter().all(|member| party.resigned.contains(member));
+        let first_defeat = all && !party.defeated;
+        if first_defeat {
+            party.defeated = true;
+        }
+        (present, all, first_defeat)
+    };
+    let death = [
+        game::agent_player_die(agent),
+        game::agent_update_flags(agent, 4),
+    ];
+    for member in &present {
+        instance.send_to(*member, &death);
+    }
+    if !all || !first_defeat {
+        return false;
+    }
+    if trace {
+        eprintln!("world: party: the last member resigned; the party is defeated");
+    }
+    let defeated = [game::party_defeated()];
+    for member in &present {
+        instance.send_to(*member, &defeated);
+    }
+    true
+}
+
+/// What the leader's `GAME_CMSG_PARTY_RETURN_TO_OUTPOST` acts on: a defeated party, its members in
+/// the map, and the character that leads it.
+pub struct Defeated {
+    /// The party's id.
+    pub party_id: u16,
+    /// Its members standing in the map.
+    pub members: Vec<u32>,
+    /// The leader's character, whose `last_outpost` names where it returns.
+    pub leader: Uuid,
+}
+
+/// The defeated party `player_id` leads, or `None`. Only a defeated party answers: the client's
+/// return button is the return half of `/resign`, not a second travel command.
+pub fn defeated_party(instance: &Instance, player_id: u32) -> Option<Defeated> {
+    let table = instance.parties.locked();
+    let party = table.party_of(player_id)?;
+    if party.leader != player_id || !party.defeated {
+        return None;
+    }
+    Some(Defeated {
+        party_id: party.party_id,
+        members: party.present(),
+        leader: table.characters.get(&player_id).copied()?,
+    })
+}
+
+/// Send the party lock a live server puts before a party travel (`0x01DA {2, 1, ""}`) to every member
+/// in the map. `multiplay-live-20261106-200638.jsonl` seq 84, then the redirect at seq 86 (that capture's
+/// member got initiator 0).
+pub fn lock_for_travel(instance: &Instance, members: &[u32]) {
+    let lock = game::party_lock(2, 1);
+    for member in members {
+        instance.send_to(*member, std::slice::from_ref(&lock));
+    }
 }
 
 /// `GAME_CMSG_PARTY_KICK_PLAYER` (`0x80A9`, one word: the player). The leader puts a member out.
@@ -897,7 +1057,7 @@ pub fn handle_kick(frame: &Frame, player: &Player, trace: bool) -> Result<bool, 
         ) {
             return refused(player, "kicks", why);
         }
-        departure(&mut table, instance, &mine, target)
+        departure(&mut table, instance, &mine, target, false)
     };
     if trace {
         eprintln!("world: party: player {me} kicks player {target}");
@@ -918,6 +1078,10 @@ pub fn handle_kick(frame: &Frame, player: &Player, trace: bool) -> Result<bool, 
 ///   a new leader then gets `0x01CB {1}` (`025940` seq 627-631);
 /// - everyone else in the map: the pairs.
 ///
+/// `grey_staying` is the world-map travel form: the one going still gets the whole `leaving` batch,
+/// but the staying members get no remove, only the new size, the one going's leader 0, and `0x01CE`.
+/// That is what keeps the name in their party window, greyed (`docs/45-party-travel.md`).
+///
 /// The flags word goes out with this server's value 0; the live batches carry the player's own value
 /// (`0x003C {0x0E, 4, 7}` at seq 2999) and, for the one going, four or five other players' as well,
 /// which are not sent (see `handle_accept`).
@@ -925,7 +1089,13 @@ pub fn handle_kick(frame: &Frame, player: &Player, trace: bool) -> Result<bool, 
 /// A leader's countdown is voided when its leader goes. A member that is not in the map (travelling in,
 /// or held) can be the leader; the next member in the map takes over then, the way it does when the
 /// leader leaves.
-fn departure(table: &mut Table, instance: &Instance, old: &Party, going: u32) -> Plan {
+fn departure(
+    table: &mut Table,
+    instance: &Instance,
+    old: &Party,
+    going: u32,
+    grey_staying: bool,
+) -> Plan {
     let remaining: Vec<u32> = old
         .members
         .iter()
@@ -947,6 +1117,8 @@ fn departure(table: &mut Table, instance: &Instance, old: &Party, going: u32) ->
         party.members.retain(|member| *member != going);
         party.absent.remove(&going);
         party.entering.remove(&going);
+        party.resigned.remove(&going);
+        party.dead.remove(&going);
         if let Some(leader) = new_leader {
             if party.leader != leader {
                 party.countdown = None;
@@ -993,12 +1165,25 @@ fn departure(table: &mut Table, instance: &Instance, old: &Party, going: u32) ->
     leaving.push(game::party_search_seek(0));
     leaving.push(game::party_set_difficulty(0));
 
-    let mut staying = vec![remove];
+    let mut staying = Vec::new();
+    if grey_staying {
+        // The measured "this player left the map" message, before the grey flag. The old capture's
+        // leave batch is `0x01D0`, the farewell, then `0x01D1`; a travel keeps the name, so the
+        // remove is the one part it does not send (`docs/44-party-invites.md`).
+        staying.push(game::party_member_leave_world(old.party_id, id(going)));
+    } else {
+        staying.push(remove);
+    }
     staying.extend(handover.iter().cloned());
     staying.push(new_size.clone());
-    staying.extend(own.clone());
-    staying.push(flags);
-    staying.extend(own.clone());
+    if grey_staying {
+        staying.push(game::player_update_party(going, 0));
+        staying.push(game::party_member_disconnect_soft(old.party_id, id(going)));
+    } else {
+        staying.extend(own.clone());
+        staying.push(flags);
+        staying.extend(own.clone());
+    }
 
     let mut plan = Plan::new();
     plan.push((going, leaving));
@@ -1008,7 +1193,9 @@ fn departure(table: &mut Table, instance: &Instance, old: &Party, going: u32) ->
     }
     let mut pairs = handover;
     pairs.push(new_size);
-    pairs.extend(own);
+    if !grey_staying {
+        pairs.extend(own);
+    }
     to_all(&bystanders(instance, &old.members), &pairs, &mut plan);
     plan
 }
@@ -1409,7 +1596,7 @@ pub fn begin_move(
         let mut plan = Plan::new();
         for stayer in &staying {
             if let Some(current) = table.party_of(*stayer).cloned() {
-                plan.extend(departure(&mut table, instance, &current, *stayer));
+                plan.extend(departure(&mut table, instance, &current, *stayer, false));
             }
         }
         // Members not in the map are not taken along: their places are freed.
@@ -1493,7 +1680,7 @@ pub fn stays_behind(instance: &Instance, me: u32, trace: bool) {
             }
             return;
         }
-        let mut plan = departure(&mut table, instance, &party, me);
+        let mut plan = departure(&mut table, instance, &party, me, false);
         // The others are leaving and do not need to hear it.
         plan.retain(|(to, _)| *to == me || !party.members.contains(to));
         plan
@@ -1506,11 +1693,38 @@ pub fn stays_behind(instance: &Instance, me: u32, trace: bool) {
     deliver(instance, plan);
 }
 
-/// A leader's world-map travel in an outpost: the countdown starts. Every member in the map is told
-/// with `0x01BC` (Headquarter's layout, seconds first; experimental, **not captured**). Returns the
-/// ticket the countdown fires with, or `None` when the player leads no party with company, or the
-/// pack states no countdown.
-pub fn start_countdown(player: &Player, trace: bool) -> Option<(u64, u16)> {
+/// The encoded name of a map, for the countdown's "travelling to <map>" (`game::travel_timer_message`).
+///
+/// **The countdown window depends on the pack.** The name comes from the map's own
+/// `maps/.../<map id>/basic.json`, field `name_id` (the client's string id, from `Gw.exe`'s `AreaInfo`
+/// table). A destination whose file has no `name_id` still moves the party after `countdown_secs`, but
+/// no `0x01DA`/`0x01BC` is sent, so no client shows the timer or the cancel; the server logs
+/// `map N has no name_id`. The pack is read once per process.
+fn travel_map_name(map_id: i32) -> Option<&'static [u16]> {
+    static NAMES: std::sync::OnceLock<HashMap<i32, Vec<u16>>> = std::sync::OnceLock::new();
+    NAMES
+        .get_or_init(|| {
+            let (records, _) = crate::instance_table::walk(&crate::instance_table::pack());
+            records
+                .into_iter()
+                .filter_map(|record| {
+                    let id = record.name_id?;
+                    Some((record.map_id, game::encoded_string_id(id)))
+                })
+                .collect()
+        })
+        .get(&map_id)
+        .map(Vec::as_slice)
+}
+
+/// A leader's world-map travel in an outpost: the countdown starts. Every present member gets
+/// `0x01DA {2, initiator, ""}` and `0x01BC {seconds, initiator, "travelling to <map>"}` in the same tick;
+/// `initiator` is 1 for the leader, whose window offers the cancel, and 0 for the rest
+/// (`multiplay-live-20261106-231251.jsonl` seq 109-110 on the leader, `...-232449.jsonl` seq 356-357
+/// on a member; the redirect follows ten seconds later). When the destination's name is not known the
+/// countdown runs on the server alone, with no window. Returns the ticket the countdown fires with, or
+/// `None` when the player leads no party with company, or the pack states no countdown.
+pub fn start_countdown(player: &Player, destination: i32, trace: bool) -> Option<(u64, u16)> {
     let Some(settings) = travel_settings() else {
         eprintln!(
             "world: party: {:?}'s party travel is refused: the pack states no {TRAVEL_FILE}",
@@ -1518,6 +1732,8 @@ pub fn start_countdown(player: &Player, trace: bool) -> Option<(u64, u16)> {
         );
         return None;
     };
+    let seconds = settings.countdown_secs.value;
+    let message = travel_map_name(destination).map(game::travel_timer_message);
     let me = player.player_id;
     let instance = &player.instance;
     let (ticket, plan) = {
@@ -1529,23 +1745,62 @@ pub fn start_countdown(player: &Player, trace: bool) -> Option<(u64, u16)> {
             return None;
         }
         party.countdown = Some(ticket);
-        let timer = game::instance_travel_timer(
-            settings.countdown_secs.value,
-            settings.countdown_byte.value,
-            &settings.countdown_text.value,
-        );
         let mut plan = Plan::new();
-        to_all(&party.present(), &[timer], &mut plan);
+        if let Some(message) = &message {
+            for member in party.present() {
+                let initiator = u8::from(member == me);
+                plan.push((
+                    member,
+                    vec![
+                        game::party_lock(2, initiator),
+                        game::instance_travel_timer(seconds, initiator, message),
+                    ],
+                ));
+            }
+        }
         (ticket, plan)
     };
-    if trace {
+    if message.is_none() {
         eprintln!(
-            "world: party: player {me} leads its party out in {} s (ticket {ticket})",
-            settings.countdown_secs.value
+            "world: party: map {destination} has no name_id in its basic.json, so no countdown \
+             window; the party moves in {seconds} s without it"
         );
     }
+    if trace {
+        eprintln!("world: party: player {me} leads its party out in {seconds} s (ticket {ticket})");
+    }
     deliver(instance, plan);
-    Some((ticket, settings.countdown_secs.value))
+    Some((ticket, seconds))
+}
+
+/// `GAME_CMSG_PARTY_CANCEL_ENTER_CHALLENGE` (`0x80A3`): the leader cancels the countdown. The live
+/// server answers with the unlock form of `0x01DA` (kind 0, initiator 0) and does not move the party
+/// (`multiplay-live-20261106-231251.jsonl` seq 123-124, the leader's side). The members' side of a
+/// cancel is not captured; they are sent the same unlock, which closes the window they were opened.
+pub fn handle_cancel_challenge(player: &Player, trace: bool) -> Result<bool, GameError> {
+    let me = player.player_id;
+    let instance = &player.instance;
+    let present = {
+        let mut table = instance.parties.locked();
+        let Some(party_id) = table.of_player.get(&me).copied() else {
+            return Ok(true);
+        };
+        let Some(party) = table.parties.get_mut(&party_id) else {
+            return Ok(true);
+        };
+        if party.leader != me || party.countdown.is_none() {
+            return Ok(true);
+        }
+        party.countdown = None;
+        party.present()
+    };
+    let mut plan = Plan::new();
+    to_all(&present, &[game::party_lock(0, 0)], &mut plan);
+    deliver(instance, plan);
+    if trace {
+        eprintln!("world: party: player {me} cancelled the countdown");
+    }
+    Ok(true)
 }
 
 /// The countdown has run out: whether it still stands - the same leader leads the same party and no
@@ -1658,7 +1913,7 @@ pub fn left_instance(
                 );
             }
             if mine.members.len() > 1 {
-                plan.extend(departure(&mut table, instance, &mine, me));
+                plan.extend(departure(&mut table, instance, &mine, me, false));
             }
             // Whatever party it is in now goes with it.
             if let Some(last) = table.of_player.remove(&me) {
@@ -1717,6 +1972,10 @@ mod tests {
             "ledger R11: 15 minutes"
         );
         assert!(travel.arrival_grace_secs.value > 0);
+        assert_eq!(
+            travel.resign_secs.value, 5,
+            "the capture's /resign line to death"
+        );
     }
 
     #[test]
@@ -1872,6 +2131,52 @@ mod tests {
         };
         assert_eq!(flags(1), vec![1, 0]);
         assert_eq!(flags(2), vec![0, 1]);
+    }
+
+    /// The world-map leave keeps the name on the staying side but still gives the leaver the full
+    /// leave batch that every earlier travel used before its redirect.
+    #[test]
+    fn a_grey_travel_departure_keeps_the_name_and_sends_the_leaver_its_own_party() {
+        let map = MapEntry {
+            map_id: 148,
+            map_file_id: 0x1B97D,
+            map_type: 0,
+            spawn: (0.0, 0.0),
+            spawn_plane: 0,
+            spawns: Vec::new(),
+            name: "Ascalon City".to_string(),
+            capacity: 8,
+        };
+        let instance = Instance::new(map);
+        let mut table = Table::default();
+        let old = table.found(1);
+        table.parties.get_mut(&old).unwrap().members.push(2);
+        table.of_player.insert(2, old);
+        table.characters.insert(1, Uuid::from_u128(1));
+        table.characters.insert(2, Uuid::from_u128(2));
+        let old = table.party_of(1).cloned().unwrap();
+
+        let plan = departure(&mut table, &instance, &old, 2, true);
+        let staying = &plan.iter().find(|(member, _)| *member == 1).unwrap().1;
+        let headers: Vec<u16> = staying.iter().map(Frame::header).collect();
+        assert!(
+            !headers.contains(&asura_protocol::packets::game::GAME_SMSG_PARTY_PLAYER_REMOVE),
+            "the staying side is not told to remove the name"
+        );
+        assert!(headers.contains(&game::PARTY_MEMBER_LEAVE_WORLD));
+        assert!(headers.contains(&game::PARTY_MEMBER_DISCONNECT_SOFT));
+        assert!(headers.contains(&asura_protocol::packets::game::GAME_SMSG_PLAYER_UPDATE_PARTY));
+
+        let leaving = &plan.iter().find(|(member, _)| *member == 2).unwrap().1;
+        let headers: Vec<u16> = leaving.iter().map(Frame::header).collect();
+        assert!(
+            headers.contains(&asura_protocol::packets::game::GAME_SMSG_PARTY_PLAYER_REMOVE),
+            "the leaver still gets its own leave batch"
+        );
+        assert!(
+            headers.contains(&asura_protocol::packets::game::GAME_SMSG_PARTY_CREATE),
+            "and its new party of one"
+        );
     }
 
     #[test]

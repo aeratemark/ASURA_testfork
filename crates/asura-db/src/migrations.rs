@@ -21,7 +21,7 @@ use crate::{
     PgPool, SCHEMA_V1, SCHEMA_V10, SCHEMA_V11, SCHEMA_V12, SCHEMA_V13, SCHEMA_V14, SCHEMA_V15,
     SCHEMA_V16, SCHEMA_V17, SCHEMA_V18, SCHEMA_V19, SCHEMA_V2, SCHEMA_V20, SCHEMA_V21, SCHEMA_V22,
     SCHEMA_V23, SCHEMA_V24, SCHEMA_V25, SCHEMA_V26, SCHEMA_V27, SCHEMA_V28, SCHEMA_V29, SCHEMA_V3,
-    SCHEMA_V30, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V9,
+    SCHEMA_V30, SCHEMA_V31, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V9,
 };
 
 /// One migration: a version number (its file's number) and its statements.
@@ -156,10 +156,14 @@ pub const MIGRATIONS: &[Migration] = &[
         version: 30,
         sql: SCHEMA_V30,
     },
+    Migration {
+        version: 31,
+        sql: SCHEMA_V31,
+    },
 ];
 
 /// The newest version this build knows about. A database reporting less is behind the code.
-pub const LATEST_VERSION: i32 = 30;
+pub const LATEST_VERSION: i32 = 31;
 
 /// The advisory lock [`apply_pending`] holds while it applies one migration, so that two services
 /// starting together against one database take turns instead of applying the same file at once.

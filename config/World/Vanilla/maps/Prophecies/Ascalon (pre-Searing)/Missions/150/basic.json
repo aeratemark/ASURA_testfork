@@ -1,5 +1,6 @@
 {
   "map_id": 150,
   "instance_value": 1407236321,
+  "name_id": 10456,
   "doc": "The instance value a live load sent with this map in GAME_SMSG_INSTANCE_TABLE (0x01A0): the client resolves a destination by this pair, so a map without one cannot be named. Copied from the recording of the load of instance 148 (recordings/client/feature/maps/pre-searing-load-3.jsonl). Maps that share a value belong to one base map or region, which is why the number is not always unique."
 }

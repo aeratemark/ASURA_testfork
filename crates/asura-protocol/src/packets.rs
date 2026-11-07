@@ -998,8 +998,8 @@ pub static PACKETS: &[Packet] = &[
     Packet { conn: Conn::Game, header: 0x01D6, index: 470, size:     2, name: None, from_client: false, status: Status::Unnamed, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 470 }] },
     Packet { conn: Conn::Game, header: 0x01D7, index: 471, size:     3, name: None, from_client: false, status: Status::Unnamed, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 471 }, Field { kind: FieldKind::Byte, length: 0 }] },
     Packet { conn: Conn::Game, header: 0x01D8, index: 472, size:   234, name: None, from_client: false, status: Status::Unnamed, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 472 }, Field { kind: FieldKind::Array16, length: 16 }, Field { kind: FieldKind::NestedStruct, length: 16 }, Field { kind: FieldKind::Dword, length: 0 }, Field { kind: FieldKind::Dword, length: 0 }, Field { kind: FieldKind::Dword, length: 0 }] },
-    Packet { conn: Conn::Game, header: 0x01D9, index: 473, size:     2, name: Some("GAME_SMSG_PARTY_DEFEATED"), from_client: false, status: Status::Known, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 473 }] },
-    Packet { conn: Conn::Game, header: 0x01DA, index: 474, size:   252, name: Some("GAME_SMSG_PARTY_LOCK"), from_client: false, status: Status::Known, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 474 }, Field { kind: FieldKind::Byte, length: 0 }, Field { kind: FieldKind::Byte, length: 0 }, Field { kind: FieldKind::String16, length: 122 }] },
+    Packet { conn: Conn::Game, header: 0x01D9, index: 473, size:     2, name: Some("GAME_SMSG_PARTY_DEFEATED"), from_client: false, status: Status::Known, evidence: &["recordings/client/feature/multiplay/multiplay-live-20261106-200638.jsonl seq 42: header only, at the same tick as the last two resign deaths; the client draws its party-defeated window"], fields: &[Field { kind: FieldKind::MsgHeader, length: 473 }] },
+    Packet { conn: Conn::Game, header: 0x01DA, index: 474, size:   252, name: Some("GAME_SMSG_PARTY_LOCK"), from_client: false, status: Status::Observed, evidence: &["recordings/client/feature/multiplay/multiplay-live-20261106-200444.jsonl seq 42 and 1141, ...-195109.jsonl seq 1196, ...-200638.jsonl seq 84: the wire is da 01 | 02 | 00 | 00 00, lock kind 2 and an empty String16, sent before a world-map travel or a party countdown"], fields: &[Field { kind: FieldKind::MsgHeader, length: 474 }, Field { kind: FieldKind::Byte, length: 0 }, Field { kind: FieldKind::Byte, length: 0 }, Field { kind: FieldKind::String16, length: 122 }] },
     Packet { conn: Conn::Game, header: 0x01DB, index: 475, size:     2, name: None, from_client: false, status: Status::Unnamed, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 475 }] },
     Packet { conn: Conn::Game, header: 0x01DC, index: 476, size:     5, name: None, from_client: false, status: Status::Unnamed, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 476 }, Field { kind: FieldKind::Word, length: 0 }, Field { kind: FieldKind::Byte, length: 0 }] },
     Packet { conn: Conn::Game, header: 0x01DD, index: 477, size:     6, name: Some("GAME_SMSG_PARTY_SEARCH_REQUEST_JOIN"), from_client: false, status: Status::Known, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 477 }, Field { kind: FieldKind::Word, length: 0 }, Field { kind: FieldKind::Word, length: 0 }] },
@@ -1012,7 +1012,7 @@ pub static PACKETS: &[Packet] = &[
     Packet { conn: Conn::Game, header: 0x01E4, index: 484, size:     3, name: None, from_client: false, status: Status::Unnamed, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 484 }, Field { kind: FieldKind::Byte, length: 0 }] },
     Packet { conn: Conn::Game, header: 0x01E5, index: 485, size:   250, name: None, from_client: false, status: Status::Unnamed, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 485 }, Field { kind: FieldKind::String16, length: 122 }] },
     Packet { conn: Conn::Game, header: 0x01E6, index: 486, size:     3, name: None, from_client: false, status: Status::Unnamed, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 486 }, Field { kind: FieldKind::Byte, length: 0 }] },
-    Packet { conn: Conn::Game, header: 0x01E7, index: 487, size:     3, name: None, from_client: false, status: Status::Unnamed, evidence: &[], fields: &[Field { kind: FieldKind::MsgHeader, length: 487 }, Field { kind: FieldKind::Byte, length: 0 }] },
+    Packet { conn: Conn::Game, header: 0x01E7, index: 487, size:     3, name: Some("GAME_SMSG_PARTY_TRAVEL_CONFIRM"), from_client: false, status: Status::Observed, evidence: &["recordings/client/feature/multiplay/multiplay-live-20261106-200444.jsonl seq 769 and 892: one byte, 4, sent alone in answer to a party member's unconfirmed world-map travel; the same request with its confirmation flag 0 at seq 924 travels, so the byte asks the client for the 'you will leave your party' confirmation"], fields: &[Field { kind: FieldKind::MsgHeader, length: 487 }, Field { kind: FieldKind::Byte, length: 0 }] },
 ];
 
 /// The row for one header in one direction of one family, or `None` if that family has no such
@@ -2313,6 +2313,9 @@ pub mod game {
 
     /// `GAME_SMSG_PARTY_SEARCH_TYPE` (declared maximum 6 bytes; header `0x01E3`).
     pub const GAME_SMSG_PARTY_SEARCH_TYPE: u16 = 0x01E3;
+
+    /// `GAME_SMSG_PARTY_TRAVEL_CONFIRM` (declared maximum 3 bytes; header `0x01E7`).
+    pub const GAME_SMSG_PARTY_TRAVEL_CONFIRM: u16 = 0x01E7;
 
     /// Every game row, in table order.
     pub fn rows() -> impl Iterator<Item = &'static Entry> {

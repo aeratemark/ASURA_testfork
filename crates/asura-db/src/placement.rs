@@ -535,6 +535,8 @@ pub struct Transfer {
     pub account_id: uuid::Uuid,
     /// The character the row is about.
     pub character_id: uuid::Uuid,
+    /// Only a doorway transfer names an origin. A saved position cannot identify its trigger.
+    pub arrival_from_map_id: Option<i32>,
 }
 
 /// Write the pending transfer for a travel that is about to be announced.
@@ -587,10 +589,19 @@ pub async fn claim_transfer(
     world_id: i32,
     player_token: u32,
 ) -> sqlx::Result<Option<Transfer>> {
-    let row: Option<(i64, i32, i32, uuid::Uuid, uuid::Uuid, uuid::Uuid)> = sqlx::query_as(
+    let row: Option<(
+        i64,
+        i32,
+        i32,
+        uuid::Uuid,
+        uuid::Uuid,
+        uuid::Uuid,
+        Option<i32>,
+    )> = sqlx::query_as(
         "UPDATE t_transfer SET claimed_at = now()
           WHERE player_token = $1 AND world_id = $2
-          RETURNING player_token, world_id, map_id, session_id, account_id, character_id",
+          RETURNING player_token, world_id, map_id, session_id, account_id, character_id,
+                    arrival_from_map_id",
     )
     .bind(i64::from(player_token))
     .bind(world_id)
@@ -598,15 +609,38 @@ pub async fn claim_transfer(
     .await?;
 
     Ok(row.map(
-        |(player_token, world_id, map_id, session_id, account_id, character_id)| Transfer {
+        |(
             player_token,
             world_id,
             map_id,
             session_id,
             account_id,
             character_id,
+            arrival_from_map_id,
+        )| Transfer {
+            player_token,
+            world_id,
+            map_id,
+            session_id,
+            account_id,
+            character_id,
+            arrival_from_map_id,
         },
     ))
+}
+
+/// Mark an issued transfer as a doorway crossing before its redirect is sent.
+pub async fn set_transfer_arrival_origin(
+    pool: &PgPool,
+    player_token: u32,
+    from_map_id: i32,
+) -> sqlx::Result<()> {
+    sqlx::query("UPDATE t_transfer SET arrival_from_map_id = $2 WHERE player_token = $1")
+        .bind(i64::from(player_token))
+        .bind(from_map_id)
+        .execute(pool)
+        .await?;
+    Ok(())
 }
 
 /// Forget a transfer nobody claimed. Used when a travel is refused after the row was written, and by

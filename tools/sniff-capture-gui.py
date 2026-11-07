@@ -2,7 +2,8 @@
 """sniff-capture-gui.py - a window for tools/sniff-capture.py.
 
 Double-click it. It asks for administrator rights once (the capture needs them: connecting to the client
-is a write), then shows one window: pick how long and where, press Start, play, press Stop.
+is a write), then shows one window: pick a capture type, press Go, play, press Stop. Go starts the
+sniffer immediately; the type dropdown sets the header filter and the output folder.
 
 Everything the capture does is still `tools/sniff-capture.py`: this window builds its command line, runs
 it, shows what it prints, and stops it the clean way (`--stop-file`), so the client's packet handlers are
@@ -30,9 +31,37 @@ from pathlib import Path
 TOOLS = Path(__file__).resolve().parent
 ROOT = TOOLS.parent
 CAPTURE_SCRIPT = TOOLS / "sniff-capture.py"
-DEFAULT_OUT_DIR = ROOT / "recordings" / "client" / "feature" / "titles"
+FEATURE_DIR = ROOT / "recordings" / "client" / "feature"
 SETTINGS_FILE = Path.home() / ".asura_sniff_gui.json"
 IS_WIN = os.name == "nt"
+
+# A capture type IS the folder under recordings/client/feature. The dropdown lists the folders that
+# exist, and each one has the header filter that belongs in it; an unknown folder captures everything.
+TYPE_HEADERS = {
+    "cartography": "0x008A,0x008B,0x008C",
+    "titles": "0x00F3,0x00F4,0x00F6",
+    "movement": "0x0029,0x002D,0x0030,0x803D,0x803E,0x8028",
+    "travel": "0x0199,0x0099,0x01A6,0x017C,0x0186,0x017D,0x019A,0x008B,0x008A",
+    "maps": "0x008A,0x008B,0x008C,0x0099,0x0091,0x0199,0x0094",
+    "chat": "0x005D,0x005E,0x0061,0x8064",
+    "items": ("0x013E,0x013F,0x0144,0x0148,0x015A,0x015E,0x0161,"
+              "0x806C,0x8072,0x8030,0x804F"),
+    "guild": "0x011C,0x0120,0x0121,0x0127,0x012E,0x012F,0x0133",
+    "multiplay": "0x0020,0x0021,0x0022,0x00B0,0x00B1,0x01DA,0x01DF,0x01E0,0x01E1",
+}
+
+
+def feature_types():
+    """The dropdown: the folders that exist, plus Cartography (created on demand) and Everything."""
+    names = []
+    try:
+        names = sorted(path.name for path in FEATURE_DIR.iterdir() if path.is_dir())
+    except OSError:
+        pass
+    if "cartography" not in names:
+        names.append("cartography")
+        names.sort()
+    return ["Everything"] + names
 
 # The title family's StoC headers in the client build this repository targets (39112):
 # docs/40-titles-system-research.md, section 3.
@@ -181,18 +210,39 @@ def run_window():
     form.pack(fill="x")
     form.columnconfigure(1, weight=1)
 
-    def default_out():
-        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        return str(DEFAULT_OUT_DIR / ("titles-live-%s.jsonl" % stamp))
-
-    seconds_var = tk.StringVar(value=str(settings.get("seconds", 300)))
+    available = feature_types()
+    default_type = settings.get("type")
+    if default_type not in available:
+        default_type = "cartography" if "cartography" in available else available[0]
+    type_var = tk.StringVar(value=default_type)
+    seconds_var = tk.StringVar(value=str(settings.get("seconds", 0)))
     dir_var = tk.StringVar(value=settings.get("dir", "both"))
+
+    def type_folder():
+        name = type_var.get()
+        return "general" if name == "Everything" else name
+
+    def default_out(kind=None):
+        kind = kind or type_folder()
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        return str(FEATURE_DIR / kind / ("%s-live-%s.jsonl" % (kind, stamp)))
+
     out_var = tk.StringVar(value=default_out())
-    header_var = tk.StringVar(value=settings.get("header", ""))
+    header_var = tk.StringVar(value=settings.get("header", TYPE_HEADERS.get(type_var.get(), "")))
     py4gw_var = tk.StringVar(value=settings.get("py4gw_root") or os.environ.get("PY4GW_STEALTH", ""))
     raw_var = tk.BooleanVar(value=False)
 
+    def apply_type(_event=None):
+        header_var.set(TYPE_HEADERS.get(type_var.get(), ""))
+        out_var.set(default_out())
+
     row = 0
+    ttk.Label(form, text="Capture type (folder)").grid(row=row, column=0, sticky="w")
+    type_box = ttk.Combobox(form, textvariable=type_var, width=38, state="readonly",
+                            values=available)
+    type_box.grid(row=row, column=1, columnspan=2, sticky="w")
+    type_box.bind("<<ComboboxSelected>>", apply_type)
+    row += 1
     ttk.Label(form, text="Seconds (0 = until Stop)").grid(row=row, column=0, sticky="w")
     ttk.Entry(form, textvariable=seconds_var, width=10).grid(row=row, column=1, sticky="w")
     row += 1
@@ -205,7 +255,7 @@ def run_window():
 
     def browse_out():
         chosen = filedialog.asksaveasfilename(
-            initialdir=str(DEFAULT_OUT_DIR), defaultextension=".jsonl",
+            initialdir=str(FEATURE_DIR / type_folder()), defaultextension=".jsonl",
             filetypes=[("Capture", "*.jsonl"), ("All files", "*.*")])
         if chosen:
             out_var.set(chosen)
@@ -231,7 +281,7 @@ def run_window():
 
     buttons = ttk.Frame(root, padding=(10, 0))
     buttons.pack(fill="x")
-    start_button = ttk.Button(buttons, text="Start capture")
+    start_button = ttk.Button(buttons, text="Go")
     stop_button = ttk.Button(buttons, text="Stop", state="disabled")
     report_button = ttk.Button(buttons, text="Show title records of a file...")
     start_button.pack(side="left")
@@ -280,7 +330,8 @@ def run_window():
             command += ["--py4gw-root", py4gw_var.get().strip()]
         if raw_var.get():
             command.append("--raw")
-        save_settings({"seconds": seconds, "dir": dir_var.get(), "header": header_var.get().strip(),
+        save_settings({"type": type_var.get(), "seconds": seconds, "dir": dir_var.get(),
+                       "header": header_var.get().strip(),
                        "py4gw_root": py4gw_var.get().strip()})
         env = dict(os.environ, PYTHONUNBUFFERED="1")
         flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -327,7 +378,7 @@ def run_window():
 
     def report_file():
         chosen = filedialog.askopenfilename(
-            initialdir=str(DEFAULT_OUT_DIR), filetypes=[("Capture", "*.jsonl"), ("All files", "*.*")])
+            initialdir=str(FEATURE_DIR), filetypes=[("Capture", "*.jsonl"), ("All files", "*.*")])
         if chosen:
             for line in title_report(chosen):
                 show(line)
@@ -365,9 +416,10 @@ def run_window():
     stop_button.configure(command=stop)
     report_button.configure(command=report_file)
     root.protocol("WM_DELETE_WINDOW", on_close)
-    show("Steps: start Guild Wars and log in, press Start capture, play (load maps, stand in a busy "
-         "town), press Stop.")
-    show("The file lands in recordings/client/feature/titles/ unless you pick another place.")
+    show("Steps: start Guild Wars to character select, press Go, then enter the map. Press Stop "
+         "when the load is finished.")
+    show("Go starts immediately. The capture type sets the header filter and the folder under "
+         "recordings/client/feature/.")
     root.after(200, pump)
     root.mainloop()
 

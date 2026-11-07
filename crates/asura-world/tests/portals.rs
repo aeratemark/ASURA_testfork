@@ -1,51 +1,31 @@
-//! The doorway table's search order, over the real tables.
-//!
-//! One property, and it is the one that broke: a doorway read from the database is an *addition* to the
-//! measured crossings, never a replacement. 14 of the 22 positions in `CROSSED` have no `map_portal` row
-//! within `portals::REACH` of them, so a table that substituted the database rows for the whole table would
-//! stop those crossings firing without saying so - which happened on 2026-11-05 and read as movement losing
-//! sync (`docs/HANDOFF.md` decisions).
-//!
-//! This lives in `tests/` because `portals::install` is process-global: a unit test next to the table would
-//! install rows for every other test in that binary.
-
-use asura_world::portals::{self, Portal};
+//! Doorways come only from the selected pack; no SQL or compiled doorway fallback.
+use asura_world::portals;
 
 #[test]
-fn a_measured_crossing_still_answers_when_the_database_supplies_doorways() {
-    // A measured crossing: map 146 at (7198, 5177) leads to Ascalon City. Nothing is installed yet, so this
-    // is the compiled table answering, which is what the world did before the table existed.
-    let measured = portals::portal_at(146, 7198.0, 5177.0).expect("the measured crossing");
-    assert_eq!(measured.to_instance, Some(148));
+fn pack_doorways_are_the_only_travel_content() {
+    let arch = portals::pack_arches(148).expect("pack arches")[0];
+    let middle = (
+        (arch.from.0 + arch.to.0) / 2.0,
+        (arch.from.1 + arch.to.1) / 2.0,
+    );
+    let dx = arch.to.0 - arch.from.0;
+    let dy = arch.to.1 - arch.from.1;
+    let length = dx.hypot(dy);
+    let from = (middle.0 - dy / length, middle.1 + dx / length);
+    let to = (middle.0 + dy / length, middle.1 - dx / length);
     assert_eq!(
-        measured.arrive,
-        Some((7739.0, 5900.0)),
-        "its measured landing point"
+        portals::crossed(148, from, to).unwrap().to_instance,
+        arch.to_instance
     );
+    assert!(portals::crossed(-1, from, to).is_none());
+    assert!(portals::arrival(-1, 148).is_none());
+}
 
-    // Install a doorway somewhere else entirely, as `main` does at start-up from `map_portal`.
-    assert!(
-        portals::install(vec![Portal {
-            from_instance: 146,
-            x: 9000.0,
-            y: -9000.0,
-            to_instance: Some(160),
-            arrive: None,
-        }]),
-        "the first install is the one that counts"
-    );
-
-    // The measured crossing is still the first answer, unchanged.
-    let again = portals::portal_at(146, 7198.0, 5177.0).expect("still the measured crossing");
-    assert_eq!(again.to_instance, Some(148));
-    assert_eq!(again.arrive, Some((7739.0, 5900.0)));
-
-    // And the installed row is reachable, which is the whole point of reading it.
-    let installed = portals::portal_at(146, 9000.0, -9000.0).expect("the installed doorway");
-    assert_eq!(installed.to_instance, Some(160));
-
-    // A walk through the measured door still crosses it, with the database in the table.
-    let walked = portals::portal_along(146, (7100.0, 5100.0), (7300.0, 5250.0))
-        .expect("a walk through the measured door");
-    assert_eq!(walked.to_instance, Some(148));
+#[test]
+fn the_reverse_doors_name_the_map_they_come_from() {
+    // 165 (Foibles Fair) and 166 (Fort Ranik) each have one door to an explorable. Upstream main
+    // names the source map as itself, which cannot match the transfer; these are the corrected
+    // sources, and the arrival point is the one the pre-301a97a pack stated.
+    assert!(portals::arrival(165, 161).is_some(), "161 -> 165");
+    assert!(portals::arrival(166, 162).is_some(), "162 -> 166");
 }

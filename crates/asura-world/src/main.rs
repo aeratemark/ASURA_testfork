@@ -207,36 +207,6 @@ async fn main() -> ExitCode {
         return ExitCode::from(4);
     }
 
-    // The doorways are content (`map_portal`): read once here, so an edited portal takes effect on the
-    // next start without a rebuild. No rows, or no table yet, keeps the compiled table.
-    match db_game::map_portals(&pool).await {
-        Ok(rows) if !rows.is_empty() => {
-            let count = rows.len();
-            let table: Vec<asura_world::portals::Portal> = rows
-                .into_iter()
-                .map(
-                    |(map_id, x, y, to_map, arrive_x, arrive_y)| asura_world::portals::Portal {
-                        from_instance: map_id,
-                        x,
-                        y,
-                        to_instance: to_map,
-                        arrive: match (arrive_x, arrive_y) {
-                            (Some(ax), Some(ay)) => Some((ax, ay)),
-                            _ => None,
-                        },
-                    },
-                )
-                .collect();
-            asura_world::portals::install(table);
-            eprintln!("asura-world: {count} doorway(s) from map_portal");
-        }
-        Ok(_) => eprintln!("asura-world: map_portal is empty; using the built-in doorway table"),
-        Err(err) => eprintln!(
-            "asura-world: could not read map_portal ({err}); using the built-in doorway table \
-             (apply the schema to create it)"
-        ),
-    }
-
     // The maps, with what a client needs to load them. A map named on the command line that the
     // database does not describe is a map a client would load forever, so it is fatal here.
     let map_ids = match maps_arg {
@@ -258,11 +228,24 @@ async fn main() -> ExitCode {
         }
     };
 
+    // The pack's `basic.json` is the authority for the blob a client streams. The database row
+    // remains the fallback for a map the pack does not describe; the Northlands crash of 2026-11-06
+    // was a database row naming the wrong file id while the pack named the live one (116025).
+    let pack_maps = match asura_config::world::catalogue() {
+        Ok(maps) => maps,
+        Err(err) => {
+            eprintln!("asura-world: map descriptions: {err}");
+            return ExitCode::from(4);
+        }
+    };
     let mut maps = Vec::new();
     for map_id in &map_ids {
         match db_game::spawn_map(&pool, *map_id).await {
             Ok(Some(configured)) => {
-                let map_file_id = u32::try_from(configured.map_file_id).unwrap_or(0);
+                let map_file_id = pack_maps
+                    .get(map_id)
+                    .and_then(|map| map.map_file_id)
+                    .unwrap_or_else(|| u32::try_from(configured.map_file_id).unwrap_or(0));
                 // A character-creation instance is the one hostable map that loads no blob: measured on a
                 // live creation, it sends no spawn point and no map file id at all, only the load head,
                 // the player-data block and `CHAR_CREATION_START`. Every other map needs one, because
@@ -399,13 +382,16 @@ async fn main() -> ExitCode {
         eprintln!("asura-world: refusing to start without the character spawn table");
         return ExitCode::from(4);
     }
+    if let Err(err) = asura_config::directional::current() {
+        eprintln!("asura-world: directional movement configuration: {err}");
+        return ExitCode::from(4);
+    }
     // The map spawn lists are content as well - `spawns.json` in each map folder - and they are read
     // here so a bad edit is reported at start-up rather than on somebody's next travel. A map without
     // a file is not an error: its catalogue row's single coordinate answers instead (`Standing`).
     asura_world::map_spawns::table();
     // The doorways and the arrival points are the pack's `portals.json` files, the same tree. Read here
-    // for the same reason: a map without one falls back to the measured tables `map_portal` installs
-    // above (`crate::portals`).
+    // for the same reason: only the pack supplies them, and a map without one has no doorways.
     asura_world::portals::table_pack();
 
     let listener = match tokio::net::TcpListener::bind(bind).await {
@@ -679,7 +665,11 @@ async fn dump_path_graphs(
                 eprintln!("asura-world: map {map_id} is not in map_config; skipped");
                 continue;
             };
-            let file_id = u32::try_from(configured.map_file_id).unwrap_or(0);
+            let pack_file_id = asura_config::world::catalogue()
+                .ok()
+                .and_then(|maps| maps.get(map_id).and_then(|map| map.map_file_id));
+            let file_id =
+                pack_file_id.unwrap_or_else(|| u32::try_from(configured.map_file_id).unwrap_or(0));
             if file_id == 0 {
                 eprintln!("asura-world: map {map_id} has no map_file_id; skipped");
                 continue;

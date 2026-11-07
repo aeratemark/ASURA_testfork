@@ -34,7 +34,7 @@ held member behind. Nothing reads the ledger while a party stays in one instance
 | trigger | decision (`asura_rules::party`) | what happens |
 |---|---|---|
 | any member crosses a doorway (`portal_crossed`) | always the party | the destination and the door's arrival point are resolved once; every member in the map goes at once |
-| the leader's world-map travel (`0x80B1`) in an outpost | `travel_request` -> `PartyAfterCountdown` | `0x01BC` to every member, then after `countdown_secs` the party goes; a member without the outpost unlocked stays behind in a party of its own (`follows_to_outpost`, owner 2026-11-06) |
+| the leader's world-map travel (`0x80B1`) in an outpost | `travel_request` -> `PartyAfterCountdown` | `0x01DA` then `0x01BC` to every member (only when the destination's `basic.json` has a `name_id`, see "The countdown and the destination"), then after `countdown_secs` the party goes; a member without the outpost unlocked stays behind in a party of its own (`follows_to_outpost`, owner 2026-11-06) |
 | anyone else's world-map travel, or anyone's in an explorable | `travel_request` -> `LeavesParty` | the leave batch (`docs/44`), then the player travels alone; the client asks the player first |
 | `/tp` | always alone | the leave batch, then the teleport |
 
@@ -121,16 +121,87 @@ of the other party moves into it. A party of one joining is unchanged and still 
 | `0x00F1` per traveller | the travel effect, in every traveller's redirect batch | `party.jsonl` seq 2512-2513 |
 | `0x01CC {party, member, 0}` | a member not in the map | `party.jsonl` seq 2667 |
 | `0x00B0`/`0x00B1` before the party stream in a load | the party's leader and size | `party.jsonl` seq 2662-2664; `party interface check.jsonl` seq 588-589 |
-| `0x01BC {u16 seconds, u8, text}` | the leader's countdown | **not captured**: layout from the client's table and Headquarter (`time_in_sec`, its `0x01BB`); the byte 0 and the empty text are guesses, both in the pack file |
-| `0x01CD` / `0x01CE` / `0x01CF` | connect soft / disconnect soft / enter world | **not captured**: ledger E38 one opcode up, exactly as the measured `0x01D0` is |
+| `0x01DA {u8 kind, u8 initiator, ""}` | kind 2: the party lock before a world-map travel or countdown; kind 0: the unlock that answers a cancel | `multiplay-live-20261106-231251.jsonl` seq 109 (`{2, 1}`) and 124 (`{0, 0}`); `...-232449.jsonl` seq 356 (`{2, 0}`, a member); `...-195109.jsonl` seq 1196 (solo travel). Wire: `da 01 | 02 | 01 | 00 00` |
+| `0x01BC {u16 seconds, u8 initiator, String16 message}` | the countdown window; `message` is "travelling to <map>" | `...-231251.jsonl` seq 110: wire `bc 01 | 0a 00 | 01 | 04 00 | d1 05 0a 01 7a 29 01 00`; every capture carries the destination's name |
+| `0x80A3` (no body) | the leader cancels the countdown | `...-231251.jsonl` seq 123, answered by `0x01DA {0, 0}` at seq 124 and no move |
+| `0x01E7 {u8 4}` | "the travel would leave your party; ask first" | `multiplay-live-20261106-200444.jsonl` seq 769, 892: the member's unconfirmed request, answered with nothing else; the confirmed request follows at seq 924 |
+| `0x01D9` | the party is defeated | `multiplay-live-20261106-200638.jsonl` seq 42, at the same tick as the last two resign deaths |
+| `0x002D {u32 agent}` / `0x0026 {u32 agent, u8 4}` | a resigning member's death | `multiplay-live-20261106-200638.jsonl` seq 52-55 |
+| `0x80A7` | the defeated leader's return confirmation | inferred: it is the only client message between the captured member's `0x01D9` and the server's `0x01DA` + redirect, and the capturing client sent none |
+| `0x01CD` / `0x01CE` / `0x01CF` | connect soft / disconnect soft / enter world | `0x01CE` is the grey flag and is sent on a travel departure; the remaining side of a travel is **not captured**, so that choice is a guess (ledger E38) |
 | a merge's batches | | **not captured** |
 | a full or refused party travel | | **not captured**; nothing extra is sent |
 
+## The countdown and the destination
+
+Measured 2026-11-06 (`multiplay-live-20261106-231251.jsonl` on the leader, `...-232449.jsonl` and
+`...-232827.jsonl` on a member). The leader's `0x80B1` is answered in one tick by **two** messages to
+every present member: `0x01DA {2, initiator, ""}` and `0x01BC {10, initiator, message}`. `initiator` is
+1 in the client that asked (its window has the cancel button) and 0 in the others. The redirect
+(`0x01A6`, then `0x0099`) follows ten seconds later. The leader's `0x80A3` cancels: the answer is
+`0x01DA {0, 0, ""}` and nobody moves.
+
+**Reading the captures.** The sniffer records the client's decoded *struct*, not the wire: a
+four-byte header, each field widened to four bytes, then the 244-byte `String16` buffer, 256 bytes in
+all. Everything after the string's terminator is stale buffer memory (it is byte for byte the same in
+the `0x01DA` decoded in the same tick) and is not sent. Both messages are counted: the table's 252 and
+253 are maxima, and the wire is the two-byte header plus the fields at the table's widths. Padding to
+the struct size answers error 7; a `u32` seconds makes the client read `01 00` as a 256-unit string and
+crash. (An earlier reading of this section, with a four-byte wire header, empty strings and a
+"roster tail", was wrong.)
+
+**The message names the destination, so the window depends on the map's `basic.json`.** The `0x01BC`
+string is the encoded template `0x05D1` with one encoded-string argument, the destination map's name:
+`05D1 010A <name units> 0001`. The name is the client's own string id (`Gw.exe`'s `AreaInfo` table),
+stored in the pack as `"name_id"` in `maps/.../<map id>/basic.json` and read once per process
+(`party::travel_map_name`). **A destination without a `name_id` gets no countdown window**: no
+`0x01DA`/`0x01BC` is sent, the party still moves after `countdown_secs`, and the world log says
+`map N has no name_id in its basic.json`. `tools/add-map-name-ids.py` writes every map's `name_id`
+from the client; run it again after adding a map folder. The test
+`every_pre_searing_outpost_has_a_name_for_the_countdown` fails if a pre-Searing outpost loses its id.
+
+## The individual travel confirmation
+
+Measured in the same file. A member of a party asks the world map for a destination while its
+request's trailing flag is 1: the server sends only `0x01E7 {4}` (seq 769, 892) and starts no
+travel. The client shows "You will leave your party if you travel there. Are you sure you wish to
+do this?"; on Yes it sends the same request with the flag 0, and that one travels alone (seq 924,
+redirect at seq 928). A solo player's flag-1 request travels at once and carries `0x01DA` first
+(`195109` seq 1189-1198).
+
+The member that stays keeps the departing player's name, greyed: the live side of that is
+`0x00B1 {player, 0}` at a player leaving the map (`200444` seq 746). This server gives the departing
+player the full leave batch of its own new party before the redirect - the path that loaded
+immediately in every earlier travel - and sends the staying members `0x01D0 {party, player}` (the
+measured "left the map" notice), `0x00B0 {new leader, new size}`, `0x00B1 {player, 0}` and
+`0x01CE {party, player}` instead of a remove, so the client keeps the name and sets the grey flag.
+The departing side's leave batch is **not** in the live capture (seq 924 is followed only by the
+redirect); it is kept because the client needs it before it reconnects. **The staying side of an
+individual travel was not captured**; the `0x01D0` and `0x01CE` choice is ledger E38's measured
+meaning, not a byte from this file.
+
+## `/resign`
+
+Measured 2026-11-06 (`multiplay-live-20261106-200638.jsonl`, a party of two in map 165). `/resign`
+is a **chat line**, not a GAME_CMSG: the captured client sends `SEND_CHAT_MESSAGE` at t=11.334 with
+the masked run of seven UTF-16 units that is `/resign`. Its death follows at t=16.888, 5.55 s later,
+as `0x002D {agent}` then `0x0026 {agent, 4}`; the other member's death is in the same tick. The
+server then sends `0x01D9` (party defeated) to both. At t=21.500 it sends `0x01DA {2, 0, ""}` and
+the redirect (`0x01A6` then `0x0099` naming the same outpost 165) at t=21.550. The captured client
+sent nothing between `0x01D9` and the redirect, so the return is the **leader's**
+`GAME_CMSG_PARTY_RETURN_TO_OUTPOST` (`0x80A7`) and this file is the member's side of it.
+
+This server now answers the chat line by marking the member, killing it after the pack's
+`resign_secs` (5), sending `0x01D9` when the last member in the map has died, and moving the party
+to the leader's `last_outpost` when the leader sends `0x80A7`.
+
 ## Not built
 
-- **`/resign` and the wipe return** - last (owner, 2026-11-06).
-- **Cancelling the countdown from the client**: the cancel message is not known. A newer world-map travel
-  by the leader replaces the countdown; a change of leader voids it.
+- **A map without `name_id` in its `basic.json`**: a party travelling there moves on the server's timer alone.
+- **The members' side of a cancel** is not captured; they are sent the leader's `0x01DA {0, 0}`.
+- **A lock or unlock when a countdown is voided** (a leader leaving, a newer travel): not captured, not sent.
+- **`0x01DA` before a solo travel and before a defeated party's return**: live sends it; this server does
+  not yet, and the move works without it.
 - **One instance per party in an explorable** (ledger R3, R35): instances are still one per map per world,
   so two parties in the same explorable share it.
 - **Heroes and henchmen** in a travelling party.
@@ -138,8 +209,9 @@ of the other party moves into it. A party of one joining is unchanged and still 
 
 ## What to capture next
 
-1. A live leader's world-map travel with a party member in the outpost, from both clients: the real
-   `0x01BC` and whatever the members see while it counts down.
-2. The member side of a doorway crossing (the member that did not cross): its batch and its arrival load.
-3. The second member arriving in the destination: what the first member is told.
-4. A member losing its connection in an explorable, and logging back in.
+1. The staying member's side of an individual travel: the exact grey batch, and whether it is `0x01CE`
+   or only `0x00B1 {player, 0}`.
+2. The leader's own client during a resign: the `0x80A7` request and the destination it carries.
+3. The member side of a doorway crossing (the member that did not cross): its batch and its arrival load.
+4. The second member arriving in the destination: what the first member is told.
+5. A member losing its connection in an explorable, and logging back in.

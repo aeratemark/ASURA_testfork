@@ -204,7 +204,14 @@ pub async fn load_map_on_demand(
     let Some(configured) = db_game::spawn_map(&world.pool, map_id).await? else {
         return Ok(None);
     };
-    let map_file_id = u32::try_from(configured.map_file_id).unwrap_or(0);
+    let pack_file_id = asura_config::world::catalogue()
+        .map_err(|err| {
+            asura_db::DatabaseError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, err))
+        })?
+        .get(&map_id)
+        .and_then(|map| map.map_file_id);
+    let map_file_id =
+        pack_file_id.unwrap_or_else(|| u32::try_from(configured.map_file_id).unwrap_or(0));
     if map_file_id == 0 {
         return Ok(None);
     }
@@ -418,24 +425,87 @@ pub async fn handle_party_travel(
     };
     let map_id = i32::from(request.map_id);
     eprintln!(
-        "world: {:?} asked for instance {map_id} (district {}, language {}) from the world map in map {}",
+        "world: {:?} asked for instance {map_id} (district {}, language {}, flag {}) from the world \
+         map in map {}",
         player.name,
         request.district,
         request.language,
+        request.flag,
         player.instance.map.map_id
     );
+    // What the request does to the player's party (the owner's notes, 2026-11-06).
+    let (leader, size) = player.instance.parties.leader_and_size(player.player_id);
+    let in_outpost = player.instance.map.map_type == map_kinds().main_town;
+    let decision =
+        asura_rules::party::travel_request(in_outpost, leader == player.player_id, size as usize);
+    // A live server does not travel a party member's request at once: it answers `0x01E7 {4}`,
+    // the client asks "You will leave your party if you travel there...", and only a confirmed
+    // request (flag 0) comes back. `multiplay-live-20261106-200444.jsonl` seq 768-769 and 891-892
+    // are the two unconfirmed attempts; seq 924 is the confirmed one that travels.
+    if decision == asura_rules::party::TravelRequest::LeavesParty && request.flag == 1 {
+        eprintln!("world: party: the travel would leave the party; the client is asked first");
+        let answer = game::party_travel_confirmation(4);
+        send(stream, session, vec![answer], trace).await?;
+        return Ok(true);
+    }
     let Some(destination) = resolve_instance(world, map_id).await? else {
         // A statement about this server, not about the client's rights: it has no row, no blob, or a
         // type this world does not host.
         eprintln!("world: instance {map_id} cannot be served by this world; the travel is refused");
         return Ok(true);
     };
-    // What the request does to the player's party (the owner's notes, 2026-11-06).
-    let (leader, size) = player.instance.parties.leader_and_size(player.player_id);
-    let in_outpost = player.instance.map.map_type == map_kinds().main_town;
-    match asura_rules::party::travel_request(in_outpost, leader == player.player_id, size as usize)
-    {
+    // A leader's world-map travel can leave behind members who have not unlocked the destination.
+    // The live client asks first with `0x01E7 {5}` ("your party has members who cannot travel
+    // there. Do you wish to leave them behind?"), and the confirmed request (flag 0) moves at once,
+    // with no 10-second timer (`multiplay-live-20261106-225615.jsonl` seq 176-177, then seq 181
+    // and the lock at seq 190). A normal party keeps the countdown.
+    let left_out = if decision == asura_rules::party::TravelRequest::PartyAfterCountdown {
+        members_who_cannot_travel(world, &player.instance, player.player_id, destination.map_id)
+            .await
+    } else {
+        Vec::new()
+    };
+    if !left_out.is_empty() {
+        if request.flag == 1 {
+            eprintln!(
+                "world: party: {} member(s) cannot travel to map {}; the leader is asked first",
+                left_out.len(),
+                destination.map_id
+            );
+            let answer = game::party_travel_confirmation(5);
+            send(stream, session, vec![answer], trace).await?;
+            return Ok(true);
+        }
+        // The leader confirmed: leave those members behind and move the rest now, without a
+        // countdown. `begin_move` sends the party split before the lock, as the capture does.
+        let size = crate::party::max_size(destination.map_id);
+        match crate::party::begin_move(&player.instance, player.player_id, size, &left_out, trace) {
+            Ok(mv) => {
+                let instance = player.instance.clone();
+                move_party(world, &instance, mv, destination, None, trace).await;
+            }
+            Err(why) => {
+                eprintln!(
+                    "world: party: the leader's party does not move as one ({why:?}); the leader \
+                     travels alone"
+                );
+                player.instance.order(
+                    player.player_id,
+                    Order::Travel {
+                        destination,
+                        landing: None,
+                        companions: Vec::new(),
+                    },
+                );
+            }
+        }
+        return Ok(true);
+    }
+    match decision {
         asura_rules::party::TravelRequest::Alone => {
+            // A live solo travel is preceded by a six-byte `0x01DA {2, 1, ""}` in the same tick as the
+            // redirect (`multiplay-live-20261106-195109.jsonl` seq 1196); the move works without it,
+            // so it is not sent here yet.
             begin_transfer(
                 stream,
                 session,
@@ -449,7 +519,7 @@ pub async fn handle_party_travel(
             .await
         }
         asura_rules::party::TravelRequest::LeavesParty => {
-            crate::party::leave_to_travel(player, trace);
+            crate::party::leave_to_travel_grey(player, trace);
             begin_transfer(
                 stream,
                 session,
@@ -463,7 +533,9 @@ pub async fn handle_party_travel(
             .await
         }
         asura_rules::party::TravelRequest::PartyAfterCountdown => {
-            let Some((ticket, seconds)) = crate::party::start_countdown(player, trace) else {
+            let Some((ticket, seconds)) =
+                crate::party::start_countdown(player, destination.map_id, trace)
+            else {
                 return Ok(true);
             };
             let world = world.clone();
@@ -477,32 +549,9 @@ pub async fn handle_party_travel(
                     }
                     return;
                 }
-                // Only members that have the outpost unlocked follow (owner, 2026-11-06); the others stay
-                // behind in parties of their own. The leader's own client offered the destination.
-                let mut left_out = Vec::new();
-                for (member, character) in crate::party::present_characters(&instance, leader) {
-                    if member == leader {
-                        continue;
-                    }
-                    let unlocked = match db_game::unlocked_instances(&world.pool, character).await {
-                        Ok(instances) => instances.contains(&destination.map_id),
-                        Err(err) => {
-                            eprintln!(
-                                "world: party: could not read player {member}'s unlocks: {err}"
-                            );
-                            false
-                        }
-                    };
-                    if !asura_rules::party::follows_to_outpost(unlocked) {
-                        eprintln!(
-                            "world: party: player {member} has not unlocked map {} and stays behind",
-                            destination.map_id
-                        );
-                        left_out.push(member);
-                    }
-                }
+                // The unlock check was made when the leader asked; every member present can follow.
                 let size = crate::party::max_size(destination.map_id);
-                match crate::party::begin_move(&instance, leader, size, &left_out, trace) {
+                match crate::party::begin_move(&instance, leader, size, &[], trace) {
                     Ok(mv) => move_party(&world, &instance, mv, destination, None, trace).await,
                     Err(why) => {
                         // Nobody left to take along, or no size for the destination: the leader goes
@@ -526,6 +575,122 @@ pub async fn handle_party_travel(
             Ok(true)
         }
     }
+}
+
+/// The present members of a leader's party who have not unlocked `destination`, in party order.
+///
+/// The leader's own client offered the destination, so only the others are read. An unreadable
+/// unlock list is treated as "not unlocked", which leaves the member behind rather than moving a
+/// character the server cannot prove may enter.
+async fn members_who_cannot_travel(
+    world: &World,
+    instance: &Instance,
+    leader: u32,
+    destination: i32,
+) -> Vec<u32> {
+    let mut left_out = Vec::new();
+    for (member, character) in crate::party::present_characters(instance, leader) {
+        if member == leader {
+            continue;
+        }
+        let unlocked = match db_game::unlocked_instances(&world.pool, character).await {
+            Ok(instances) => instances.contains(&destination),
+            Err(err) => {
+                eprintln!("world: party: could not read player {member}'s unlocks: {err}");
+                false
+            }
+        };
+        if !asura_rules::party::follows_to_outpost(unlocked) {
+            eprintln!(
+                "world: party: player {member} has not unlocked map {destination} and stays behind"
+            );
+            left_out.push(member);
+        }
+    }
+    left_out
+}
+
+/// `GAME_CMSG_PARTY_RETURN_TO_OUTPOST` (`0x80A7`): the defeated leader's confirmation. A resigned
+/// party is told it is defeated (`0x01D9`); the leader's client then offers the return, and this is
+/// the request that follows it (`multiplay-live-20261106-200638.jsonl`: `0x01D9` at t=16.888, then
+/// `0x01DA` and the redirect at t=21.500-21.550, with no other client message between them on the
+/// captured member's side). The destination is the leader's `last_outpost`, the outpost the character
+/// last stood in (`db_game::settings`), so the whole party goes back the way it came.
+pub async fn handle_return_to_outpost(
+    world: &World,
+    player: &mut Player,
+    trace: bool,
+) -> Result<bool, GameError> {
+    let Some(party) = crate::party::defeated_party(&player.instance, player.player_id) else {
+        eprintln!(
+            "world: {:?} asked its party to return, but it leads no defeated party",
+            player.name
+        );
+        return Ok(true);
+    };
+    let Some(settings) = db_game::settings(&world.pool, party.leader)
+        .await
+        .map_err(GameError::Database)?
+    else {
+        eprintln!("world: party: the leader's character row is gone; the return is refused");
+        return Ok(true);
+    };
+    let map_id = i32::from(settings.last_outpost);
+    if map_id == 0 {
+        eprintln!("world: party: the leader has no last outpost; the return is refused");
+        return Ok(true);
+    }
+    let Some(destination) = resolve_instance(world, map_id).await? else {
+        eprintln!("world: party: last outpost {map_id} cannot be served; the return is refused");
+        return Ok(true);
+    };
+    if trace {
+        eprintln!(
+            "world: party: leader {:?} returns defeated party {} to outpost {map_id}",
+            player.name, party.party_id
+        );
+    }
+    // A live return is preceded by `0x01DA {2, 0, ""}` on the member's side
+    // (`multiplay-live-20261106-200638.jsonl` seq 84); the move works without it, so it is not sent yet.
+    let size = crate::party::max_size(map_id);
+    match crate::party::begin_move(&player.instance, player.player_id, size, &[], trace) {
+        Ok(mv) => {
+            move_party(
+                world,
+                &player.instance,
+                mv,
+                destination.clone(),
+                None,
+                trace,
+            )
+            .await;
+        }
+        Err(crate::party::NoMove::Alone) => {
+            player.instance.order(
+                player.player_id,
+                Order::Travel {
+                    destination,
+                    landing: None,
+                    companions: Vec::new(),
+                },
+            );
+        }
+        Err(crate::party::NoMove::AlreadyMoving) => {}
+        Err(crate::party::NoMove::NoSizeForDestination) => {
+            eprintln!(
+                "world: party: map {map_id} has no party size; the defeated leader returns alone"
+            );
+            player.instance.order(
+                player.player_id,
+                Order::Travel {
+                    destination,
+                    landing: None,
+                    companions: Vec::new(),
+                },
+            );
+        }
+    }
+    Ok(true)
 }
 
 /// The instance a travel names, demand-loaded when this world hosts it only on demand.
@@ -724,6 +889,13 @@ async fn begin_transfer(
     // the worst case if it does.
     match landing {
         Some((x, y)) => {
+            placement::set_transfer_arrival_origin(
+                &world.pool,
+                player_token,
+                player.instance.map.map_id,
+            )
+            .await
+            .map_err(GameError::Database)?;
             if let Err(err) =
                 db_game::record_position(&world.pool, player.character, to_map, x, y, 0).await
             {

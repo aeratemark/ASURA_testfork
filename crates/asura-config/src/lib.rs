@@ -19,6 +19,43 @@
 
 use std::sync::OnceLock;
 
+pub mod directional;
+pub mod world;
+
+/// Half the side of a legacy point doorway's box, in map units. An unreadable or invalid value
+/// disables these boxes and reports why; measured wall endpoints do not need this value.
+pub fn portal_box_half_extent() -> f32 {
+    #[derive(serde::Deserialize)]
+    struct Portals {
+        point_box_half_extent: Described<f32>,
+    }
+    static VALUE: OnceLock<f32> = OnceLock::new();
+    *VALUE.get_or_init(|| {
+        let path = resolve("config/Server/portals.json");
+        let result = std::fs::read_to_string(&path)
+            .map_err(|err| err.to_string())
+            .and_then(|text| serde_json::from_str::<Portals>(&text).map_err(|err| err.to_string()))
+            .and_then(|config| {
+                let value = config.point_box_half_extent.value;
+                if value.is_finite() && value > 0.0 {
+                    Ok(value)
+                } else {
+                    Err("point_box_half_extent must be positive and finite".to_string())
+                }
+            });
+        match result {
+            Ok(value) => value,
+            Err(err) => {
+                eprintln!(
+                    "asura: {}: {err}; point doorway boxes disabled",
+                    path.display()
+                );
+                0.0
+            }
+        }
+    })
+}
+
 /// The file a machine's intervals are read from.
 pub const DEFAULT_FILE: &str = "config/Server/intervals.json";
 

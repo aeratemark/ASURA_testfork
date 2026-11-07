@@ -84,12 +84,23 @@ pub async fn answer(
             travel::handle_party_travel(stream, session, &frame, world, player, trace).await
         }
 
+        // The defeated leader's confirmation: the other half of `/resign` (`crate::party::resign`).
+        msg::GAME_CMSG_PARTY_RETURN_TO_OUTPOST => {
+            travel::handle_return_to_outpost(world, player, trace).await
+        }
+
         // The party window (`crate::party`, `docs/44-party-invites.md`).
         msg::GAME_CMSG_PARTY_INVITE_PLAYER => party::handle_invite(&frame, player, trace),
         msg::GAME_CMSG_PARTY_ACCEPT_INVITE => party::handle_accept(&frame, player, trace),
         msg::GAME_CMSG_PARTY_ACCEPT_CANCEL => party::handle_cancel(&frame, player, trace),
         msg::GAME_CMSG_PARTY_ACCEPT_REFUSE => party::handle_refuse(&frame, player, trace),
         msg::GAME_CMSG_PARTY_LEAVE_GROUP => party::handle_leave(player, trace),
+        // The leader cancels the party-travel countdown: `a3 00`, no body
+        // (`multiplay-live-20261106-231251.jsonl` seq 123). The live server answers with the
+        // unlock form of `0x01DA` (kind 0) at seq 124.
+        msg::GAME_CMSG_PARTY_CANCEL_ENTER_CHALLENGE => {
+            party::handle_cancel_challenge(player, trace)
+        }
         msg::GAME_CMSG_PARTY_KICK_PLAYER => party::handle_kick(&frame, player, trace),
 
         // The guild panel and the registration window (`crate::guild`, `docs/41-guild-system-research.md`).
@@ -208,6 +219,10 @@ mod tests {
             (msg::GAME_CMSG_TRAVEL_INIT, "GAME_CMSG_TRAVEL_INIT"),
             (msg::GAME_CMSG_PARTY_TRAVEL, "GAME_CMSG_PARTY_TRAVEL"),
             (
+                msg::GAME_CMSG_PARTY_RETURN_TO_OUTPOST,
+                "GAME_CMSG_PARTY_RETURN_TO_OUTPOST",
+            ),
+            (
                 msg::GAME_CMSG_SEND_CHAT_MESSAGE,
                 "GAME_CMSG_SEND_CHAT_MESSAGE",
             ),
@@ -239,7 +254,7 @@ mod tests {
         ];
         assert_eq!(
             arms.len(),
-            24,
+            25,
             "an arm was added or removed without this table"
         );
         for (header, name) in arms {

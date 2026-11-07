@@ -783,7 +783,7 @@ mod tests {
         };
         let mut seen = [false; 2];
         for _ in 0..64 {
-            let standing = Standing::arrival(&map, Some(saved)).expect("a spawn point");
+            let standing = Standing::arrival(&map, Some(saved), None).expect("a spawn point");
             let from_first = standing.position.0.hypot(standing.position.1);
             let from_second = (standing.position.0 - 1000.0).hypot(standing.position.1);
             if from_first <= crate::spawn_scatter() + 0.5 {
@@ -813,8 +813,7 @@ mod tests {
     #[test]
     fn a_doorway_arrival_is_placed_where_the_receiving_map_states_it() {
         // The pack states, for 148, where a character arriving from another map stands and faces. A
-        // saved position equal to that point is that arrival, and it wins over the outpost's random
-        // spawn (an outpost's *other* entries are a random point of its spawn list).
+        // transfer explicitly names its source; saved coordinates alone never select that arrival.
         let Some(arrival) = crate::portals::table_pack()
             .get(&148)
             .and_then(|map| map.arrivals.first())
@@ -837,7 +836,13 @@ mod tests {
             y: arrival.y,
             plane: 0,
         };
-        let standing = Standing::arrival(&map, Some(saved)).expect("an arrival");
+        let login = Standing::arrival(&map, Some(saved), None).expect("random spawn on login");
+        assert!(
+            (login.position.0 - 1.0).hypot(login.position.1 - 2.0)
+                <= crate::spawn_scatter() + 0.5,
+            "a saved doorway coordinate must not override the random spawn on login or map travel"
+        );
+        let standing = Standing::arrival(&map, Some(saved), Some(arrival.from)).expect("an arrival");
         assert_eq!(
             standing.position,
             (arrival.x, arrival.y),
@@ -861,7 +866,7 @@ mod tests {
         // An outpost the pack states no list for: the old answer, the saved position.
         let outpost = test_map();
         assert_eq!(
-            Standing::arrival(&outpost, Some(saved)).expect("a standing"),
+            Standing::arrival(&outpost, Some(saved), None).expect("a standing"),
             Standing::resume(&outpost, Some(saved)),
             "nothing to randomise from"
         );
@@ -872,7 +877,7 @@ mod tests {
         explorable.map_type = 1;
         explorable.spawns = outpost_list();
         assert_eq!(
-            Standing::arrival(&explorable, Some(saved)).expect("a standing"),
+            Standing::arrival(&explorable, Some(saved), None).expect("a standing"),
             Standing::resume(&explorable, Some(saved)),
             "an explorable keeps where it left"
         );

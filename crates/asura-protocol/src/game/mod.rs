@@ -1547,16 +1547,119 @@ pub fn party_member_enter_world(party_id: u16, player_id: u16) -> crate::client:
         .frame()
 }
 
+/// The encoded-string template of the travel countdown's message ("travelling to <map>"); its one
+/// argument is the destination map's encoded name. It opens the string of every live `0x01BC`
+/// (`multiplay-live-20261106-200444.jsonl` seq 43, `...-231251.jsonl` seq 110/193,
+/// `...-232449.jsonl` seq 357/922/1412, `...-232827.jsonl` seq 447/764).
+pub const TRAVEL_TIMER_TEMPLATE: u16 = 0x05D1;
+
+/// A string id as encoded-string units: one unit `0x100 + id` below `0x7F00`, otherwise base-`0x7F00`
+/// digits with `0x8000` set on all but the last (`[0x8102, 0x5A97]` is id `0x15797`). Every name id a
+/// live `0x01BC` carried decodes this way.
+pub fn encoded_string_id(mut id: u32) -> Vec<u16> {
+    const BASE: u32 = 0x100;
+    const RANGE: u32 = 0x7F00;
+    const MORE: u16 = 0x8000;
+    let mut units = Vec::new();
+    loop {
+        units.push((BASE + id % RANGE) as u16);
+        id /= RANGE;
+        if id == 0 {
+            break;
+        }
+    }
+    units.reverse();
+    let last = units.len() - 1;
+    for unit in &mut units[..last] {
+        *unit |= MORE;
+    }
+    units
+}
+
+/// The `String16` a live `0x01BC` carries: [`TRAVEL_TIMER_TEMPLATE`], then the destination's name as an
+/// encoded-string argument (`0x010A` .. `0x0001`). `map_name` is the map's own encoded name: one or more
+/// units, e.g. `[0x29DE]` for map 163 or `[0x8102, 0x5A97]` for a two-unit id.
+pub fn travel_timer_message(map_name: &[u16]) -> Vec<u16> {
+    let mut units = Vec::with_capacity(map_name.len() + 3);
+    units.push(TRAVEL_TIMER_TEMPLATE);
+    units.push(0x010A);
+    units.extend_from_slice(map_name);
+    units.push(0x0001);
+    units
+}
+
 /// `GAME_SMSG_INSTANCE_TRAVEL_TIMER` (`0x01BC`): the party is about to travel. The client's table gives
-/// `Word`, `Byte`, `String16[122]`; Headquarter decodes the same message (its `0x01BB`, one opcode down
-/// as its whole party block is) as `time_in_sec`, an unnamed byte, and a 122-unit message. **Not
-/// captured**: the seconds are this server's countdown, the byte is 0 and the text is empty, all three
-/// guesses until a live leader travel is recorded.
-pub fn instance_travel_timer(seconds: u16, unknown: u8, text: &str) -> crate::client::Frame {
+/// `Word`, `Byte`, `String16[122]`; its 253 is a declared *maximum*, so the message goes at its actual
+/// length and is never padded.
+///
+/// The sniffer records the client's decoded struct, not the wire: a four-byte header, each field widened
+/// to four bytes, then the 244-byte string buffer. A live record reads
+/// `bc 01 00 00 | 0a 00 00 00 | 01 00 00 00 | d1 05 0a 01 7a 29 01 00 00 00 | <stale buffer>`
+/// (`multiplay-live-20261106-231251.jsonl` seq 110), which on the wire is
+/// `bc 01 | 0a 00 | 01 | 04 00 | d1 05 0a 01 7a 29 01 00`. The bytes after the string's terminator are
+/// whatever the client's receive buffer held before (they match the `0x01DA` decoded in the same tick
+/// byte for byte) and are not sent.
+///
+/// `initiator` is 1 in the client that asked for the travel (its window offers the cancel) and 0 in the
+/// other members: 1 follows that client's `0x80B1` (`...-231251` seq 108, `...-232827` seq 444/762);
+/// 0 is what a member got (`...-231251` seq 193, `...-232449` seq 357).
+pub fn instance_travel_timer(seconds: u16, initiator: u8, message: &[u16]) -> crate::client::Frame {
     Builder::new(crate::packets::game::GAME_SMSG_INSTANCE_TRAVEL_TIMER)
         .u16(seconds)
-        .u8(unknown)
-        .text(text, 122)
+        .u8(initiator)
+        .units(message, 122)
+        .frame()
+}
+
+/// `GAME_SMSG_PARTY_LOCK` (`0x01DA`): `Byte` kind, `Byte` initiator, `String16[122]` (252 is the declared
+/// maximum; the message is not padded). Kind 2 locks the party for a travel; it goes with `0x01BC` in the
+/// same tick to every present member, and alone just before the redirect of a solo world-map travel
+/// (`...-195109.jsonl` seq 1196). Kind 0 with initiator 0 is the unlock a leader's cancel (`0x80A3`) gets
+/// (`...-231251.jsonl` seq 124). The string is empty in every capture, so the wire is six bytes:
+/// `da 01 | 02 | 01 | 00 00`.
+pub fn party_lock(kind: u8, initiator: u8) -> crate::client::Frame {
+    Builder::new(crate::packets::game::GAME_SMSG_PARTY_LOCK)
+        .u8(kind)
+        .u8(initiator)
+        .text("", 122)
+        .frame()
+}
+
+/// `GAME_SMSG_PARTY_DEFEATED` (`0x01D9`): the party has no member left standing. Sent to every member
+/// when the last one resigns (`multiplay-live-20261106-200638.jsonl` seq 42, at the same tick as the
+/// two `AGENT_PLAYER_DIE` messages). The client shows its party-defeated window; the leader's return is
+/// the client's next request, `GAME_CMSG_PARTY_RETURN_TO_OUTPOST` (`0x80A7`).
+pub fn party_defeated() -> crate::client::Frame {
+    Builder::new(crate::packets::game::GAME_SMSG_PARTY_DEFEATED).frame()
+}
+
+/// The server message `0x01E7`, one byte, the packet table's
+/// `GAME_SMSG_PARTY_TRAVEL_CONFIRM`. A live server answers a party member's world-map travel with
+/// `{4}` when the travel would leave its party; the client then asks "You will leave your party if you
+/// travel there. Are you sure you wish to do this?" and sends the request again with its confirmation
+/// flag clear (`multiplay-live-20261106-200444.jsonl` seq 769 and 892, then seq 924).
+pub const PARTY_TRAVEL_CONFIRMATION: u16 = crate::packets::game::GAME_SMSG_PARTY_TRAVEL_CONFIRM;
+
+/// See [`PARTY_TRAVEL_CONFIRMATION`].
+pub fn party_travel_confirmation(reason: u8) -> crate::client::Frame {
+    Builder::new(PARTY_TRAVEL_CONFIRMATION).u8(reason).frame()
+}
+
+/// `GAME_SMSG_AGENT_PLAYER_DIE` (`0x002D`): the agent is dead. A resign death is sent with
+/// `GAME_SMSG_AGENT_UPDATE_FLAGS` `{agent, 4}` immediately after it
+/// (`multiplay-live-20261106-200638.jsonl` seq 52-55).
+pub fn agent_player_die(agent_id: u32) -> crate::client::Frame {
+    Builder::new(crate::packets::game::GAME_SMSG_AGENT_PLAYER_DIE)
+        .u32(agent_id)
+        .frame()
+}
+
+/// `GAME_SMSG_AGENT_UPDATE_FLAGS` (`0x0026`): the agent's flags word. A resign death sends `4`
+/// (`multiplay-live-20261106-200638.jsonl` seq 53 and 55).
+pub fn agent_update_flags(agent_id: u32, flags: u8) -> crate::client::Frame {
+    Builder::new(crate::packets::game::GAME_SMSG_AGENT_UPDATE_FLAGS)
+        .u32(agent_id)
+        .u8(flags)
         .frame()
 }
 
@@ -2216,8 +2319,10 @@ mod tests {
             party_member_disconnect_soft(3, 7),
             party_member_enter_world(3, 7),
             party_member_leave_world(3, 7),
-            instance_travel_timer(10, 0, ""),
-            instance_travel_timer(10, 0, "Ascalon City"),
+            party_defeated(),
+            party_travel_confirmation(4),
+            agent_player_die(0x25),
+            agent_update_flags(0x25, 4),
         ] {
             let bytes = frame.encode();
             let (decoded, used) = crate::client::Frame::decode_game_message(&bytes, false)
@@ -2226,7 +2331,59 @@ mod tests {
             assert_eq!(decoded.header(), frame.header());
         }
         assert_eq!(wire(&party_member_enter_world(3, 7)), 6);
-        assert_eq!(wire(&instance_travel_timer(10, 0, "")), 2 + 2 + 1 + 2);
+        for frame in [
+            instance_travel_timer(10, 1, &travel_timer_message(&[0x297A])),
+            instance_travel_timer(10, 0, &travel_timer_message(&[0x8102, 0x5A97])),
+            party_lock(2, 1),
+            party_lock(0, 0),
+        ] {
+            let bytes = frame.encode();
+            let (decoded, used) = crate::client::Frame::decode_game_message(&bytes, false)
+                .expect("the table frames it");
+            assert_eq!(used, bytes.len(), "header {:#06X}", frame.header());
+            assert_eq!(decoded.header(), frame.header());
+        }
+    }
+
+    /// The captured bytes of the countdown, the party lock, the confirmation, the defeat and the two
+    /// death messages (`recordings/client/feature/multiplay/multiplay-live-20261106-200444.jsonl` and
+    /// `...-200638.jsonl`), written here as the 2-byte-header wire the client frames.
+    #[test]
+    fn the_party_travel_and_resign_messages_are_the_captured_bytes() {
+        // `multiplay-live-20261106-231251.jsonl` seq 110, its struct fields narrowed to the table's widths.
+        assert_eq!(
+            instance_travel_timer(10, 1, &travel_timer_message(&[0x297A])).encode(),
+            vec![
+                0xbc, 0x01, 0x0a, 0x00, 0x01, 0x04, 0x00, 0xd1, 0x05, 0x0a, 0x01, 0x7a, 0x29, 0x01,
+                0x00,
+            ]
+        );
+        // The name ids the live countdowns carried, back from the client's map table.
+        assert_eq!(encoded_string_id(0x287A), vec![0x297A]);
+        assert_eq!(encoded_string_id(0x28DE), vec![0x29DE]);
+        assert_eq!(encoded_string_id(0x15797), vec![0x8102, 0x5A97]);
+        // Seq 109 (the lock) and seq 124 (the cancel's unlock).
+        assert_eq!(
+            party_lock(2, 1).encode(),
+            vec![0xda, 0x01, 0x02, 0x01, 0x00, 0x00]
+        );
+        assert_eq!(
+            party_lock(0, 0).encode(),
+            vec![0xda, 0x01, 0x00, 0x00, 0x00, 0x00]
+        );
+        assert_eq!(
+            party_travel_confirmation(4).encode(),
+            vec![0xe7, 0x01, 0x04]
+        );
+        assert_eq!(party_defeated().encode(), vec![0xd9, 0x01]);
+        assert_eq!(
+            agent_player_die(7).encode(),
+            vec![0x2d, 0x00, 0x07, 0x00, 0x00, 0x00]
+        );
+        assert_eq!(
+            agent_update_flags(7, 4).encode(),
+            vec![0x26, 0x00, 0x07, 0x00, 0x00, 0x00, 0x04]
+        );
     }
 
     #[test]
@@ -2238,6 +2395,12 @@ mod tests {
         assert_eq!(request.region, 2);
         assert_eq!(request.district, 0);
         assert_eq!(request.flag, 1);
+        // The confirmed request the client sends after the popup: the same fields, flag 0
+        // (`multiplay-live-20261106-200444.jsonl` seq 924).
+        let confirmed =
+            read_party_travel(&[0xa3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]).expect("a full body");
+        assert_eq!(confirmed.map_id, 163);
+        assert_eq!(confirmed.flag, 0);
         assert_eq!(read_party_travel(&[0x94]), None);
     }
 }
