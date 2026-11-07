@@ -99,6 +99,11 @@ impl<'a> Reader<'a> {
         Ok(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
     }
 
+    fn u16(&mut self, field: &'static str) -> Result<u16, MessageError> {
+        let bytes = self.take(2, field)?;
+        Ok(u16::from_le_bytes([bytes[0], bytes[1]]))
+    }
+
     /// A `u16` count followed by that many UTF-16 units - the shape the client sends for every counted
     /// string (see [`Frame::decode_client_message`]). `Ok(None)` when the bytes have not all arrived;
     /// a count larger than the field's capacity is an error, as the reference treats it.
@@ -562,13 +567,49 @@ pub fn decode_eula(body: &[u8]) -> Result<u8, MessageError> {
         .ok_or(MessageError::Truncated { field: "eula" })
 }
 
+/// The most bytes one `AUTH_CMSG_SETTING_UPDATE_CONTENT` may carry: the table's `Array8` capacity
+/// (`crates/asura-protocol/src/packets.rs`, `0x8020`, 512).
+pub const SETTINGS_CHUNK_CAPACITY: usize = 512;
+
+/// `AUTH_CMSG_SETTING_UPDATE_SIZE` (`0x8021`, 10 bytes): the request id and the total the client is
+/// about to upload.
+///
+/// Measured from a live client (`logs/auth.log`): `21 80 | 05 00 00 00 | 42 02 00 00` announces 578
+/// bytes for request 5. The size is a `u32`, and the chunks that follow are counted by a `u16`.
+pub fn decode_settings_size(body: &[u8]) -> Result<(u32, u32), MessageError> {
+    let mut reader = Reader::new(body);
+    Ok((reader.u32("req_id")?, reader.u32("size")?))
+}
+
+/// `AUTH_CMSG_SETTING_UPDATE_CONTENT` (`0x8020`): one chunk of the client's settings blob.
+///
+/// Layout measured from a live client (`logs/auth.log`): `20 80 | 05 00 00 00 | 00 02 <512 bytes>`,
+/// then `20 80 | 05 00 00 00 | 42 00 <66 bytes>` - the same request id, a `u16` count, and exactly
+/// that many bytes. The count is bounded by [`SETTINGS_CHUNK_CAPACITY`].
+pub fn decode_settings_content(body: &[u8]) -> Result<(u32, Vec<u8>), MessageError> {
+    let mut reader = Reader::new(body);
+    let request = reader.u32("req_id")?;
+    let count = reader.u16("count")? as usize;
+    if count > SETTINGS_CHUNK_CAPACITY {
+        return Err(MessageError::TooLong {
+            field: "content",
+            capacity: SETTINGS_CHUNK_CAPACITY,
+            got: count,
+        });
+    }
+    Ok((request, reader.take(count, "content")?.to_vec()))
+}
+
 /// `AUTH_SMSG_ACCOUNT_SETTINGS` (`0x0016`): the client's stored settings.
 ///
 /// Layout (`AuthSrv_AccountSettings`): `req_id`, a **u16** `n_data`, then exactly that many bytes of
 /// data. Measured from the reference's own output: `16 00 | 01 00 00 00 | 4f 02 <591 bytes>` -
-/// **599 bytes**, where the table says 2058. The blob is copied from the reference's own literal
-/// (`config/Server/account_settings.json`, `asura-config`); nothing here knows what most of it means, and it
-/// is sent because it is what the reference sends.
+/// **599 bytes**, where the table says 2058.
+///
+/// The data is the client's own settings blob. For an account that has uploaded one it is stored
+/// verbatim in `t_account.account_settings`; a first login gets the reference's committed literal
+/// (`config/Server/account_settings.json`, `asura-config`). Nothing here decodes it, because the
+/// client is the only reader that needs to (`docs/46-ui-settings-persistence.md`).
 pub fn account_settings(request: u32, data: &[u8]) -> Frame {
     let mut writer = Writer::new();
     writer.u32(request).u16(data.len() as u16);
@@ -815,8 +856,8 @@ mod tests {
     #[test]
     fn the_account_settings_frame_a_blob_and_pad_nothing_after_it() {
         // The count is a u16 and the data is exactly that long: measured, `16 00 | req_id | 4f 02
-        // <591 bytes>` - 599 bytes total, where the table's padded maximum is 2058. The blob itself is
-        // configuration (`config/Server/account_settings.json`), so this test supplies its own bytes.
+        // <591 bytes>` - 599 bytes total, where the table's padded maximum is 2058. The blob is the
+        // account's stored upload or the committed default, so this test supplies its own bytes.
         let blob = [0x08u8; 591];
         let frame = account_settings(0x1234, &blob);
         let body = &frame.body();
@@ -828,6 +869,41 @@ mod tests {
         assert_eq!(declared, 591, "the reference's blob is 591 bytes");
         assert_eq!(&body[6..6 + declared], &blob, "the blob is copied verbatim");
         assert_eq!(body.len(), 6 + declared, "nothing is padded after the data");
+    }
+
+    #[test]
+    fn the_client_settings_upload_is_a_size_then_counted_chunks() {
+        // Measured from a live client (`logs/auth.log`, request 5): the size message announces 578,
+        // then two content messages carry 512 and 66 bytes.
+        let size = decode_settings_size(&[0x05, 0x00, 0x00, 0x00, 0x42, 0x02, 0x00, 0x00])
+            .expect("decodes");
+        assert_eq!(size, (5, 578));
+
+        let mut content = vec![0x05, 0x00, 0x00, 0x00, 0x00, 0x02];
+        content.extend_from_slice(&[0x08; 512]);
+        let (request, chunk) = decode_settings_content(&content).expect("decodes");
+        assert_eq!(request, 5);
+        assert_eq!(chunk, vec![0x08; 512]);
+
+        let mut tail = vec![0x05, 0x00, 0x00, 0x00, 0x42, 0x00];
+        tail.extend_from_slice(&[0x21; 66]);
+        let (request, chunk) = decode_settings_content(&tail).expect("decodes");
+        assert_eq!(request, 5);
+        assert_eq!(chunk, vec![0x21; 66]);
+    }
+
+    #[test]
+    fn a_settings_chunk_over_the_tables_capacity_is_refused() {
+        let mut content = vec![0x05, 0x00, 0x00, 0x00, 0x01, 0x02];
+        content.extend_from_slice(&[0u8; 513]);
+        assert_eq!(
+            decode_settings_content(&content),
+            Err(MessageError::TooLong {
+                field: "content",
+                capacity: SETTINGS_CHUNK_CAPACITY,
+                got: 513,
+            })
+        );
     }
 
     #[test]

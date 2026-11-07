@@ -136,6 +136,34 @@ answered; everything else is a guess, and a live client decides.
 - **Cartography:** `ASURA_CARTOGRAPHY=full` now sends a captured 105-byte retail stream (2,140 blocks)
   instead of the synthetic fill the client rejects (`crates/asura-world/src/cartography.rs`).
 
+### UI settings persistence (2026-11-07)
+
+- **The client saves its interface state on the auth connection.** `AUTH_CMSG_SETTING_UPDATE_SIZE`
+  (`0x8021`) announces the blob's total, then one or more `AUTH_CMSG_SETTING_UPDATE_CONTENT`
+  (`0x8020`) carry it in chunks of at most 512 bytes. The live client on this server announced 578
+  bytes and sent 512 + 66; the same log shows 454-581-byte blobs, and one session uploading 579 then
+  455 as windows were closed. The blob starts `08 00 66 21`, the same prefix as the committed
+  default, then carries the player's own state. Evidence: `docs/46-ui-settings-persistence.md`.
+- **Storage:** migration `0032_account_settings.sql` adds `t_account.account_settings bytea`.
+  `crates/asura-db/src/account.rs` reads it with the account row and writes it with
+  `record_settings`.
+- **Wire:** `crates/asura-protocol/src/client/messages.rs` decodes the two upload messages
+  (`decode_settings_size`, `decode_settings_content`).
+- **Auth:** `crates/asura-auth/src/lib.rs` accumulates the chunks, stores the blob when the announced
+  total arrives, and answers `AUTH_SMSG_ACCOUNT_SETTINGS` (`0x0016`) with it at the next login. A new
+  account, or an upload outside `1..=2048` bytes, falls back to
+  `config/Server/account_settings.json` (the reference's 591-byte default). The
+  `AUTH_CMSG_UPDATE_CHARACTER_SETTINGS` (`0x8009`) character-select blob is still acknowledged only;
+  the character row holds that state.
+- **Test:** `crates/asura-gateway/tests/login.rs::the_clients_settings_upload_is_returned_at_the_next_login`
+  logs in, uploads 578 bytes, logs in again, and reads the same bytes back.
+- **Owner-confirmed:** a full account logout/login now keeps the layout; before this change the
+  client was handed the same committed blob on every login, so the inventory bags returned to their
+  default position.
+- **Not done:** `GAME_SMSG_PREFERENCES_BLOB` (`0x00B5`, a constant 50-byte Preferences blob at area
+  load) is still unhandled; `docs/24-stream-parity.md` lists it as a stream-parity gap. The account
+  settings blob is the state the client actually saves; what `0x00B5` carries is not decoded.
+
 ### Other changes
 
 - **Outposts load as outposts:** `INSTANCE_LOAD_INFO` now sends `is_explorable 0` for a town (it sent 1
@@ -167,5 +195,6 @@ answered; everything else is a guess, and a live client decides.
 | [`docs/HANDOFF.md`](docs/HANDOFF.md) | the evidence behind those rules and where work stands |
 | [`docs/19-running.md`](docs/19-running.md) | how to run it, and troubleshooting |
 | [`docs/40-titles-system-research.md`](docs/40-titles-system-research.md) | the title system |
+| [`docs/46-ui-settings-persistence.md`](docs/46-ui-settings-persistence.md) | the account settings blob and the saved interface layout |
 | [`client-patcher/README.md`](client-patcher/README.md) | patching the client |
 | [`docs/03-protocol.md`](docs/03-protocol.md) | the protocol |

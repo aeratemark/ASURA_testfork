@@ -787,3 +787,101 @@ async fn two_live_sessions_for_one_account_both_work() {
         .expect("cleanup");
     harness.stop();
 }
+
+/// Read frames until the server answers `request`, the way a client waits on a settings upload.
+async fn read_until_request_response(
+    stream: &mut TcpStream,
+    client: &mut ReferenceClient,
+    request: u32,
+) -> Vec<Frame> {
+    let mut frames = Vec::new();
+    let mut buffer = [0u8; 8192];
+    while !frames.iter().any(|frame: &Frame| {
+        frame.header() == tables::AUTH_SMSG_REQUEST_RESPONSE
+            && RequestResponse::decode(frame).is_ok_and(|reply| reply.request == request)
+    }) {
+        let read = tokio::time::timeout(TIMEOUT, stream.read(&mut buffer))
+            .await
+            .expect("read before the timeout")
+            .expect("read");
+        assert!(read > 0, "the server closed the connection mid-upload");
+        frames.extend(client.receive(&buffer[..read]).expect("frames"));
+    }
+    frames
+}
+
+/// The client's settings upload: AUTH_CMSG_SETTING_UPDATE_SIZE (0x8021), then one or more
+/// AUTH_CMSG_SETTING_UPDATE_CONTENT (0x8020) chunks that share its request id.
+async fn upload_settings(
+    stream: &mut TcpStream,
+    client: &mut ReferenceClient,
+    request: u32,
+    blob: &[u8],
+) {
+    let mut body = Vec::new();
+    body.extend_from_slice(&request.to_le_bytes());
+    body.extend_from_slice(&(blob.len() as u32).to_le_bytes());
+    let mut bytes = Frame::new(tables::AUTH_CMSG_SETTING_UPDATE_SIZE, body).encode();
+    client.seal_raw(&mut bytes);
+    stream.write_all(&bytes).await.expect("write the size");
+    read_until_request_response(stream, client, request).await;
+
+    for chunk in blob.chunks(messages::SETTINGS_CHUNK_CAPACITY) {
+        let mut body = Vec::new();
+        body.extend_from_slice(&request.to_le_bytes());
+        body.extend_from_slice(&(chunk.len() as u16).to_le_bytes());
+        body.extend_from_slice(chunk);
+        let mut bytes = Frame::new(tables::AUTH_CMSG_SETTING_UPDATE_CONTENT, body).encode();
+        client.seal_raw(&mut bytes);
+        stream.write_all(&bytes).await.expect("write a chunk");
+        read_until_request_response(stream, client, request).await;
+    }
+}
+
+#[tokio::test]
+async fn the_clients_settings_upload_is_returned_at_the_next_login() {
+    if skip() {
+        return;
+    }
+    let Some(harness) = Harness::start().await else {
+        return;
+    };
+
+    let name = account_name("settings");
+    let seeded = db::seed_identity(
+        &harness.pool,
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+        &name,
+        "Asura Settings",
+        MAP,
+    )
+    .await
+    .expect("seed the identity");
+
+    // The bytes the client sends are its own state; the server must not decode or rewrite them.
+    let blob: Vec<u8> = (0..578).map(|index| (index % 251) as u8).collect();
+
+    let mut stream = harness.connect().await;
+    let mut client = handshake_with(&mut stream).await;
+    login(&mut stream, &mut client, seeded.portal_user, seeded.session).await;
+    upload_settings(&mut stream, &mut client, 0x77, &blob).await;
+    drop(stream);
+
+    let mut stream = harness.connect().await;
+    let mut client = handshake_with(&mut stream).await;
+    let frames = login(&mut stream, &mut client, seeded.portal_user, seeded.session).await;
+    let settings = frames
+        .iter()
+        .find(|frame| frame.header() == tables::AUTH_SMSG_ACCOUNT_SETTINGS)
+        .expect("the login batch carries the account settings");
+    let body = settings.body();
+    let count = u16::from_le_bytes([body[4], body[5]]) as usize;
+    assert_eq!(count, blob.len(), "the stored blob, not the 591-byte default");
+    assert_eq!(&body[6..6 + count], &blob[..], "the client's bytes, verbatim");
+
+    db::remove_account(&harness.pool, &name)
+        .await
+        .expect("cleanup");
+    harness.stop();
+}

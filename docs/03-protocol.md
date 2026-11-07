@@ -160,19 +160,29 @@ called from the login path.
 | # | message | contents |
 |---|---|---|
 | 1 | `AUTH_SMSG_CHARACTER_INFO` `0x0007`, once per character | request id, character id, name (counted UTF-16, 20 slots), a 64-byte settings block |
-| 2 | `AUTH_SMSG_ACCOUNT_SETTINGS` `0x0016` | request id, `n_data`, then a **591-byte** fixed blob inside a 2048-byte field |
+| 2 | `AUTH_SMSG_ACCOUNT_SETTINGS` `0x0016` | request id, a **u16** `n_data`, then exactly that many bytes (a 591-byte blob for a new account) |
 | 3 | `AUTH_SMSG_FRIEND_STREAM_END` `0x0014` | the request id, twice |
 | 4 | `AUTH_SMSG_ACCOUNT_INFO` `0x0011` | request id, the account and selected-character ids, a 200-slot feature array of which 8 are used |
 | 5 | `AUTH_SMSG_REQUEST_RESPONSE` `0x0003` | the request id and the status: `0` accepted, `11` (`GM_ERROR_AUTH_ERROR`) refused |
 
-All five are sent, in that order, and `crates/asura-auth/tests/login.rs` asserts the sequence and the
+All five are sent, in that order, and `crates/asura-gateway/tests/login.rs` asserts the sequence and the
 two fixed sizes over a socket. A refusal sends only row 5.
+
+**Row 2 is the account's own settings, not a constant.** The client uploads its settings on the same
+connection with `AUTH_CMSG_SETTING_UPDATE_SIZE` (`0x8021`: request id, total as a `u32`) followed by
+one or more `AUTH_CMSG_SETTING_UPDATE_CONTENT` (`0x8020`: the same request id, a `u16` count, and that
+many bytes, at most 512). A live client on this server announced 578 bytes and sent 512 + 66; other
+sessions upload 454, 455, 457, 579 or 581 bytes, because the blob is the client's UI state - window
+positions, visibility and interface options - and it changes when the player moves or closes windows.
+`t_account.account_settings` holds the last complete upload; the login answer carries it verbatim, and
+the committed 591-byte blob is only the first-login default. `docs/46-ui-settings-persistence.md` is the
+evidence and the design.
 
 Two details that are easy to get wrong and are now pinned by tests:
 
-- **The settings blob is a copied fact.** 591 bytes the client is handed on every login, and nothing in
-  this project knows what most of it means. It is kept byte-for-byte as the original sends it rather
-  than typed - see `client/login_fixtures.rs`.
+- **The committed settings blob is a copied fact.** For an account that has never uploaded one, the
+  client is handed the reference's 591 bytes, and nothing here decodes them. After the first upload the
+  account's own bytes replace it, byte for byte.
 - **A counted field still occupies its full width.** The feature list in row 4 is an `ARRAY_8` of 200
   slots with a count of 8: the four-byte count, then all 200 bytes. Sizing a message from the count
   instead of the capacity is how a body ends up 192 bytes short.

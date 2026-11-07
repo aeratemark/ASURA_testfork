@@ -80,6 +80,13 @@ pub fn idle_timeout() -> Duration {
 /// How many bytes to read from the socket at once.
 const READ_CHUNK: usize = 4096;
 
+/// The most bytes a login's settings answer may carry: the declared capacity of
+/// `AUTH_SMSG_ACCOUNT_SETTINGS`'s `Array8` (`crates/asura-protocol/src/packets.rs`, `0x0016`, 2048).
+///
+/// A settings upload larger than this cannot be answered in one login message, so it is refused
+/// rather than stored and truncated on the way out.
+const ACCOUNT_SETTINGS_CAPACITY: usize = 2048;
+
 /// Why a connection ended.
 #[derive(Debug)]
 pub enum ConnectionError {
@@ -115,6 +122,17 @@ impl core::fmt::Display for ConnectionError {
 
 impl std::error::Error for ConnectionError {}
 
+/// The settings upload the client sends after entering a map: a size announcement followed by one or
+/// more content messages that share its request id (`logs/auth.log`, requests 5 and 10).
+struct SettingsUpload {
+    /// The request id the size message carried; only content with this id belongs to the upload.
+    request: u32,
+    /// The byte count the size message announced.
+    total: u32,
+    /// The bytes received so far.
+    bytes: Vec<u8>,
+}
+
 /// One connection's state, after the key exchange.
 struct Session {
     /// The connection's two scramblers, set up by the key exchange.
@@ -133,6 +151,8 @@ struct Session {
     /// The salt sent in `AUTH_SMSG_SESSION_INFO`, kept for the trace and for later messages that
     /// sign against it. The reference keeps it per connection for the same reason.
     server_salt: u32,
+    /// The account settings upload in flight, if the client is in the middle of one.
+    settings_upload: Option<SettingsUpload>,
 }
 
 /// Whether to print the per-message trace.
@@ -208,6 +228,7 @@ pub async fn converse(
         session_id: None,
         character: None,
         server_salt: 0,
+        settings_upload: None,
     };
 
     loop {
@@ -358,12 +379,119 @@ async fn dispatch(
             Ok(true)
         }
 
-        // The settings uploads, which must be acknowledged: an unacknowledged one is a hang, and
-        // GWPS lived through seven of those (`docs/03-protocol.md`, section 6). Answering every
-        // request the client makes keeps that trap shut without having to understand the payload.
-        tables::AUTH_CMSG_SETTING_UPDATE_SIZE
-        | tables::AUTH_CMSG_SETTING_UPDATE_CONTENT
-        | tables::AUTH_CMSG_UPDATE_CHARACTER_SETTINGS => {
+        // The client's settings upload, first half: it announces the whole blob. The settings are the
+        // client's UI state - window positions, visibility and the other interface options - and the
+        // bytes are stored verbatim. `logs/auth.log` shows the pattern: 0x8021 announces 578 bytes,
+        // then 0x8020 carries 512 and 66 of them.
+        tables::AUTH_CMSG_SETTING_UPDATE_SIZE => {
+            let request = request_id(&frame);
+            match messages::decode_settings_size(frame.body()) {
+                Ok((announced, total))
+                    if total > 0 && total as usize <= ACCOUNT_SETTINGS_CAPACITY =>
+                {
+                    if trace.on() {
+                        eprintln!("auth: settings upload {announced} announces {total} bytes");
+                    }
+                    session.settings_upload = Some(SettingsUpload {
+                        request: announced,
+                        total,
+                        bytes: Vec::with_capacity(total as usize),
+                    });
+                }
+                Ok((announced, total)) => {
+                    eprintln!(
+                        "auth: settings upload {announced} announces {total} bytes, outside 1..={ACCOUNT_SETTINGS_CAPACITY}; not stored"
+                    );
+                    session.settings_upload = None;
+                }
+                Err(err) => {
+                    eprintln!("auth: settings size is malformed: {err}");
+                    session.settings_upload = None;
+                }
+            }
+            send_frames(
+                stream,
+                session,
+                vec![RequestResponse {
+                    request,
+                    status: STATUS_OK,
+                }
+                .frame()],
+                trace,
+            )
+            .await?;
+            Ok(true)
+        }
+
+        // The client's settings upload, second half: one chunk. When the announced total has
+        // arrived, the bytes replace the account's stored blob, and the next login is answered with
+        // them (`AUTH_SMSG_ACCOUNT_SETTINGS`).
+        tables::AUTH_CMSG_SETTING_UPDATE_CONTENT => {
+            let request = request_id(&frame);
+            let mut completed = None;
+            match messages::decode_settings_content(frame.body()) {
+                Ok((chunk_request, chunk)) => {
+                    let mut finished = false;
+                    match session.settings_upload.as_mut() {
+                        Some(upload) if upload.request == chunk_request => {
+                            upload.bytes.extend_from_slice(&chunk);
+                            finished = upload.bytes.len() >= upload.total as usize;
+                        }
+                        Some(upload) => eprintln!(
+                            "auth: settings chunk for request {chunk_request} while request {} is open; ignored",
+                            upload.request
+                        ),
+                        None => eprintln!(
+                            "auth: settings chunk for request {chunk_request} without a size announcement; ignored"
+                        ),
+                    }
+                    if finished {
+                        completed = session.settings_upload.take().map(|upload| upload.bytes);
+                    }
+                }
+                Err(err) => eprintln!("auth: settings content is malformed: {err}"),
+            }
+            if let Some(bytes) = completed {
+                match session.account {
+                    Some(account) => match db_account::record_settings(pool, account, &bytes).await {
+                        Ok(true) => {
+                            if trace.on() {
+                                eprintln!(
+                                    "auth: stored {}-byte account settings for {account}",
+                                    bytes.len()
+                                );
+                            }
+                        }
+                        Ok(false) => eprintln!(
+                            "auth: settings upload for {account} matched no account row"
+                        ),
+                        Err(err) => eprintln!(
+                            "auth: could not store the account settings for {account}: {err}"
+                        ),
+                    },
+                    None => eprintln!(
+                        "auth: settings upload before the account resolved; not stored"
+                    ),
+                }
+            }
+            send_frames(
+                stream,
+                session,
+                vec![RequestResponse {
+                    request,
+                    status: STATUS_OK,
+                }
+                .frame()],
+                trace,
+            )
+            .await?;
+            Ok(true)
+        }
+
+        // The other settings upload, the character-select blob (`0x8009`), which the world path
+        // already keeps: acknowledged and nothing more. An unacknowledged settings upload is a hang,
+        // and GWPS lived through seven of those (`docs/03-protocol.md`, section 6).
+        tables::AUTH_CMSG_UPDATE_CHARACTER_SETTINGS => {
             let request = request_id(&frame);
             let reply = RequestResponse {
                 request,
@@ -549,6 +677,12 @@ fn request_id(frame: &Frame) -> u32 {
     u32::from_le_bytes([body[0], body[1], body[2], body[3]])
 }
 
+/// The committed settings blob a login is answered with when the account has never uploaded one
+/// (`config/Server/account_settings.json`).
+fn committed_account_settings() -> Result<Vec<u8>, String> {
+    asura_config::account_settings().and_then(|settings| settings.bytes())
+}
+
 /// A random `u32` for the session salt, from the operating system.
 pub(crate) fn random_u32() -> Result<u32, ConnectionError> {
     let mut bytes = [0u8; 4];
@@ -598,21 +732,27 @@ async fn answer_login(
     // The EULA version this account accepted, which the account info carries back so the client does
     // not ask again. A read that fails is not worth losing a login over: 0 asks the client once, and
     // its answer is recorded, so a transient error costs one extra page rather than a session.
-    let eula_accepted = match db_account::load(pool, resolved.account).await {
-        Ok(Some(account)) => account.eula_accepted.max(0) as u8,
+    //
+    // The same row holds the client's uploaded UI settings (`t_account.account_settings`), which the
+    // login answer carries instead of the committed default when it is present.
+    let (eula_accepted, stored_settings) = match db_account::load(pool, resolved.account).await {
+        Ok(Some(account)) => (
+            account.eula_accepted.max(0) as u8,
+            account.account_settings,
+        ),
         Ok(None) => {
             eprintln!(
                 "auth: no account row {} for a session that resolved",
                 resolved.account
             );
-            0
+            (0, None)
         }
         Err(err) => {
             eprintln!(
                 "auth: could not read the account of {}: {err}",
                 resolved.account
             );
-            0
+            (0, None)
         }
     };
 
@@ -703,12 +843,28 @@ async fn answer_login(
             .map_err(ConnectionError::Message)?,
         );
     }
-    // The settings blob is configuration (`config/Server/account_settings.json`): the client's own
-    // payload, answered with the bytes the file states. A file that cannot be read refuses the reply
-    // rather than sending a shorter message.
-    let account_settings = match asura_config::account_settings() {
-        Ok(settings) => settings.bytes(),
-        Err(err) => Err(err),
+    // The account's own uploaded settings blob, when there is one, is what the login is answered
+    // with: the client's UI state - window positions, visibility and the interface options - belongs
+    // to the account, and retail saves it that way. The committed blob is the first-login default,
+    // and the fallback when the stored one cannot be carried in one answer.
+    let account_settings = match stored_settings {
+        Some(bytes) if !bytes.is_empty() && bytes.len() <= ACCOUNT_SETTINGS_CAPACITY => {
+            if trace.on() {
+                eprintln!(
+                    "auth: account settings from the account, {} bytes",
+                    bytes.len()
+                );
+            }
+            Ok(bytes)
+        }
+        Some(bytes) => {
+            eprintln!(
+                "auth: the account settings blob is {} bytes, outside 1..={ACCOUNT_SETTINGS_CAPACITY}; using the committed blob",
+                bytes.len()
+            );
+            committed_account_settings()
+        }
+        None => committed_account_settings(),
     };
     let account_settings = match account_settings {
         Ok(bytes) => bytes,
