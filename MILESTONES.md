@@ -18,6 +18,18 @@ yet. `[ ]` not done.
 
 - [x] Position saved on leaving, resumed on entering (`asura-db/tests/inventory.rs`)
 - [x] Items: block built from rows; drops, moves and equipment persist
+- [~] Item catalogue and modifiers: 546 definitions, the catalogue and the modifier foundation, one
+  transaction per operation (`config/World/Vanilla/items.json`, `crates/asura-world/src/item_catalogue.rs`,
+  `docs/50-item-framework.md`)
+- [~] Experience, levels and skill points: the `0x00E9` progress block, the curve to level 20, level and
+  skill-point rows, `/.exp` and `/xp` (`crates/asura-world/src/experience.rs`, migration `0036`,
+  `docs/54-experience.md`)
+- [~] Pick up a dropped item (`0x803F`): the live server's action hold, pickup line and item stream
+  (`crates/asura-world/src/item.rs:582`;
+  `a_drop_and_a_pickup_and_a_trash_answer_the_way_the_live_server_does`, `crates/asura-world/tests/load.rs:759`)
+- [~] Unequip an item (`0x804F`): moves the worn item to the named bag and slot and answers with the
+  capture's pair (`crates/asura-world/src/item.rs:784`; `an_item_can_be_unequipped_and_worn_again`,
+  `crates/asura-world/tests/load.rs:957`)
 - [x] Chat on `!`, `#`, `$`; `/stuck` and `/maps` answer
 - [o] Character creation: name, appearance, profession, starting equipment (`a_character_is_created_in_a_creation_instance`)
 - [ ] Character deletion by name, scoped to the owning account (implemented, no client session yet)
@@ -55,6 +67,31 @@ yet. `[ ]` not done.
 - [~] Every map carries `name_id`, the client's `AreaInfo` string id (`tools/add-map-name-ids.py`)
 - [~] An outpost loads with `is_explorable 0`, an explorable with 1, as every load in `recordings/client/` does (`crates/asura-world/src/map.rs`)
 - [~] Manual movement traces connected walkable cells (`pathfind/directional.rs`, `config/Server/directional_movement.json`); owner: "better but not perfect", not accepted
+
+## NPCs and services
+
+- [~] NPCs in maps: 79 bodies across 145-148 and 160-166 from preforged's `gw-npcs 1` catalog, one
+  `npcs.json` per map, definitions, routes and Lua behaviors (`crates/asura-world/src/npc/`,
+  `docs/49-npc-framework.md`)
+- [~] NPC dialogs: the Purveyor [Bonus Merchant's captured greeting and seven choices, two with measured
+  answers (`crates/asura-world/src/dialog.rs`, `docs/55-npc-dialogs.md`)
+- [~] Merchants and vendor windows: six merchants, eight collectors and Xunlai storage from the pack's
+  `vendors.json`; buy, sell, collector and gold requests (`crates/asura-world/src/vendor/`,
+  `docs/53-npc-services.md`)
+- [~] Buy and sell (`0x804D`): `vendor::handle_transaction` with the price, carried-gold and
+  unsellable-model rules in `vendor/rules.rs`; no live sale is captured
+
+## Skills, attributes and combat
+
+- [~] Skills, skill bar, attributes and combat: the 44 pre-Searing skills, bar edits, attributes and
+  ranks, casting, recharge, adrenaline, armor damage, conditions, maintained effects, fields, melee and
+  ranged attacks (`crates/asura-world/src/skill/`, `crates/asura-rules/src/skills.rs`,
+  `config/World/Vanilla/skills.json`, `attributes.json`, `combat.json`, `docs/52-skills.md`)
+
+## Quests
+
+- [~] Quests: the captured pre-Searing pack with offer, accept, turn-in, log messages and per-character
+  state; quest 80 end to end (`crates/asura-world/src/quest.rs`, migration `0038`, `docs/58-quests.md`)
 
 ## Exploration and titles
 
@@ -105,21 +142,14 @@ yet. `[ ]` not done.
 
 ## Not built
 
-- [ ] NPCs in maps (research only: `docs/30`, `docs/32`)
-- [ ] Skills, skill bar, attributes and combat (research only: `docs/35`)
-- [ ] Merchants and vendor windows (research only: `docs/42`)
 - [ ] Player trade and the friends list (research only: `docs/43`)
-- [ ] Quests
 - [ ] A brand-new account with no character creating one (the seed gives every account one character)
 
 - [ ] Starting outposts for every campaign: only Factions is measured (map 212). Every other campaign is put in Ascalon City (148) as a stand-in - `STARTER_OUTPOST_STANDIN` in `creation.rs`, logged at every creation that uses it
 - [ ] The creation screen's item list: live sends 60 items in 7 bags, this server sends the equipped set
 
-- [ ] Pick up a dropped item (`0x803F`)
 - [ ] Split a stack by hand (`0x8075`)
-- [ ] Buy and sell (`0x804D`)
 - [ ] Swap two items in one move
-- [ ] Unequip an item (`0x804F`, layout still unmeasured)
 - [ ] A player standing in an instance during a rolling deploy (real client)
 - [ ] A travel to the second address (real client, `docs/18-multi-machine.md`)
 

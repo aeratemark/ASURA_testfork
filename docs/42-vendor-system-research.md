@@ -8,8 +8,8 @@ The answer: a vendor window is four server messages - `0x00C4` owner, `0x0161` p
 stock list, `0x00CA` open - plus `0x00C3 {kind, 0}`, which says what kind of vendor it is (11 =
 merchant with Buy and Sell tabs). A buy is CtoS `0x004D`, answered with pay `0x014F`, mint `0x0161`,
 place `0x013E`, confirm `0x00CC`. A sell is CtoS `0x004A`, answered with remove `0x014D`, credit
-`0x0140`, confirm `0x00CC`. Rurik built and ran both directions against a real client; nothing here
-handles either (`MILESTONES.md`: "Buy and sell (`0x804D`)" unchecked; `docs/20-rurik-gap.md` P6).
+`0x0140`, confirm `0x00CC`. Rurik built and ran both directions against a real client; the implementation is in
+`crates/asura-world/src/vendor/` (`docs/53-npc-services.md`), which names what is still uncaptured.
 
 Tags, as in `docs/40-titles-system-research.md`:
 
