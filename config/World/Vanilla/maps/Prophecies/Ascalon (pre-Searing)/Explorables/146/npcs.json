@@ -1,0 +1,1388 @@
+{
+  "map_id": 146,
+  "note": "The NPC bodies of this map from preforged's gw-npcs 1 catalog, one placement per body, in actor order. Held items are the capture's 0x0161 rows where the same body was armed there. The name is a literal 0x009B because the catalog's encoded names are 37130 string ids. An Ascalon Guard's route is authored, not captured.",
+  "placements": [
+    {
+      "id": "146-10001",
+      "definition": "npc-146-1",
+      "x": 7116.0,
+      "y": 3084.0,
+      "plane": 0,
+      "angle": 2.630037,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        76,
+        105,
+        110,
+        97,
+        32,
+        116,
+        104,
+        101,
+        32,
+        72,
+        101,
+        97,
+        108,
+        101,
+        114,
+        1
+      ]
+    },
+    {
+      "id": "146-10005",
+      "definition": "npc-146-5",
+      "x": 7432.0,
+      "y": 3544.0,
+      "plane": 0,
+      "angle": 3.024884,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        66,
+        114,
+        111,
+        119,
+        110,
+        108,
+        111,
+        119,
+        32,
+        91,
+        67,
+        111,
+        108,
+        108,
+        101,
+        99,
+        116,
+        111,
+        114,
+        93,
+        1
+      ]
+    },
+    {
+      "id": "146-10006",
+      "definition": "npc-146-6",
+      "x": 4307.0,
+      "y": 7519.0,
+      "plane": 0,
+      "angle": -1.590874,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        80,
+        114,
+        105,
+        110,
+        99,
+        101,
+        32,
+        82,
+        117,
+        114,
+        105,
+        107,
+        1
+      ]
+    },
+    {
+      "id": "146-10007",
+      "definition": "npc-146-7",
+      "x": 4302.0,
+      "y": 7270.0,
+      "plane": 0,
+      "angle": 1.550719,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        67,
+        97,
+        112,
+        116,
+        97,
+        105,
+        110,
+        32,
+        79,
+        115,
+        114,
+        105,
+        99,
+        1
+      ]
+    },
+    {
+      "id": "146-10008",
+      "definition": "npc-146-8",
+      "x": 6078.0,
+      "y": 3766.0,
+      "plane": 0,
+      "angle": 0.0,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        72,
+        97,
+        118,
+        101,
+        114,
+        115,
+        100,
+        97,
+        110,
+        1
+      ]
+    },
+    {
+      "id": "146-10009",
+      "definition": "npc-146-9",
+      "x": 8023.0,
+      "y": 2545.0,
+      "plane": 0,
+      "angle": 0.0,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        71,
+        119,
+        101,
+        110,
+        1
+      ]
+    },
+    {
+      "id": "mob-146-1",
+      "definition": "mob-1433-type",
+      "x": 5844.3,
+      "y": 322.37,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-2",
+      "definition": "mob-1433-type",
+      "x": 5755.77,
+      "y": 398.32,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-3",
+      "definition": "mob-1431-river-skale",
+      "x": 6185.25,
+      "y": -391.17,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-4",
+      "definition": "mob-1431-river-skale",
+      "x": 3671.13,
+      "y": -471.71,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-5",
+      "definition": "mob-1420-bandit-firestarter",
+      "x": 795.88,
+      "y": 6213.06,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-6",
+      "definition": "mob-1420-bandit-firestarter",
+      "x": -1268.38,
+      "y": 10360.22,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-7",
+      "definition": "mob-1428-aloe-seed",
+      "x": 765.64,
+      "y": 3014.44,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-8",
+      "definition": "mob-1437-grawl",
+      "x": -2134.55,
+      "y": 5712.43,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-9",
+      "definition": "mob-1437-grawl",
+      "x": -2285.26,
+      "y": 5897.02,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-10",
+      "definition": "mob-1420-bandit-firestarter",
+      "x": 267.87,
+      "y": 1696.51,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-11",
+      "definition": "mob-1437-grawl",
+      "x": -4309.93,
+      "y": 7899.02,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-12",
+      "definition": "mob-1437-grawl",
+      "x": -4554.38,
+      "y": 8113.93,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-13",
+      "definition": "mob-1397-type",
+      "x": -5025.0,
+      "y": 4296.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-14",
+      "definition": "mob-1428-aloe-seed",
+      "x": -6317.8,
+      "y": 5964.77,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-15",
+      "definition": "mob-1420-bandit-firestarter",
+      "x": -4040.34,
+      "y": 397.67,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-16",
+      "definition": "mob-1437-grawl",
+      "x": -7351.3,
+      "y": 2420.95,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-17",
+      "definition": "mob-1428-aloe-seed",
+      "x": -8388.25,
+      "y": 5087.44,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-18",
+      "definition": "mob-1437-grawl",
+      "x": -7733.52,
+      "y": 2085.77,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-19",
+      "definition": "mob-1437-grawl",
+      "x": -9379.2,
+      "y": 5643.42,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-20",
+      "definition": "mob-1442-type",
+      "behavior": "worm_lakeside",
+      "x": -10039.7,
+      "y": -4499.21,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-21",
+      "definition": "mob-1431-river-skale",
+      "x": -2828.52,
+      "y": -15769.61,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-22",
+      "definition": "mob-1422-bandit-blood-sworn",
+      "x": -5295.0,
+      "y": -3008.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-23",
+      "definition": "mob-1431-river-skale",
+      "x": 1990.57,
+      "y": -8160.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-24",
+      "definition": "mob-1442-type",
+      "behavior": "worm_lakeside",
+      "x": -11725.71,
+      "y": -1748.27,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-25",
+      "definition": "mob-1432-skale-broodcaller",
+      "x": 11613.68,
+      "y": -6739.11,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-26",
+      "definition": "mob-1421-bandit-raider",
+      "x": -6761.99,
+      "y": -1333.25,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-27",
+      "definition": "mob-1433-type",
+      "x": 1485.6,
+      "y": -9387.79,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-28",
+      "definition": "mob-1409-type",
+      "x": 4363.61,
+      "y": -11615.6,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-29",
+      "definition": "mob-1431-river-skale",
+      "x": -2697.24,
+      "y": -15956.5,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-30",
+      "definition": "mob-1405-type",
+      "x": 2547.6,
+      "y": -13533.61,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-31",
+      "definition": "mob-1431-river-skale",
+      "x": 1815.96,
+      "y": -3354.06,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-32",
+      "definition": "mob-1431-river-skale",
+      "x": -2053.88,
+      "y": -16406.47,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-33",
+      "definition": "mob-1432-skale-broodcaller",
+      "x": -2383.0,
+      "y": -13934.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-34",
+      "definition": "mob-1421-bandit-raider",
+      "x": -6869.24,
+      "y": -1338.34,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-35",
+      "definition": "mob-1442-type",
+      "behavior": "worm_lakeside",
+      "x": -9980.97,
+      "y": -765.42,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-36",
+      "definition": "mob-1442-type",
+      "behavior": "worm_lakeside",
+      "x": -9917.79,
+      "y": -3737.4,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-37",
+      "definition": "mob-1442-type",
+      "behavior": "worm_lakeside",
+      "x": -9781.75,
+      "y": -3058.25,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-38",
+      "definition": "mob-1432-skale-broodcaller",
+      "x": -9434.78,
+      "y": -18406.28,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-39",
+      "definition": "mob-1442-type",
+      "behavior": "worm_lakeside",
+      "x": -11796.03,
+      "y": -1901.23,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-40",
+      "definition": "mob-1436-river-skale-brood",
+      "x": 43.49,
+      "y": -19377.71,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-41",
+      "definition": "mob-1432-skale-broodcaller",
+      "x": -7624.38,
+      "y": -18760.3,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-42",
+      "definition": "mob-1433-type",
+      "x": -984.54,
+      "y": -8524.43,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-43",
+      "definition": "mob-1433-type",
+      "x": 5277.47,
+      "y": -5577.24,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-44",
+      "definition": "mob-1442-type",
+      "behavior": "worm_lakeside",
+      "x": -9588.11,
+      "y": -2998.54,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-45",
+      "definition": "mob-1428-aloe-seed",
+      "x": -9888.62,
+      "y": 4723.63,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-46",
+      "definition": "mob-1442-type",
+      "behavior": "worm_lakeside",
+      "x": -9957.82,
+      "y": 5385.17,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-47",
+      "definition": "mob-1428-aloe-seed",
+      "x": -9691.21,
+      "y": 3495.75,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-48",
+      "definition": "mob-1405-type",
+      "x": 12587.85,
+      "y": -8796.89,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-49",
+      "definition": "mob-1409-type",
+      "x": 6047.42,
+      "y": -9950.36,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-50",
+      "definition": "mob-1409-type",
+      "x": 3464.62,
+      "y": -14415.13,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-51",
+      "definition": "mob-1408-type",
+      "x": 5767.31,
+      "y": -9534.95,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-52",
+      "definition": "mob-1409-type",
+      "x": 3843.47,
+      "y": -17863.7,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-53",
+      "definition": "mob-1409-type",
+      "x": 3508.21,
+      "y": -14398.14,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-54",
+      "definition": "mob-1431-river-skale",
+      "x": -2774.4,
+      "y": -7237.37,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-55",
+      "definition": "mob-1421-bandit-raider",
+      "x": -6614.38,
+      "y": -1288.46,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-56",
+      "definition": "mob-1421-bandit-raider",
+      "x": -6690.16,
+      "y": -1257.58,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-57",
+      "definition": "mob-1442-type",
+      "behavior": "worm_lakeside",
+      "x": -9279.32,
+      "y": -3306.01,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-58",
+      "definition": "mob-1346-type",
+      "x": -7882.98,
+      "y": -1588.73,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0,
+      "level": 2
+    },
+    {
+      "id": "mob-146-59",
+      "definition": "mob-1431-river-skale",
+      "x": 1921.22,
+      "y": -3209.63,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-60",
+      "definition": "mob-1409-type",
+      "x": 4233.03,
+      "y": -16603.76,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-61",
+      "definition": "mob-1422-bandit-blood-sworn",
+      "x": -5636.0,
+      "y": -2985.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-62",
+      "definition": "mob-1420-bandit-firestarter",
+      "x": -5768.78,
+      "y": -1748.59,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-63",
+      "definition": "mob-1408-type",
+      "x": 3341.58,
+      "y": -13140.87,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-64",
+      "definition": "mob-1432-skale-broodcaller",
+      "x": -954.67,
+      "y": -19488.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-65",
+      "definition": "mob-1420-bandit-firestarter",
+      "x": -2066.1,
+      "y": -919.94,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-66",
+      "definition": "mob-1431-river-skale",
+      "x": -2128.75,
+      "y": -13647.97,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-67",
+      "definition": "mob-1408-type",
+      "x": 2850.97,
+      "y": -13581.06,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-68",
+      "definition": "mob-1431-river-skale",
+      "x": -3757.94,
+      "y": -15606.16,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-69",
+      "definition": "mob-1422-bandit-blood-sworn",
+      "x": -5266.0,
+      "y": -3220.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-70",
+      "definition": "mob-1422-bandit-blood-sworn",
+      "x": -5660.0,
+      "y": -3164.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-71",
+      "definition": "mob-1442-type",
+      "behavior": "worm_lakeside",
+      "x": -10994.41,
+      "y": -742.27,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-72",
+      "definition": "mob-1442-type",
+      "behavior": "worm_lakeside",
+      "x": -8588.86,
+      "y": -3938.39,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-73",
+      "definition": "mob-1428-aloe-seed",
+      "x": 7888.37,
+      "y": -14799.51,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-74",
+      "definition": "mob-1405-type",
+      "x": 3910.15,
+      "y": -12098.76,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-75",
+      "definition": "mob-1442-type",
+      "behavior": "worm_lakeside",
+      "x": -9395.0,
+      "y": -3769.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-76",
+      "definition": "mob-1442-type",
+      "behavior": "worm_lakeside",
+      "x": -10006.71,
+      "y": -3243.83,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-77",
+      "definition": "mob-1346-type",
+      "x": -9356.37,
+      "y": -4491.51,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0,
+      "level": 2
+    },
+    {
+      "id": "mob-146-78",
+      "definition": "mob-1432-skale-broodcaller",
+      "x": -3181.04,
+      "y": -16902.95,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-79",
+      "definition": "mob-1442-type",
+      "behavior": "worm_lakeside",
+      "x": -10740.92,
+      "y": -1471.36,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-80",
+      "definition": "mob-1442-type",
+      "behavior": "worm_lakeside",
+      "x": -8846.13,
+      "y": -3998.18,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-81",
+      "definition": "mob-1431-river-skale",
+      "x": -3839.93,
+      "y": -15170.35,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-82",
+      "definition": "mob-1409-type",
+      "x": 6602.37,
+      "y": -14670.17,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-83",
+      "definition": "mob-1346-type",
+      "x": -11382.24,
+      "y": 823.14,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0,
+      "level": 2
+    },
+    {
+      "id": "mob-146-84",
+      "definition": "mob-1445-type",
+      "behavior": "worm_queen",
+      "x": -9453.71,
+      "y": -3385.35,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-85",
+      "definition": "mob-1421-bandit-raider",
+      "x": -2114.85,
+      "y": -1178.32,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-86",
+      "definition": "mob-1420-bandit-firestarter",
+      "x": -2138.69,
+      "y": -898.73,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-87",
+      "definition": "mob-1442-type",
+      "behavior": "worm_lakeside",
+      "x": -8982.27,
+      "y": -803.2,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-88",
+      "definition": "mob-1420-bandit-firestarter",
+      "x": -5805.02,
+      "y": -1751.19,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-89",
+      "definition": "mob-1420-bandit-firestarter",
+      "x": -5719.98,
+      "y": -1766.26,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-90",
+      "definition": "mob-1442-type",
+      "behavior": "worm_lakeside",
+      "x": -10048.32,
+      "y": -328.87,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-91",
+      "definition": "mob-1442-type",
+      "behavior": "worm_lakeside",
+      "x": -9973.25,
+      "y": -4902.42,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-146-92",
+      "definition": "mob-1431-river-skale",
+      "x": -2369.06,
+      "y": -12996.67,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    }
+  ],
+  "routes": []
+}

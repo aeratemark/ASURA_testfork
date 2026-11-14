@@ -1,0 +1,909 @@
+{
+  "map_id": 160,
+  "note": "The NPC bodies of this map from preforged's gw-npcs 1 catalog, one placement per body, in actor order. Held items are the capture's 0x0161 rows where the same body was armed there. The name is a literal 0x009B because the catalog's encoded names are 37130 string ids. An Ascalon Guard's route is authored, not captured.",
+  "placements": [
+    {
+      "id": "160-10005",
+      "definition": "npc-160-5",
+      "x": -3212.676758,
+      "y": -882.0,
+      "plane": 0,
+      "angle": 0.0,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        65,
+        115,
+        99,
+        97,
+        108,
+        111,
+        110,
+        32,
+        71,
+        117,
+        97,
+        114,
+        100,
+        1
+      ]
+    },
+    {
+      "id": "160-10006",
+      "definition": "npc-160-6",
+      "x": -6426.319824,
+      "y": -1664.433594,
+      "plane": 0,
+      "angle": 0.0,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        65,
+        115,
+        99,
+        97,
+        108,
+        111,
+        110,
+        32,
+        71,
+        117,
+        97,
+        114,
+        100,
+        1
+      ]
+    },
+    {
+      "id": "160-10007",
+      "definition": "npc-160-7",
+      "x": -6188.593262,
+      "y": 4411.364258,
+      "plane": 0,
+      "angle": 0.0,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        65,
+        115,
+        99,
+        97,
+        108,
+        111,
+        110,
+        105,
+        97,
+        110,
+        32,
+        84,
+        111,
+        119,
+        110,
+        115,
+        102,
+        111,
+        108,
+        107,
+        1
+      ]
+    },
+    {
+      "id": "160-10008",
+      "definition": "npc-160-8",
+      "x": -5970.712891,
+      "y": -863.502991,
+      "plane": 0,
+      "angle": 0.0,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        83,
+        116,
+        114,
+        105,
+        100,
+        101,
+        114,
+        1
+      ]
+    },
+    {
+      "id": "160-10009",
+      "definition": "npc-160-9",
+      "x": -4436.802734,
+      "y": 4015.916016,
+      "plane": 34,
+      "angle": 0.0,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        83,
+        116,
+        114,
+        105,
+        100,
+        101,
+        114,
+        1
+      ]
+    },
+    {
+      "id": "mob-160-1",
+      "definition": "mob-1439-grawl-shaman",
+      "x": 15494.08,
+      "y": 12093.7,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-2",
+      "definition": "mob-1437-grawl",
+      "x": 14976.23,
+      "y": 11838.09,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-3",
+      "definition": "mob-1437-grawl",
+      "x": 15195.14,
+      "y": 11915.13,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-4",
+      "definition": "mob-1414-stone-elemental",
+      "x": 14414.72,
+      "y": 8015.5,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-5",
+      "definition": "mob-1414-stone-elemental",
+      "x": 14359.11,
+      "y": 7885.96,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-6",
+      "definition": "mob-1414-stone-elemental",
+      "x": 14774.6,
+      "y": 7039.87,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-7",
+      "definition": "mob-1414-stone-elemental",
+      "x": 13776.47,
+      "y": 7294.95,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-8",
+      "definition": "mob-1437-grawl",
+      "x": 12049.46,
+      "y": 10039.37,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-9",
+      "definition": "mob-1437-grawl",
+      "x": 11796.38,
+      "y": 10061.66,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-10",
+      "definition": "mob-1439-grawl-shaman",
+      "x": 11743.43,
+      "y": 10031.03,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-11",
+      "definition": "mob-1428-aloe-seed",
+      "x": 7220.03,
+      "y": 4643.69,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-12",
+      "definition": "mob-1437-grawl",
+      "x": 13781.0,
+      "y": 4789.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-13",
+      "definition": "mob-1437-grawl",
+      "x": 11401.0,
+      "y": 6009.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-14",
+      "definition": "mob-1437-grawl",
+      "x": 11744.0,
+      "y": 3730.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-15",
+      "definition": "mob-1414-stone-elemental",
+      "x": 10080.0,
+      "y": 2465.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-16",
+      "definition": "mob-1414-stone-elemental",
+      "x": 10303.59,
+      "y": 1150.87,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-17",
+      "definition": "mob-1414-stone-elemental",
+      "x": 10631.94,
+      "y": 745.92,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-18",
+      "definition": "mob-1428-aloe-seed",
+      "x": 8561.85,
+      "y": 7661.19,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-19",
+      "definition": "mob-1414-stone-elemental",
+      "x": 10409.3,
+      "y": 739.77,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-20",
+      "definition": "mob-1414-stone-elemental",
+      "x": 9891.07,
+      "y": 922.82,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-21",
+      "definition": "mob-1414-stone-elemental",
+      "x": 9877.5,
+      "y": 787.72,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-22",
+      "definition": "mob-1414-stone-elemental",
+      "x": 9983.54,
+      "y": 631.54,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-23",
+      "definition": "mob-1414-stone-elemental",
+      "x": 17871.4,
+      "y": 2223.98,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-24",
+      "definition": "mob-1414-stone-elemental",
+      "x": 17822.24,
+      "y": 1919.69,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-25",
+      "definition": "mob-1414-stone-elemental",
+      "x": 17868.88,
+      "y": 1549.33,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-26",
+      "definition": "mob-1414-stone-elemental",
+      "x": 8723.69,
+      "y": 946.93,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-27",
+      "definition": "mob-1414-stone-elemental",
+      "x": 8587.42,
+      "y": 1097.57,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-28",
+      "definition": "mob-1428-aloe-seed",
+      "x": 10730.27,
+      "y": 11449.92,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-29",
+      "definition": "mob-1438-grawl-longspear",
+      "x": 11058.97,
+      "y": 14611.04,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-30",
+      "definition": "mob-1428-aloe-seed",
+      "x": 10301.87,
+      "y": 12388.5,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-31",
+      "definition": "mob-1437-grawl",
+      "x": 10113.2,
+      "y": 12754.96,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-32",
+      "definition": "mob-1437-grawl",
+      "x": 9548.12,
+      "y": 12274.59,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-33",
+      "definition": "mob-1428-aloe-seed",
+      "x": 9796.61,
+      "y": 10302.87,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-34",
+      "definition": "mob-1428-aloe-seed",
+      "x": 5164.04,
+      "y": 10628.24,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-35",
+      "definition": "mob-1437-grawl",
+      "x": 3481.39,
+      "y": 2867.67,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-36",
+      "definition": "mob-1437-grawl",
+      "x": 9356.65,
+      "y": 12869.82,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-37",
+      "definition": "mob-1438-grawl-longspear",
+      "x": 3809.73,
+      "y": 5281.76,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-38",
+      "definition": "mob-1428-aloe-seed",
+      "x": -8924.59,
+      "y": -3477.45,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-39",
+      "definition": "mob-1428-aloe-seed",
+      "x": 7693.74,
+      "y": 10142.06,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-40",
+      "definition": "mob-1414-stone-elemental",
+      "x": 5868.63,
+      "y": -428.76,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-41",
+      "definition": "mob-1437-grawl",
+      "x": 3303.18,
+      "y": 2790.46,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-42",
+      "definition": "mob-1438-grawl-longspear",
+      "x": 6830.11,
+      "y": 6533.16,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-43",
+      "definition": "mob-1414-stone-elemental",
+      "x": 5835.76,
+      "y": -422.87,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-44",
+      "definition": "mob-1415-hulking-stone-elemental",
+      "x": 7776.72,
+      "y": 1430.34,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-45",
+      "definition": "mob-1414-stone-elemental",
+      "x": -10100.41,
+      "y": 5783.33,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-46",
+      "definition": "mob-1428-aloe-seed",
+      "x": 7262.87,
+      "y": 7771.6,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-47",
+      "definition": "mob-1428-aloe-seed",
+      "x": 7026.02,
+      "y": 9361.71,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-48",
+      "definition": "mob-1437-grawl",
+      "x": 4300.29,
+      "y": 7125.02,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-49",
+      "definition": "mob-1428-aloe-seed",
+      "x": 4282.6,
+      "y": 6722.9,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-50",
+      "definition": "mob-1428-aloe-seed",
+      "x": 6769.77,
+      "y": 7426.49,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-51",
+      "definition": "mob-1438-grawl-longspear",
+      "x": 6383.54,
+      "y": 9342.44,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-52",
+      "definition": "mob-1437-grawl",
+      "x": 4906.06,
+      "y": 7125.47,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-53",
+      "definition": "mob-1428-aloe-seed",
+      "x": -10946.92,
+      "y": -2512.37,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-54",
+      "definition": "mob-1415-hulking-stone-elemental",
+      "x": -10071.0,
+      "y": 5641.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-55",
+      "definition": "mob-1415-hulking-stone-elemental",
+      "x": -10387.78,
+      "y": -3453.02,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-56",
+      "definition": "mob-1437-grawl",
+      "x": 3332.22,
+      "y": 2531.09,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-57",
+      "definition": "mob-1414-stone-elemental",
+      "x": -9989.2,
+      "y": 5546.35,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-58",
+      "definition": "mob-1428-aloe-seed",
+      "x": -11209.46,
+      "y": -3051.38,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-160-59",
+      "definition": "mob-1437-grawl",
+      "x": 4354.94,
+      "y": 7296.67,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    }
+  ],
+  "routes": []
+}

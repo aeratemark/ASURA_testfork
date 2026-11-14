@@ -1,0 +1,356 @@
+{
+  "map_id": 147,
+  "note": "The NPC bodies of this map from preforged's gw-npcs 1 catalog, one placement per body, in actor order. Held items are the capture's 0x0161 rows where the same body was armed there. The name is a literal 0x009B because the catalog's encoded names are 37130 string ids. An Ascalon Guard's route is authored, not captured.",
+  "placements": [
+    {
+      "id": "147-10001",
+      "definition": "npc-147-1",
+      "x": -16397.683594,
+      "y": -1429.842163,
+      "plane": 0,
+      "angle": 0.0,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        79,
+        97,
+        107,
+        104,
+        101,
+        97,
+        114,
+        116,
+        1
+      ]
+    },
+    {
+      "id": "147-10002",
+      "definition": "npc-147-2",
+      "x": -16438.675781,
+      "y": -583.851807,
+      "plane": 0,
+      "angle": 0.0,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        87,
+        97,
+        114,
+        116,
+        104,
+        111,
+        103,
+        1
+      ]
+    },
+    {
+      "id": "147-10003",
+      "definition": "npc-147-3",
+      "x": -14514.728516,
+      "y": -749.295898,
+      "plane": 0,
+      "angle": 0.0,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        87,
+        97,
+        114,
+        116,
+        104,
+        111,
+        103,
+        1
+      ]
+    },
+    {
+      "id": "147-10004",
+      "definition": "npc-147-4",
+      "x": -16897.478516,
+      "y": -1184.319702,
+      "plane": 0,
+      "angle": 0.0,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        87,
+        97,
+        114,
+        116,
+        104,
+        111,
+        103,
+        1
+      ]
+    },
+    {
+      "id": "mob-147-1",
+      "definition": "mob-1429-type",
+      "x": -14269.02,
+      "y": -12581.39,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-147-2",
+      "definition": "mob-1429-type",
+      "x": -14254.8,
+      "y": -12291.15,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-147-3",
+      "definition": "mob-1429-type",
+      "x": -9495.8,
+      "y": -10715.8,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-147-4",
+      "definition": "mob-1429-type",
+      "x": -13159.8,
+      "y": -8636.19,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-147-5",
+      "definition": "mob-1429-type",
+      "x": -13331.11,
+      "y": -8640.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-147-6",
+      "definition": "mob-1429-type",
+      "x": -17902.77,
+      "y": -11674.1,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-147-7",
+      "definition": "mob-1654-type",
+      "x": -10212.53,
+      "y": -5792.59,
+      "plane": 0,
+      "direction": [
+        -0.550445,
+        -0.834871
+      ],
+      "effects": 0,
+      "h0023": 0.342857
+    },
+    {
+      "id": "mob-147-8",
+      "definition": "mob-1656-type",
+      "x": -10326.19,
+      "y": -6135.36,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-147-9",
+      "definition": "mob-1638-type",
+      "x": -10108.34,
+      "y": -5803.73,
+      "plane": 0,
+      "direction": [
+        -0.647139,
+        -0.762372
+      ],
+      "effects": 0,
+      "h0023": 0.342857
+    },
+    {
+      "id": "mob-147-10",
+      "definition": "mob-1638-type",
+      "x": -10041.67,
+      "y": -5864.92,
+      "plane": 0,
+      "direction": [
+        -0.956945,
+        -0.29027
+      ],
+      "effects": 0,
+      "h0023": 0.342857
+    },
+    {
+      "id": "mob-147-11",
+      "definition": "mob-1429-type",
+      "x": -18061.06,
+      "y": -4205.31,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-147-12",
+      "definition": "mob-1429-type",
+      "x": -17993.7,
+      "y": -4365.32,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-147-13",
+      "definition": "mob-1438-grawl-longspear",
+      "x": -17963.32,
+      "y": -837.79,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-147-14",
+      "definition": "mob-1438-grawl-longspear",
+      "x": -17743.42,
+      "y": -573.48,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-147-15",
+      "definition": "mob-1438-grawl-longspear",
+      "x": -17886.32,
+      "y": -655.03,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-147-16",
+      "definition": "mob-1659-type",
+      "x": -19302.16,
+      "y": 2514.29,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-147-17",
+      "definition": "mob-1638-type",
+      "x": -19004.65,
+      "y": 2881.71,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-147-18",
+      "definition": "mob-1641-type",
+      "x": -19284.65,
+      "y": 2506.9,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-147-19",
+      "definition": "mob-1429-type",
+      "x": -17015.57,
+      "y": 2070.59,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-147-20",
+      "definition": "mob-1429-type",
+      "x": -17056.61,
+      "y": 1983.37,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    }
+  ],
+  "routes": []
+}

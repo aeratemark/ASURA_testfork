@@ -1,0 +1,449 @@
+{
+  "map_id": 145,
+  "note": "The NPC bodies of this map from preforged's gw-npcs 1 catalog, one placement per body, in actor order. Held items are the capture's 0x0161 rows where the same body was armed there. The name is a literal 0x009B because the catalog's encoded names are 37130 string ids. An Ascalon Guard's route is authored, not captured.",
+  "placements": [
+    {
+      "id": "145-10001",
+      "definition": "npc-145-1",
+      "x": 13775.0,
+      "y": 3584.0,
+      "plane": 2,
+      "angle": -1.5725,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        78,
+        101,
+        99,
+        114,
+        111,
+        109,
+        97,
+        110,
+        99,
+        101,
+        114,
+        32,
+        77,
+        117,
+        110,
+        110,
+        101,
+        1
+      ]
+    },
+    {
+      "id": "145-10002",
+      "definition": "npc-145-2",
+      "x": 13842.0,
+      "y": -586.0,
+      "plane": 0,
+      "angle": -1.99177,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        65,
+        99,
+        97,
+        100,
+        101,
+        109,
+        121,
+        32,
+        77,
+        111,
+        110,
+        107,
+        1
+      ]
+    },
+    {
+      "id": "145-10003",
+      "definition": "npc-145-3",
+      "x": 13246.0,
+      "y": 1219.0,
+      "plane": 0,
+      "angle": 0.368258,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        71,
+        119,
+        121,
+        110,
+        110,
+        32,
+        91,
+        67,
+        111,
+        108,
+        108,
+        101,
+        99,
+        116,
+        111,
+        114,
+        93,
+        1
+      ]
+    },
+    {
+      "id": "mob-145-1",
+      "definition": "mob-1518-type",
+      "x": 10637.38,
+      "y": 52.28,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-2",
+      "definition": "mob-1417-type",
+      "x": 10601.0,
+      "y": 5768.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-3",
+      "definition": "mob-1417-type",
+      "x": 10500.0,
+      "y": 6013.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-4",
+      "definition": "mob-1518-type",
+      "x": 12530.3,
+      "y": -3606.59,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-5",
+      "definition": "mob-1518-type",
+      "x": 12200.91,
+      "y": -4426.94,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-6",
+      "definition": "mob-1407-type",
+      "x": 8498.0,
+      "y": -912.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-7",
+      "definition": "mob-1518-type",
+      "x": 9946.92,
+      "y": -4171.99,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-8",
+      "definition": "mob-1518-type",
+      "x": 7453.61,
+      "y": 667.81,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-9",
+      "definition": "mob-1518-type",
+      "x": 7300.0,
+      "y": 431.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-10",
+      "definition": "mob-1518-type",
+      "x": 7170.0,
+      "y": 626.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-11",
+      "definition": "mob-1518-type",
+      "x": 5794.8,
+      "y": 67.01,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-12",
+      "definition": "mob-1417-type",
+      "x": 8846.0,
+      "y": 5368.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-13",
+      "definition": "mob-1518-type",
+      "x": 3197.65,
+      "y": -1292.55,
+      "plane": 11,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-14",
+      "definition": "mob-1518-type",
+      "x": 2589.0,
+      "y": -2491.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-15",
+      "definition": "mob-1518-type",
+      "x": 1865.0,
+      "y": -1183.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-16",
+      "definition": "mob-1407-type",
+      "x": 1900.55,
+      "y": -1460.95,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-17",
+      "definition": "mob-1518-type",
+      "x": 1080.0,
+      "y": -2584.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-18",
+      "definition": "mob-1518-type",
+      "x": 829.0,
+      "y": -2051.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-19",
+      "definition": "mob-1494-type",
+      "x": 1186.0,
+      "y": 2662.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-20",
+      "definition": "mob-1407-type",
+      "x": 1186.0,
+      "y": 2662.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-21",
+      "definition": "mob-1407-type",
+      "x": -950.0,
+      "y": 4441.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-22",
+      "definition": "mob-1405-type",
+      "x": 809.0,
+      "y": 1932.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-23",
+      "definition": "mob-1405-type",
+      "x": -1711.0,
+      "y": 4197.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-24",
+      "definition": "mob-1405-type",
+      "x": 809.0,
+      "y": 1932.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-25",
+      "definition": "mob-1424-type",
+      "x": -1441.0,
+      "y": 8141.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-26",
+      "definition": "mob-1518-type",
+      "x": -6508.0,
+      "y": 6854.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-145-27",
+      "definition": "mob-1518-type",
+      "x": 10379.27,
+      "y": -10769.84,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    }
+  ],
+  "routes": []
+}

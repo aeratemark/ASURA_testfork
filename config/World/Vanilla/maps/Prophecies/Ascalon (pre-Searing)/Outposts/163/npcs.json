@@ -1,0 +1,40 @@
+{
+  "map_id": 163,
+  "note": "The NPC bodies of this map from preforged's gw-npcs 1 catalog, one placement per body, in actor order. Held items are the capture's 0x0161 rows where the same body was armed there. The name is a literal 0x009B because the catalog's encoded names are 37130 string ids. An Ascalon Guard's route is authored, not captured.",
+  "placements": [
+    {
+      "id": "163-10001",
+      "definition": "npc-163-1",
+      "x": -6505.0,
+      "y": 1624.0,
+      "plane": 0,
+      "angle": 1.687607,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [264, 263, 68, 117, 107, 101, 32, 66, 97, 114, 114, 97, 100, 105, 110, 1]
+    },
+    {
+      "id": "163-10002",
+      "definition": "npc-163-2",
+      "x": -6815.0,
+      "y": 1180.0,
+      "plane": 0,
+      "angle": 0.257547,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [264, 263, 76, 105, 116, 116, 108, 101, 32, 84, 104, 111, 109, 1]
+    },
+    {
+      "id": "163-10003",
+      "definition": "npc-163-3",
+      "x": -6454.0,
+      "y": 1195.0,
+      "plane": 0,
+      "angle": 2.422904,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [264, 263, 82, 105, 108, 101, 121, 32, 91, 77, 101, 114, 99, 104, 97, 110, 116, 93, 1]
+    }
+  ],
+  "routes": []
+}

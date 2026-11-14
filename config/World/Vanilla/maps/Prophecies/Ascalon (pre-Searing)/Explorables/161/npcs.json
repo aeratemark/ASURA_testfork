@@ -1,0 +1,657 @@
+{
+  "map_id": 161,
+  "note": "The NPC bodies of this map from preforged's gw-npcs 1 catalog, one placement per body, in actor order. Held items are the capture's 0x0161 rows where the same body was armed there. The name is a literal 0x009B because the catalog's encoded names are 37130 string ids. An Ascalon Guard's route is authored, not captured.",
+  "placements": [
+    {
+      "id": "161-10001",
+      "definition": "npc-161-1",
+      "x": 2697.0,
+      "y": 5924.0,
+      "plane": 0,
+      "angle": 2.779863,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        65,
+        99,
+        97,
+        100,
+        101,
+        109,
+        121,
+        32,
+        77,
+        111,
+        110,
+        107,
+        1
+      ]
+    },
+    {
+      "id": "161-10005",
+      "definition": "npc-161-5",
+      "x": 2332.0,
+      "y": 6381.0,
+      "plane": 0,
+      "angle": -0.498801,
+      "effects": 0,
+      "h0023": 1.0,
+      "name": [
+        264,
+        263,
+        83,
+        97,
+        118,
+        105,
+        99,
+        104,
+        32,
+        91,
+        67,
+        111,
+        108,
+        108,
+        101,
+        99,
+        116,
+        111,
+        114,
+        93,
+        1
+      ]
+    },
+    {
+      "id": "mob-161-1",
+      "definition": "mob-1414-stone-elemental",
+      "x": 2075.44,
+      "y": 8722.8,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-2",
+      "definition": "mob-1414-stone-elemental",
+      "x": 2307.92,
+      "y": 9101.87,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-3",
+      "definition": "mob-1414-stone-elemental",
+      "x": 2106.52,
+      "y": 8659.93,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-4",
+      "definition": "mob-1414-stone-elemental",
+      "x": -9367.97,
+      "y": -2305.7,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-5",
+      "definition": "mob-1431-river-skale",
+      "x": 348.56,
+      "y": -9852.21,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-6",
+      "definition": "mob-1432-skale-broodcaller",
+      "x": 87.37,
+      "y": -10324.52,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-7",
+      "definition": "mob-1431-river-skale",
+      "x": -4523.84,
+      "y": -14776.48,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-8",
+      "definition": "mob-1414-stone-elemental",
+      "x": -13676.61,
+      "y": -10505.09,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-9",
+      "definition": "mob-1414-stone-elemental",
+      "x": -10634.05,
+      "y": -9883.1,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-10",
+      "definition": "mob-1415-hulking-stone-elemental",
+      "x": -10594.51,
+      "y": -14680.52,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-11",
+      "definition": "mob-1414-stone-elemental",
+      "x": -12563.65,
+      "y": -10934.6,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-12",
+      "definition": "mob-1414-stone-elemental",
+      "x": -12673.38,
+      "y": -10027.3,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-13",
+      "definition": "mob-1414-stone-elemental",
+      "x": -13510.91,
+      "y": -12203.66,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-14",
+      "definition": "mob-1414-stone-elemental",
+      "x": -16308.65,
+      "y": -12943.09,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-15",
+      "definition": "mob-1414-stone-elemental",
+      "x": -15636.15,
+      "y": -8508.75,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-16",
+      "definition": "mob-1414-stone-elemental",
+      "x": -16968.09,
+      "y": -10406.24,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-17",
+      "definition": "mob-1415-hulking-stone-elemental",
+      "x": -15532.72,
+      "y": -16298.42,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-18",
+      "definition": "mob-1415-hulking-stone-elemental",
+      "x": -13309.12,
+      "y": -17799.32,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-19",
+      "definition": "mob-1415-hulking-stone-elemental",
+      "x": -18328.67,
+      "y": -13728.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-20",
+      "definition": "mob-1352-type",
+      "x": 5817.9,
+      "y": 11248.0,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0,
+      "level": 3
+    },
+    {
+      "id": "mob-161-21",
+      "definition": "mob-1414-stone-elemental",
+      "x": 4090.63,
+      "y": 12611.44,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-22",
+      "definition": "mob-1352-type",
+      "x": 2401.29,
+      "y": 16615.79,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0,
+      "level": 3
+    },
+    {
+      "id": "mob-161-23",
+      "definition": "mob-1412-ice-elemental",
+      "x": 2013.0,
+      "y": 374.28,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-24",
+      "definition": "mob-1352-type",
+      "x": 8567.02,
+      "y": 12235.11,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0,
+      "level": 3
+    },
+    {
+      "id": "mob-161-25",
+      "definition": "mob-1352-type",
+      "x": 2263.72,
+      "y": 16990.84,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0,
+      "level": 3
+    },
+    {
+      "id": "mob-161-26",
+      "definition": "mob-1412-ice-elemental",
+      "x": -5336.78,
+      "y": -5277.87,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-27",
+      "definition": "mob-1352-type",
+      "x": 7695.67,
+      "y": 13314.62,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0,
+      "level": 3
+    },
+    {
+      "id": "mob-161-28",
+      "definition": "mob-1412-ice-elemental",
+      "x": -7417.76,
+      "y": 4595.28,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-29",
+      "definition": "mob-1412-ice-elemental",
+      "x": -5316.52,
+      "y": -5207.18,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-30",
+      "definition": "mob-1412-ice-elemental",
+      "x": -6152.6,
+      "y": -1826.88,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-31",
+      "definition": "mob-1412-ice-elemental",
+      "x": -10131.53,
+      "y": -10828.18,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-32",
+      "definition": "mob-1414-stone-elemental",
+      "x": 6884.16,
+      "y": 15019.08,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-33",
+      "definition": "mob-1412-ice-elemental",
+      "x": -16211.57,
+      "y": -13015.67,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-34",
+      "definition": "mob-1412-ice-elemental",
+      "x": -12710.62,
+      "y": -17382.4,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-35",
+      "definition": "mob-1412-ice-elemental",
+      "x": -16860.87,
+      "y": -12364.52,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-36",
+      "definition": "mob-1412-ice-elemental",
+      "x": -12912.62,
+      "y": -17466.64,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-37",
+      "definition": "mob-1414-stone-elemental",
+      "x": 6463.12,
+      "y": 14556.77,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-38",
+      "definition": "mob-1412-ice-elemental",
+      "x": -9644.31,
+      "y": -2391.12,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-39",
+      "definition": "mob-1412-ice-elemental",
+      "x": -5710.7,
+      "y": -4369.36,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-40",
+      "definition": "mob-1412-ice-elemental",
+      "x": -5601.46,
+      "y": -4867.33,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-41",
+      "definition": "mob-1412-ice-elemental",
+      "x": -10482.41,
+      "y": -10265.79,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-42",
+      "definition": "mob-1412-ice-elemental",
+      "x": -13219.81,
+      "y": -11843.22,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-43",
+      "definition": "mob-1412-ice-elemental",
+      "x": -10057.42,
+      "y": -10795.77,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-44",
+      "definition": "mob-1412-ice-elemental",
+      "x": 2205.92,
+      "y": 4517.83,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    },
+    {
+      "id": "mob-161-45",
+      "definition": "mob-1412-ice-elemental",
+      "x": -1016.9,
+      "y": 4096.89,
+      "plane": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "effects": 0,
+      "h0023": 1.0
+    }
+  ],
+  "routes": []
+}
