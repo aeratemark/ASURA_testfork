@@ -818,6 +818,12 @@ answers whatever arrives, in whatever order.
   bytes while `sizeof(GameSrv_CreateNamedItem)` is 425. An item name is not a string: the backpack's name
   is a `Gw.dat` template id packed into units (`0x21A8 0xD157 0xB58F 0x166F`), one of which is a lone
   surrogate.
+
+  A second `0x8091` on the same connection is answered **without** `0x0144`. The client registers one
+  inventory per stream id and asserts `!inventory` on a second create (`ItCliApi.cpp(2010)`, build
+  39167, measured 2026-11-09 in `logs/world-8001.log`: two `0x8091` on one connection, the second full
+  answer disconnected the client). The rest of the answer repeats: `0x013F` replaces a bag whose id it
+  already holds (`ItCliBag.cpp(167)`), so the items are placed into a fresh bag.
 * **spawn (`0x8088`, 2 bytes)** -> `INSTANCE_LOAD_SPAWN_POINT` (`0x0196`), 26 bytes:
   `{map_file_id(u32), position(2xf32), plane(u16), unk0, is_cinematic, unk1[8]}`. These two numbers -
   the Gw.dat blob and the coordinate inside it - are what a client needs to load a map at all.
@@ -893,7 +899,7 @@ requests above, the ping, the heartbeat, and a disconnect. The two that carry st
 | `DROP_ITEM` | `0x802C` | 7 | `u32 item_id, u8 count` |
 | `ITEM_MOVE` | `0x8072` | 9 | `u32 item_id, u16 bag_id, u8 slot` |
 | `EQUIP_ITEM` | `0x8030` | 6 | `u32 item_id` |
-| `UNEQUIP_ITEM` | `0x804F` | 6 | `u8, u16, u8` - no item id, and never seen from a live client |
+| `UNEQUIP_ITEM` | `0x804F` | 6 | `u8 equipped_slot, u16 bag_id, u8 slot` |
 | `POSITION_UPDATE` | `0x803D` | 26 | `Vec2f position, u32 plane, Vec2f unk0, u32 unk1` |
 
 `POSITION_UPDATE` is 26 bytes even though the position is in its first twelve: the framer wants the whole
@@ -908,25 +914,37 @@ already moved it in its own model.
 
 `EQUIP_ITEM` carries only an item id: which slot it goes in follows from the item's type (`EquippedItemSlot`,
 `GmInventory.h`). Wearing something moves the row, takes whatever was worn there off into the first free
-carrying slot (and *that* move is echoed, because the client did not make it), and re-sends
-`UPDATE_AGENT_VISUAL_EQUIPMENT` - the one thing the client cannot work out for itself.
-`UNEQUIP_ITEM`'s three fields hold no item id, so what it means is not known - unequipping by dragging arrives
-as `ITEM_MOVE`.
+carrying slot (and *that* move is echoed, because the client did not make it), and answers with
+`UPDATE_AGENT_VISUAL_EQUIPMENT_SLOT` (`0x006F`) for the piece - the one thing the client cannot work out for
+itself. `UNEQUIP_ITEM` is `{equipped_slot, bag_id, slot}`: the item in that equipped-bag slot moves to the
+named bag slot, and the answer is the move plus `0x006F` with 0. The live capture's `0x006F` slots are
+visual, not equipped-bag slots: body 2, legs 4, boots 3, gloves 5, head 6
+(`items-live-20261108-174014.jsonl` seq 23-24, 40-41, 58-59, 72-73, 89-90, 101-102). The live server also
+re-sends energy and energy regeneration (properties 41 and 43) after armour changes; this server has no
+armour-to-energy model, so it updates the piece and leaves the pools where the load block set them.
 
-`DROP_ITEM` is answered by **the stack shrinking and nothing else**: the client sends `count = 1` for a stack
-of a hundred, so the server takes that many off the row, writes it down, prints it, and sends no message at
-all. Three versions have met a live client:
+`DROP_ITEM` is answered from the live server capture
+(`recordings/client/feature/items/items-live-20261108-173913.jsonl` and
+`items-live-20261108-174014.jsonl`). The client sends `count` and the server answers one of two ways:
 
-| what the server sent | what the client did |
+| the drop | what the live server sends |
 |---|---|
-| `ITEM_REMOVE`, `CREATE_NAMED_ITEM` at what was left, `ITEM_MOVE_TO_LOCATION` | crashed; in a later build the same code cloned the item |
-| `WORLD_CREATE_AGENT` for an item agent only | **crashed** - the log's last line is `world -> 0x0020 (99 bytes)` |
-| nothing at all | survived, and the stack went down on its own: the client does its own subtraction |
+| a whole stack | `ITEM_REMOVE {stream, item_id}`, an item `WORLD_CREATE_AGENT` whose model is the item's id, then the drop line on `Channel_Global` |
+| part of a stack | `ITEM_UPDATE_QUANTITY {item_id, remaining}`, `ITEM_UPDATE` (`0x0162`) for a ground record with a fresh id and the dropped count, the item agent for that id, then the drop line |
 
-So a drop sends nothing, and there is no switch to turn the other two back on: both candidates are in no
-capture, and an *item* agent never can be - the single `0x0020` a capture carries is a **player's** (type 1),
-and the one code path that would produce an item agent is the reference's own unfinished drop handler. The
-message a working drop needs is a measurement this project does not have yet.
+The item agent is type 4, `h000B = 0`, `h0027 = 0x34000000`, direction `(1, 0)`, and its `model_id` is the
+item's **id**, which is what makes the client look the item up in its own table
+(`items-live-20261108-173913.jsonl` seq 43). A pickup (`GAME_CMSG_INTERACT_ITEM`, `0x803F`) is answered with
+`AGENT_PROPERTY_UPDATE_INT` 8 = 1 and 39 = the ground agent, the pickup line, `ITEM_PICKED_UP` (`0x0159`,
+`{item_id, agent_id}`), then `ITEM_MOVE_TO_LOCATION` for a whole drop or `ITEM_UPDATE_QUANTITY` for the part
+of a stack, and `WORLD_REMOVE_AGENT` (`items-live-20261108-173913.jsonl` seq 55-63,
+`items-live-20261108-174014.jsonl` seq 156-164). The stream field is 2 in the live capture and 1 in this
+server's load block; the client accepts both, and the server keeps its own constant.
+
+The trash bin is `GAME_CMSG_ITEM_DESTROY` (`0x8069`, 6 bytes, `{item_id: u32}`). The live server deletes the
+row and answers `ITEM_REMOVE {stream, item_id}` (`items-live-20261108-173913.jsonl` seq 192-193), so the
+client's own removal survives the next load. A second destroy of the same id, an unknown id, or a bag's own
+item changes nothing, is logged, and is answered with nothing.
 
 ### Chat: what is sent, and what is only printed
 

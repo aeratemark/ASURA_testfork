@@ -28,9 +28,11 @@
 //!   and told when one leaves (`instance.rs`, `PeerView` and `introduction`);
 //! * the character's inventory, read from rows and built into the reference's messages, including the
 //!   nine items `UPDATE_AGENT_VISUAL_EQUIPMENT` puts on the model (`asura_db::inventory`);
-//! * `GAME_CMSG_DROP_ITEM`, which deducts the stack and sends nothing: the reference's own handler is
-//!   unfinished and the ground agent crashed a live client (`item.rs:243-249`);
-//! * no NPCs, no combat, no quests, no picking anything up.
+//! * `GAME_CMSG_DROP_ITEM` and `GAME_CMSG_INTERACT_ITEM`: a whole stack leaves the bag and becomes a
+//!   ground agent, a part of a stack keeps its row and gets a ground record, and a pickup puts either
+//!   back (`item.rs`, measured against the live server);
+//! * `GAME_CMSG_ITEM_DESTROY`, which deletes the row and answers `ITEM_REMOVE`;
+//! * no NPCs, no combat, no quests.
 //!
 //! The load messages go out even for the parts that are not simulated, because a client that does not
 //! receive them never leaves the loading screen.
@@ -43,6 +45,7 @@ use std::time::{Duration, Instant};
 // reaches them the same way it reaches the domains themselves.
 pub use asura_db::cartography as db_cartography;
 pub use asura_db::game as db_game;
+pub use asura_db::quest as db_quest;
 pub use asura_db::inventory::{self as db_inventory, Inventory};
 pub use asura_db::titles as db_titles;
 pub use asura_db::{placement, PgPool, Uuid};
@@ -61,8 +64,8 @@ pub use tokio::net::{TcpListener, TcpStream};
 // facade that re-exports them, so `asura_world::MapEntry` and `asura_world::map::MapEntry` are
 // the same type. A domain's file is where to look: `item.rs` for items, `chat.rs` for chat.
 //
-// A noun gets its file when it first has code - no empty `skill.rs` or `effects.rs` standing in
-// for something that does not exist yet; until then the noun is a name in a comment, not a module.
+// A noun gets its file when it first has code - no empty `effects.rs` standing in for something that
+// does not exist yet; until then the noun is a name in a comment, not a module.
 // -------------------------------------------------------------------------------------------
 
 /// The map catalogue: one entry per map, and the questions a server answers about it.
@@ -70,12 +73,22 @@ pub mod catalogue;
 /// What a new character is given, from the world pack (`config/World/Vanilla/`).
 pub mod character_defaults;
 pub mod chat;
+pub mod dialog;
+pub mod experience;
+/// Compass strokes and called targets, relayed to the party (`docs/51-compass-and-chat.md`).
+pub mod compass;
 pub mod connection;
 
 pub mod creation;
 pub mod dispatch;
 pub mod instance;
 pub mod item;
+/// The static item definitions a pack carries, indexed by the id an owned row names.
+pub mod item_catalogue;
+/// The meaning of an item's modifier words, with the raw word always preserved.
+pub mod item_modifier;
+/// The inventory rules as a pure model (`docs/50-item-framework.md` §3.2).
+pub mod inventory_model;
 
 /// The client's instance table: the destinations a load tells the client exist (data, D36).
 pub mod instance_table;
@@ -93,7 +106,20 @@ pub mod guild;
 /// The spawn points a map carries, read from the world pack (`config/World/<pack>/.../spawns.json`).
 pub mod map_spawns;
 
+/// NPCs: content-defined bodies the instance owns, shows to each client in range and drives
+/// (`docs/49-npc-framework.md`).
+pub mod npc;
+
+/// The quest content a pack carries: each entry's log text, details, markers and captured variants
+/// (`docs/58-quests.md`).
+pub mod quest;
+
 pub mod player;
+/// Skills: the learned set, the bar, attributes, and what using a skill does (`docs/52-skills.md`).
+pub mod skill;
+/// Talking to an NPC: merchants, collectors and Xunlai storage, their transactions and the gold they move
+/// (`docs/53-npc-services.md`).
+pub mod vendor;
 /// The client's unlockable-PvP-item table: content of this layer, moved out of the wire crate
 /// (`docs/38-layer-decisions.md`, D11).
 pub mod pvp_items;
@@ -107,6 +133,8 @@ pub use connection::*;
 pub use creation::*;
 pub use instance::*;
 pub use item::*;
+pub use item_catalogue::{Catalogue, ItemDefinition};
+pub use item_modifier::{Modifier, ModifierEffect, ModifierWord};
 pub use map::*;
 
 /// The graph API, as the world's start-up and its tests name it: PathGraphs and the two helpers that
@@ -131,6 +159,9 @@ pub mod titles;
 
 /// One agent's position, and the reference's rules for believing a client about it.
 pub mod agent;
+
+/// A player walking to another agent: interact, attack, follow (`0x8039`, `0x8026`, `0x8033`).
+pub mod approach;
 
 /// The path-graph dump: `PathStaticData` written once and loaded without a `Gw.dat`, so a server
 /// machine needs a few megabytes instead of the client's 3.6 GB archive (`asura-world
@@ -437,6 +468,9 @@ mod tests {
             campaign: 1,
             secondary_profession: 0,
             level: 1,
+            experience: 0,
+            skill_points: 0,
+            skill_points_total: 0,
         };
         let frames = player_block(&PlayerBlock {
             name: "Asura",
@@ -448,6 +482,7 @@ mod tests {
             party_id: PARTY_ID,
             traits,
             unlocked: crate::player::UNLOCKED_MAP_ZEROS,
+            loadout: None,
         });
         let created = frames
             .iter()
@@ -476,6 +511,7 @@ mod tests {
             party_id: PARTY_ID,
             traits: db_game::Traits::default(),
             unlocked: crate::player::UNLOCKED_MAP_ZEROS,
+            loadout: None,
         });
         let created = fallback
             .iter()
@@ -497,6 +533,50 @@ mod tests {
     }
 
     #[test]
+    fn the_progress_block_carries_the_characters_stored_experience_and_skill_points() {
+        // The fifteen dwords `GameSrv_UpdatePlayerFactions` sends: experience first, level tenth,
+        // skill points fourteenth and fifteenth. The load used to carry a test value for experience
+        // because no column held it (`docs/54-experience.md`).
+        let traits = db_game::Traits {
+            experience: 68_113,
+            level: 13,
+            skill_points: 12,
+            skill_points_total: 12,
+            ..db_game::Traits::default()
+        };
+        let frames = player_block(&PlayerBlock {
+            name: "Asura",
+            standing: Standing::from_map(&test_map()),
+            inventory: &db_inventory::default_inventory(),
+            started: Instant::now(),
+            player_id: PLAYER_ID,
+            agent_id: AGENT_ID,
+            party_id: PARTY_ID,
+            traits,
+            unlocked: crate::player::UNLOCKED_MAP_ZEROS,
+            loadout: None,
+        });
+        let block = frames
+            .iter()
+            .find(|frame| frame.header() == game::CHARACTER_UPDATE_FACTIONS)
+            .expect("the progress block");
+        let dword = |index: usize| {
+            let at = index * 4;
+            u32::from_le_bytes([
+                block.body()[at],
+                block.body()[at + 1],
+                block.body()[at + 2],
+                block.body()[at + 3],
+            ])
+        };
+        assert_eq!(dword(0), 68_113, "experience");
+        assert_eq!(dword(9), 13, "level");
+        assert_eq!(dword(10), 100, "morale");
+        assert_eq!(dword(13), 12, "skill points held");
+        assert_eq!(dword(14), 12, "skill points earned in total");
+    }
+
+    #[test]
     fn the_block_ends_with_the_message_that_leaves_the_loading_screen() {
         let frames = player_block(&PlayerBlock {
             name: "Asura",
@@ -508,6 +588,7 @@ mod tests {
             party_id: PARTY_ID,
             traits: db_game::Traits::default(),
             unlocked: crate::player::UNLOCKED_MAP_ZEROS,
+            loadout: None,
         });
         assert_eq!(
             frames.last().expect("a block").header(),
@@ -644,6 +725,7 @@ mod tests {
             party_id: PARTY_ID,
             traits: db_game::Traits::default(),
             unlocked: crate::player::UNLOCKED_MAP_ZEROS,
+            loadout: None,
         });
         let named: Vec<u16> = frames
             .iter()
@@ -689,6 +771,97 @@ mod tests {
         );
     }
 
+    /// Every byte the reference sent for the item stream, from
+    /// `recordings/gwps/world/load-stream.log` at `GAME_CMSG_INSTANCE_LOAD_REQUEST_ITEMS`
+    /// (0x0144 and 0x0148, then the inventory through the last 0x013E). The recording's
+    /// 0x0070 hard-mode message after this block is deliberately absent: no live load carries it
+    /// and this server does not send it (`items_block`).
+    const REFERENCE_ITEM_STREAM: &[&str] = &[
+        "44 01 01 00 00",
+        "48 01 01 00 00",
+        "61 01 01 00 00 00 36 B5 01 80 03 01 00 00 00 00 00 00 10 00 20 05 00 00 00 20 00 00 00 01 00 00 00 04 00 A8 21 57 D1 8F B5 6F 16 01 00 14 48 24",
+        "3F 01 01 00 01 00 01 00 14 01 00 00 00",
+        "61 01 02 00 00 00 34 7C 04 00 09 00 00 00 00 00 00 01 02 08 21 00 00 00 00 FD 56 00 00 64 00 00 00 00 00 00",
+        "3E 01 01 00 02 00 00 00 01 00 00",
+        "61 01 09 00 00 00 34 7C 04 00 09 00 00 00 00 00 00 01 02 08 21 00 00 00 00 FD 56 00 00 64 00 00 00 00 00 00",
+        "3E 01 01 00 09 00 00 00 01 00 01",
+        "3F 01 01 00 05 05 02 00 29 00 00 00 00",
+        "3F 01 01 00 03 06 06 00 0C 00 00 00 00",
+        "3F 01 01 00 04 07 03 00 19 00 00 00 00",
+        "3F 01 01 00 04 08 04 00 19 00 00 00 00",
+        "3F 01 01 00 02 15 05 00 09 00 00 00 00",
+        "61 01 03 00 00 00 60 9B 00 80 0F 06 00 00 00 00 00 00 10 20 22 00 00 00 00 A3 06 00 00 01 00 00 00 00 00 00",
+        "5A 01 03 00 00 00 01",
+        "3E 01 01 00 03 00 00 00 05 00 00",
+        "61 01 04 00 00 00 5B 00 00 80 07 13 0B 00 00 00 00 06 10 00 20 00 00 00 00 37 03 00 00 01 00 00 00 00 00 00",
+        "5A 01 04 00 00 00 01",
+        "3E 01 01 00 04 00 00 00 05 00 02",
+        "61 01 05 00 00 00 5E 00 00 80 13 13 0B 00 00 00 00 06 10 00 20 00 00 00 00 88 09 00 00 01 00 00 00 00 00 00",
+        "5A 01 05 00 00 00 01",
+        "3E 01 01 00 05 00 00 00 05 00 03",
+        "61 01 06 00 00 00 5D 00 00 80 10 13 0B 00 00 00 00 06 10 00 20 00 00 00 00 F8 17 00 00 01 00 00 00 00 00 00",
+        "5A 01 06 00 00 00 01",
+        "3E 01 01 00 06 00 00 00 05 00 04",
+        "61 01 07 00 00 00 5A 00 00 80 04 13 0B 00 00 00 00 06 10 00 20 00 00 00 00 63 01 00 00 01 00 00 00 00 00 00",
+        "5A 01 07 00 00 00 01",
+        "3E 01 01 00 07 00 00 00 05 00 05",
+        "61 01 08 00 00 00 5C 00 00 80 0D 13 0B 00 00 00 00 06 10 00 20 00 00 00 00 3E 06 00 00 01 00 00 00 00 00 00",
+        "5A 01 08 00 00 00 01",
+        "3E 01 01 00 08 00 00 00 05 00 06",
+    ];
+
+    fn bytes(hex: &str) -> Vec<u8> {
+        hex.split_whitespace()
+            .map(|byte| u8::from_str_radix(byte, 16).expect("a hex byte"))
+            .collect()
+    }
+
+    /// The reference test the item model must not break: the same frames, in the same order, from
+    /// the same rows, with every byte equal to the capture.
+    #[test]
+    fn the_item_block_from_rows_is_the_reference_stream_byte_for_byte() {
+        let mut frames = vec![
+            game::item_stream_create(ITEM_STREAM, 0),
+            game::item_set_active_weapon_set(ITEM_STREAM, 0),
+        ];
+        frames.extend(inventory_block(&reference_inventory()));
+
+        assert_eq!(frames.len(), REFERENCE_ITEM_STREAM.len(), "frame count");
+        for (index, (frame, expected)) in frames.iter().zip(REFERENCE_ITEM_STREAM).enumerate() {
+            assert_eq!(
+                frame.encode(),
+                bytes(expected),
+                "frame {index} (header {:#06X})",
+                frame.header()
+            );
+        }
+    }
+
+    /// A row written before the catalogue existed has no definition id. It must still rebuild the
+    /// same message: the definition is a reference, not a field the wire reads.
+    #[test]
+    fn an_inventory_written_before_the_catalogue_still_serializes_identically() {
+        let mut inventory = reference_inventory();
+        for item in &mut inventory.items {
+            item.definition_id = None;
+        }
+
+        let mut frames = vec![
+            game::item_stream_create(ITEM_STREAM, 0),
+            game::item_set_active_weapon_set(ITEM_STREAM, 0),
+        ];
+        frames.extend(inventory_block(&inventory));
+        assert_eq!(frames.len(), REFERENCE_ITEM_STREAM.len(), "frame count");
+        for (index, (frame, expected)) in frames.iter().zip(REFERENCE_ITEM_STREAM).enumerate() {
+            assert_eq!(
+                frame.encode(),
+                bytes(expected),
+                "frame {index} (header {:#06X})",
+                frame.header()
+            );
+        }
+    }
+
     #[test]
     fn the_bags_go_out_in_model_order_not_id_order() {
         // The trap the rows are read in the wrong order by: the capture's bags are ids 1, 2, 6, 3, 4, 5,
@@ -701,6 +874,37 @@ mod tests {
             .map(|frame| u16::from_le_bytes([frame.body()[4], frame.body()[5]]))
             .collect();
         assert_eq!(bags, vec![1, 2, 6, 3, 4, 5]);
+    }
+
+    /// The second answer to the same `0x8091` omits only the stream create: the client asserts
+    /// `!inventory` on a second `0x0144` (`ItCliApi.cpp(2010)`, measured 2026-11-09), and the rest
+    /// of the block is the reference's and safe to repeat.
+    #[test]
+    fn a_repeated_item_request_keeps_the_stream_create_out() {
+        let map = test_map();
+        let inventory = reference_inventory();
+        let first = items_block(&map, &inventory, 0);
+        let again = items_block_with_stream(&map, &inventory, 0, false);
+        assert_eq!(first[0].header(), game::ITEM_STREAM_CREATE);
+        assert!(!again
+            .iter()
+            .any(|frame| frame.header() == game::ITEM_STREAM_CREATE));
+        assert_eq!(again[0].header(), game::ITEM_SET_ACTIVE_WEAPON_SET);
+        assert_eq!(again.len() + 1, first.len());
+        assert_eq!(
+            first[1..]
+                .iter()
+                .map(|frame| frame.header())
+                .collect::<Vec<_>>(),
+            again.iter().map(|frame| frame.header()).collect::<Vec<_>>()
+        );
+        assert!(again
+            .iter()
+            .any(|frame| frame.header() == game::CREATE_NAMED_ITEM));
+        assert_eq!(
+            again.last().expect("a block").header(),
+            game::INSTANCE_MANIFEST_DONE
+        );
     }
 
     #[test]
@@ -792,8 +996,7 @@ mod tests {
             } else if from_second <= crate::spawn_scatter() + 0.5 {
                 seen[1] = true;
                 assert!(
-                    standing.direction.1.abs() < 1e-6
-                        && (standing.direction.0 + 1.0).abs() < 1e-6,
+                    standing.direction.1.abs() < 1e-6 && (standing.direction.0 + 1.0).abs() < 1e-6,
                     "half a turn faces -x: {:?}",
                     standing.direction
                 );
@@ -838,11 +1041,11 @@ mod tests {
         };
         let login = Standing::arrival(&map, Some(saved), None).expect("random spawn on login");
         assert!(
-            (login.position.0 - 1.0).hypot(login.position.1 - 2.0)
-                <= crate::spawn_scatter() + 0.5,
+            (login.position.0 - 1.0).hypot(login.position.1 - 2.0) <= crate::spawn_scatter() + 0.5,
             "a saved doorway coordinate must not override the random spawn on login or map travel"
         );
-        let standing = Standing::arrival(&map, Some(saved), Some(arrival.from)).expect("an arrival");
+        let standing =
+            Standing::arrival(&map, Some(saved), Some(arrival.from)).expect("an arrival");
         assert_eq!(
             standing.position,
             (arrival.x, arrival.y),
@@ -913,6 +1116,7 @@ mod tests {
             party_id: PARTY_ID,
             traits: db_game::Traits::default(),
             unlocked: crate::player::UNLOCKED_MAP_ZEROS,
+            loadout: None,
         });
         let agent = frames
             .iter()
@@ -960,14 +1164,24 @@ mod tests {
     }
 
     #[test]
-    fn a_drop_sends_nothing_because_both_candidates_crashed_a_client() {
-        // Not a placeholder: a tripwire. `ITEM_REMOVE` (`0x014D`) and an item agent (`0x0020`, type 4)
-        // each crashed a live client, and neither appears in any capture. If a message is ever added to
-        // this path, it has to arrive with a capture that shows it working -- so this test failing is the
-        // reminder, and the reason is in `drop_messages`' documentation.
-        assert!(
-            drop_messages().is_empty(),
-            "a drop must not put an unmeasured message on the wire"
+    fn an_item_agent_carries_the_id_where_a_player_carries_its_model() {
+        // The live server's item agent (`items-live-20261108-173913.jsonl` seq 43): the item's id is the
+        // model, the type is 4, and the two fields a living agent fills (`h000B`, `h0027`) are zero and
+        // `0x34000000` instead of 5 and `0x41400000`.
+        let frame = game::item_agent(13, 609, (734.5, 7047.3), 0, (1.0, 0.0));
+        assert_eq!(frame.header(), game::WORLD_CREATE_AGENT);
+        let body = frame.body();
+        assert_eq!(
+            u32::from_le_bytes([body[4], body[5], body[6], body[7]]),
+            609,
+            "the item id where a player has its model"
+        );
+        assert_eq!(body[8], game::AGENT_TYPE_ITEM);
+        assert_eq!(body[9], 0, "h000B for an item agent");
+        assert_eq!(
+            u32::from_le_bytes([body[37], body[38], body[39], body[40]]),
+            0x3400_0000,
+            "h0027 for an item agent"
         );
     }
 
@@ -991,6 +1205,15 @@ mod tests {
         assert_eq!(frames[1].body()[2], game::CHANNEL_ALL as u8);
         assert_eq!(game::CHANNEL_GROUP, 11, "Channel_Group");
         assert_eq!(game::CHANNEL_TRADE, 12, "Channel_Trade");
+    }
+
+    #[test]
+    fn the_server_chat_line_uses_the_measured_drop_line_pair() {
+        let frames = game::server_chat_line(PLAYER_ID, game::CHANNEL_GLOBAL, "hello");
+        assert_eq!(frames.len(), 2);
+        assert_eq!(frames[0].header(), game::CHAT_MESSAGE_CORE);
+        assert_eq!(frames[1].header(), game::CHAT_MESSAGE_SERVER);
+        assert_eq!(frames[1].len(), 5, "a word and a byte");
     }
 
     #[test]
@@ -1168,6 +1391,59 @@ mod tests {
         assert_eq!(first, player_agent + 1, "the player's id is taken");
         assert_ne!(first, second);
         assert_ne!(first, player_agent);
+    }
+
+    #[test]
+    fn npc_bodies_exist_before_players_and_share_no_agent_id() {
+        // R29: the bodies are there when the instance is; a joining player and a dropped item take the
+        // ids no body holds, and the joining client's arrival carries each body's measured burst with
+        // the definition in front of the first body only (`crate::npc::burst`).
+        use crate::npc::content::tests::{definition, map, placement, sight};
+        let map_entry = test_map();
+        let content = crate::npc::NpcContent::assemble(
+            sight(),
+            vec![definition("guard", 0x5B3)],
+            vec![map(
+                map_entry.map_id,
+                vec![
+                    placement("a", "guard", (0.0, 0.0)),
+                    placement("b", "guard", (1.0, 0.0)),
+                ],
+            )],
+        )
+        .expect("assembles");
+        let world = crate::npc::NpcWorld::new(std::sync::Arc::new(content), PathGraphs::empty())
+            .expect("the committed behavior script loads");
+        let instance = Instance::with_npcs(map_entry.clone(), Some(&world));
+        assert_eq!(instance.npc_count(), 2);
+        assert!(instance.has_agent(2) && instance.has_agent(3));
+        let (outbox, _inbox) = tokio::sync::mpsc::unbounded_channel();
+        let (orders, _to_do) = tokio::sync::mpsc::unbounded_channel();
+        let (player_id, player_agent) = instance.join(
+            "test".to_string(),
+            Uuid::nil(),
+            Standing::from_map(&map_entry),
+            [0; 9],
+            outbox,
+            orders,
+        );
+        assert_eq!(player_agent, 1, "the lowest id no body holds");
+        assert_eq!(instance.allocate_agent_id(), 4, "past the bodies");
+        let arrival = instance.npc_arrival(player_id, (0.0, 0.0));
+        let headers: Vec<u16> = arrival
+            .iter()
+            .flat_map(|(_, frames)| frames.iter().map(|frame| frame.header()))
+            .collect();
+        assert_eq!(
+            headers,
+            vec![0x56, 0x57, 0x9B, 0xF0, 0x20, 0x6D, 0x9B, 0xF0, 0x20, 0x6D]
+        );
+        assert!(instance.leave(player_id));
+        assert_eq!(
+            instance.npc_count(),
+            2,
+            "the bodies stay when the player goes"
+        );
     }
 
     #[test]

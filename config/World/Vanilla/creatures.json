@@ -1,0 +1,39 @@
+{
+  "note": "How a hostile creature fights (crates/asura-world/src/npc/fight.rs). None of these is measured: no capture this tree holds shows the live server's aggro, leash or call-for-help rules, so each value says what it was chosen to do. A creature's own numbers (health, armor, attack, skills) are its definition's combat block in npcs/definitions.json.",
+  "aggro_range": {
+    "value": 1000,
+    "doc": "A creature notices a living player within this distance of it, in map units. About the client's aggro bubble on the compass (the earshot circle)."
+  },
+  "assist_range": {
+    "value": 600,
+    "doc": "When a creature notices a player, every idle creature within this distance of it joins the fight on the same player: a group fights together."
+  },
+  "leash_range": {
+    "value": 3000,
+    "doc": "A creature that is this far from where it was placed gives up, stops attacking and walks back; at home it is restored to full health with nothing on it."
+  },
+  "repath_ms": {
+    "value": 700,
+    "doc": "How often a chase asks the path finder again, in milliseconds, when its quarry keeps moving."
+  },
+  "repath_distance": {
+    "value": 120,
+    "doc": "A chase asks again sooner once the quarry is this far from the point it was walking to."
+  },
+  "skill_ms": {
+    "value": 1000,
+    "doc": "How often a creature in reach tries its skills, in milliseconds. The fight refuses one still recharging or too costly, so this only bounds how often it asks."
+  },
+  "approach": {
+    "value": 0.8,
+    "doc": "A creature walks to within this share of its reach (melee, bow or spell range from combat.json) before it stops to fight, so a step by its quarry does not put it out of reach at once."
+  },
+  "respawn_seconds": {
+    "value": 0,
+    "doc": "How long a dead creature lies before it stands up where it was placed. 0 is never, as on the live server, where a cleared area stays cleared until the instance closes. A test server can set a time here."
+  },
+  "home_radius": {
+    "value": 100,
+    "doc": "A creature walking back is home once it is this close to where it was placed."
+  }
+}

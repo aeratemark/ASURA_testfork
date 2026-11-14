@@ -1,0 +1,986 @@
+{
+  "note": "The NPCs that open a trade window or the Xunlai storage window when a player talks to them (crates/asura-world/src/vendor/). An NPC is found by its map and its name: the placement's literal name in maps/.../npcs.json, compared without a bracketed title such as ' [Merchant]'. Every item row is the full CREATE_NAMED_ITEM a window declares; a purchase or an exchange gives the player a copy under a new id. Written by tools/vendors-from-preforged.py.",
+  "fields": {
+    "items": "Item rows by key: file_id, item_type, dye_tint, dye_colors, materials, unk1, flags, value, model_id, name (coded units), modifiers (dwords), and the items.json id it is, when it is one.",
+    "merchants": "One per merchant: its map, its name, and the keys of the items it sells, in the order its window lists them. A merchant also buys what a player carries (see sell).",
+    "collectors": "One per collector: its map, its name, the trophy it takes, how many per offer, the coded line it says over its offers, and its offers (a reward key and the primary profession it is for, 0 for any).",
+    "storage": "The NPCs that open Xunlai storage: a map (null for every map) and a name.",
+    "sell": "What a merchant buys back: every item in a carrying bag with a value above 0, except the models listed in unsellable_models."
+  },
+  "rules": {
+    "service_range": {
+      "value": 300.0,
+      "doc": "How far, in map units, a player may stand from the NPC whose window is open for a transaction or a storage move to be accepted. The client closes the window when the player walks away; the server checks it again. Chosen, not measured."
+    },
+    "buy_scale": {
+      "value": 1.0,
+      "doc": "The price scale a merchant's buy pane carries (0x00CA). The client asks value x scale x 2 for an item, and so does the server. 1.0 in every live merchant window.",
+      "immutable": true
+    },
+    "carried_gold_max": {
+      "value": 100000,
+      "doc": "The most gold a character carries. A sale or a withdrawal that would pass it is refused.",
+      "immutable": true
+    },
+    "stored_gold_max": {
+      "value": 1000000,
+      "doc": "The most gold storage holds. A deposit that would pass it is refused.",
+      "immutable": true
+    },
+    "stack_max": {
+      "value": 250,
+      "doc": "The largest stack of a stackable item (flags bit 0x80000) a purchase may make.",
+      "immutable": true
+    }
+  },
+  "unsellable_models": [2822, 1101],
+  "items": [
+    {
+      "id": "accursed_icon_1049",
+      "file_id": 2147524679,
+      "item_type": 12,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 536870913,
+      "value": 9,
+      "model_id": 1049,
+      "name": [9016, 51469, 48393, 29549],
+      "modifiers": [1657275136]
+    },
+    {
+      "id": "ascalon_longbow_426",
+      "file_id": 2147493028,
+      "item_type": 5,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 572522497,
+      "value": 9,
+      "model_id": 426,
+      "name": [33025, 5483, 59127, 45657, 11859],
+      "modifiers": [639107328, 616038656, 2760378887]
+    },
+    {
+      "id": "baked_husk",
+      "file_id": 2147619918,
+      "item_type": 30,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 444,
+      "unk1": 1,
+      "flags": 537395777,
+      "value": 3,
+      "model_id": 433,
+      "name": [10508],
+      "modifiers": [],
+      "definition": "baked_husk"
+    },
+    {
+      "id": "battle_axe_0",
+      "file_id": 2147493136,
+      "item_type": 2,
+      "dye_tint": 6,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 570425345,
+      "value": 9,
+      "model_id": 0,
+      "name": [8583, 52699, 47070, 13469],
+      "modifiers": [616038912, 2760378885]
+    },
+    {
+      "id": "battle_axe_1",
+      "file_id": 2147493136,
+      "item_type": 2,
+      "dye_tint": 6,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 570425345,
+      "value": 9,
+      "model_id": 1,
+      "name": [8584, 47822, 36391, 18503],
+      "modifiers": [616038912, 2760378885]
+    },
+    {
+      "id": "belt_pouch_33",
+      "file_id": 2147595577,
+      "item_type": 3,
+      "dye_tint": 1,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 536870913,
+      "value": 5,
+      "model_id": 33,
+      "name": [8617, 38047, 34623, 17702],
+      "modifiers": [608699649]
+    },
+    {
+      "id": "bone_staff_2871",
+      "file_id": 2147580245,
+      "item_type": 26,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 572522497,
+      "value": 9,
+      "model_id": 2871,
+      "name": [9875, 62885, 34126, 23550],
+      "modifiers": [616039168, 647495681, 1657275136, 2760377603]
+    },
+    {
+      "id": "crimson_carapace_shield_2801",
+      "file_id": 2147499097,
+      "item_type": 24,
+      "dye_tint": 3,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 536870913,
+      "value": 9,
+      "model_id": 2801,
+      "name": [9785, 51964, 47793, 17923],
+      "modifiers": [2747794432]
+    },
+    {
+      "id": "devourer_egg_2556",
+      "file_id": 2147595682,
+      "item_type": 21,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 537399809,
+      "value": 0,
+      "model_id": 2556,
+      "name": [9548, 61784, 56161, 30436],
+      "modifiers": []
+    },
+    {
+      "id": "divine_symbol_1192",
+      "file_id": 2147576157,
+      "item_type": 12,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 536870913,
+      "value": 9,
+      "model_id": 1192,
+      "name": [9125, 47834, 44559, 30681],
+      "modifiers": [1657275136]
+    },
+    {
+      "id": "earth_scroll_1123",
+      "file_id": 2147607047,
+      "item_type": 12,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 536870913,
+      "value": 9,
+      "model_id": 1123,
+      "name": [9071, 56605, 53493, 16708],
+      "modifiers": [1657275136]
+    },
+    {
+      "id": "earth_scroll_1142",
+      "file_id": 2147607047,
+      "item_type": 12,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 536870913,
+      "value": 9,
+      "model_id": 1142,
+      "name": [9081, 41307, 45782, 2021],
+      "modifiers": [1657275136]
+    },
+    {
+      "id": "fire_wand_2726",
+      "file_id": 2147577859,
+      "item_type": 22,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 570425345,
+      "value": 9,
+      "model_id": 2726,
+      "name": [9715, 49925, 49040, 19253],
+      "modifiers": [616039680, 647495684, 2760377603]
+    },
+    {
+      "id": "flame_artifact_1152",
+      "file_id": 2147573179,
+      "item_type": 12,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 536870913,
+      "value": 9,
+      "model_id": 1152,
+      "name": [9092, 62268, 47157, 17453],
+      "modifiers": [1657275136]
+    },
+    {
+      "id": "flute",
+      "file_id": 2147595645,
+      "item_type": 12,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 536870913,
+      "value": 2,
+      "model_id": 1101,
+      "name": [9049, 46336, 60056, 8468],
+      "modifiers": [1657274624]
+    },
+    {
+      "id": "focus_pre_searing",
+      "file_id": 2147524679,
+      "item_type": 12,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 536871425,
+      "value": 50,
+      "model_id": 957,
+      "name": [8948, 59277, 37384, 3232],
+      "modifiers": [1657275136]
+    },
+    {
+      "id": "gift_giver_pinn_37798",
+      "file_id": 2147862412,
+      "item_type": 30,
+      "dye_tint": 0,
+      "dye_colors": 11,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 537531137,
+      "value": 0,
+      "model_id": 37798,
+      "name": [33027, 2634],
+      "modifiers": [663224654]
+    },
+    {
+      "id": "gift_giver_pinn_37799",
+      "file_id": 2147676929,
+      "item_type": 9,
+      "dye_tint": 0,
+      "dye_colors": 3,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 554308353,
+      "value": 0,
+      "model_id": 37799,
+      "name": [33027, 2636],
+      "modifiers": [641204224, 609746945, 663224655]
+    },
+    {
+      "id": "gift_giver_pinn_37800",
+      "file_id": 2147676929,
+      "item_type": 9,
+      "dye_tint": 0,
+      "dye_colors": 3,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 554308353,
+      "value": 0,
+      "model_id": 37800,
+      "name": [33027, 2638],
+      "modifiers": [641204224, 609746945, 663224656]
+    },
+    {
+      "id": "gift_giver_pinn_37801",
+      "file_id": 2147676929,
+      "item_type": 9,
+      "dye_tint": 0,
+      "dye_colors": 3,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 554308353,
+      "value": 0,
+      "model_id": 37801,
+      "name": [33027, 2640],
+      "modifiers": [641204224, 609746945, 663224657]
+    },
+    {
+      "id": "gift_giver_pinn_37802",
+      "file_id": 2147676929,
+      "item_type": 9,
+      "dye_tint": 0,
+      "dye_colors": 3,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 554308353,
+      "value": 0,
+      "model_id": 37802,
+      "name": [33027, 2642],
+      "modifiers": [641204224, 609746945, 663224658]
+    },
+    {
+      "id": "gift_giver_pinn_37803",
+      "file_id": 2147676929,
+      "item_type": 9,
+      "dye_tint": 0,
+      "dye_colors": 3,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 554308353,
+      "value": 0,
+      "model_id": 37803,
+      "name": [33027, 2644],
+      "modifiers": [641204224, 609746945, 663224659]
+    },
+    {
+      "id": "gift_giver_pinn_37804",
+      "file_id": 2147676929,
+      "item_type": 9,
+      "dye_tint": 0,
+      "dye_colors": 3,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 554308353,
+      "value": 0,
+      "model_id": 37804,
+      "name": [33027, 2646],
+      "modifiers": [641204224, 609746945, 663224660]
+    },
+    {
+      "id": "gift_giver_pinn_37805",
+      "file_id": 2147676929,
+      "item_type": 9,
+      "dye_tint": 0,
+      "dye_colors": 3,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 554308353,
+      "value": 0,
+      "model_id": 37805,
+      "name": [33027, 2648],
+      "modifiers": [641204224, 609746945, 663224661]
+    },
+    {
+      "id": "grawl_necklace",
+      "file_id": 2147607124,
+      "item_type": 30,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 448,
+      "unk1": 1,
+      "flags": 537395777,
+      "value": 3,
+      "model_id": 432,
+      "name": [10506],
+      "modifiers": [],
+      "definition": "grawl_necklace"
+    },
+    {
+      "id": "healing_ankh_1211",
+      "file_id": 2147570929,
+      "item_type": 12,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 536870913,
+      "value": 9,
+      "model_id": 1211,
+      "name": [9136, 49371, 38812, 6638],
+      "modifiers": [1657275136]
+    },
+    {
+      "id": "holy_rod_2758",
+      "file_id": 2147578552,
+      "item_type": 22,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 570425345,
+      "value": 9,
+      "model_id": 2758,
+      "name": [9743, 37297, 43052, 14845],
+      "modifiers": [616039680, 647495684, 2760377603]
+    },
+    {
+      "id": "icy_lodestone",
+      "file_id": 2147607112,
+      "item_type": 30,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 450,
+      "unk1": 1,
+      "flags": 537395777,
+      "value": 3,
+      "model_id": 424,
+      "name": [10479],
+      "modifiers": [],
+      "definition": "icy_lodestone"
+    },
+    {
+      "id": "idol_1029",
+      "file_id": 2147570926,
+      "item_type": 12,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 536870913,
+      "value": 9,
+      "model_id": 1029,
+      "name": [9000, 37721, 50810, 18469],
+      "modifiers": [1657275136]
+    },
+    {
+      "id": "inscribed_staff_2830",
+      "file_id": 2147524393,
+      "item_type": 26,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 572522497,
+      "value": 9,
+      "model_id": 2830,
+      "name": [9826, 45886, 36600, 9044],
+      "modifiers": [616039936, 647495680, 1657275136, 2760377603]
+    },
+    {
+      "id": "jeweled_chalice_1008",
+      "file_id": 2147573176,
+      "item_type": 12,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 536870913,
+      "value": 9,
+      "model_id": 1008,
+      "name": [8987, 56631, 46909, 32754],
+      "modifiers": [1657275136]
+    },
+    {
+      "id": "kit_2989",
+      "file_id": 2147614229,
+      "item_type": 29,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 553648641,
+      "value": 50,
+      "model_id": 2989,
+      "name": [10008, 53131, 41023, 6395],
+      "modifiers": [635961600, 609746969]
+    },
+    {
+      "id": "kit_2993",
+      "file_id": 2147562877,
+      "item_type": 29,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 553648641,
+      "value": 20,
+      "model_id": 2993,
+      "name": [10013, 44808, 49094, 26605],
+      "modifiers": [635962112, 609746954]
+    },
+    {
+      "id": "krytan_gloves_1426",
+      "file_id": 2147484319,
+      "item_type": 13,
+      "dye_tint": 8,
+      "dye_colors": 11,
+      "materials": 39,
+      "unk1": 1,
+      "flags": 536870919,
+      "value": 9,
+      "model_id": 1426,
+      "name": [33026, 2965],
+      "modifiers": [1657275648, 2747795200]
+    },
+    {
+      "id": "krytan_leggings_2268",
+      "file_id": 2147484320,
+      "item_type": 19,
+      "dye_tint": 8,
+      "dye_colors": 11,
+      "materials": 39,
+      "unk1": 2,
+      "flags": 536870919,
+      "value": 9,
+      "model_id": 2268,
+      "name": [33026, 2966],
+      "modifiers": [1659371776, 2747795200]
+    },
+    {
+      "id": "krytan_robes_651",
+      "file_id": 2147484318,
+      "item_type": 7,
+      "dye_tint": 8,
+      "dye_colors": 11,
+      "materials": 39,
+      "unk1": 3,
+      "flags": 536870919,
+      "value": 9,
+      "model_id": 651,
+      "name": [33026, 2964],
+      "modifiers": [1657275648, 2747795200]
+    },
+    {
+      "id": "merchant_stock_2110",
+      "file_id": 2147595658,
+      "item_type": 21,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 537395713,
+      "value": 100,
+      "model_id": 2110,
+      "name": [9401, 53264, 55986, 21848],
+      "modifiers": []
+    },
+    {
+      "id": "skale_fin",
+      "file_id": 2147607120,
+      "item_type": 30,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 449,
+      "unk1": 1,
+      "flags": 537395777,
+      "value": 3,
+      "model_id": 429,
+      "name": [10502],
+      "modifiers": [],
+      "definition": "skale_fin"
+    },
+    {
+      "id": "spider_leg",
+      "file_id": 2147607106,
+      "item_type": 30,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 444,
+      "unk1": 1,
+      "flags": 537395777,
+      "value": 3,
+      "model_id": 422,
+      "name": [10474],
+      "modifiers": [],
+      "definition": "spider_leg"
+    },
+    {
+      "id": "starter_shield",
+      "file_id": 2147499097,
+      "item_type": 24,
+      "dye_tint": 3,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 536875009,
+      "value": 0,
+      "model_id": 2822,
+      "name": [9814, 38279, 61274, 607],
+      "modifiers": [2747794176]
+    },
+    {
+      "id": "truncheon_2668",
+      "file_id": 2147578585,
+      "item_type": 22,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 570425345,
+      "value": 9,
+      "model_id": 2668,
+      "name": [9667, 50270, 43071, 13788],
+      "modifiers": [616040192, 647495682, 2760377603]
+    },
+    {
+      "id": "unnatural_seed",
+      "file_id": 2147607119,
+      "item_type": 30,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 448,
+      "unk1": 1,
+      "flags": 537395777,
+      "value": 3,
+      "model_id": 428,
+      "name": [10499],
+      "modifiers": [],
+      "definition": "unnatural_seed"
+    },
+    {
+      "id": "vial_of_dye_gray",
+      "file_id": 2147493031,
+      "item_type": 10,
+      "dye_tint": 0,
+      "dye_colors": 11,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 554172929,
+      "value": 25,
+      "model_id": 918,
+      "name": [8910, 62060, 62927, 13357],
+      "modifiers": [618138369, 619184139]
+    },
+    {
+      "id": "water_staff_2911",
+      "file_id": 2147524393,
+      "item_type": 26,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 0,
+      "unk1": 0,
+      "flags": 572522497,
+      "value": 9,
+      "model_id": 2911,
+      "name": [9921, 59853, 46520, 2984],
+      "modifiers": [616039168, 647495681, 1657275136, 2760377603]
+    },
+    {
+      "id": "worn_belt",
+      "file_id": 2147619912,
+      "item_type": 30,
+      "dye_tint": 0,
+      "dye_colors": 0,
+      "materials": 445,
+      "unk1": 1,
+      "flags": 537395777,
+      "value": 3,
+      "model_id": 427,
+      "name": [10494],
+      "modifiers": [],
+      "definition": "worn_belt"
+    }
+  ],
+  "merchants": [
+    {
+      "map": 148,
+      "npc": "Sanura",
+      "stock": [
+        "focus_pre_searing",
+        "starter_shield",
+        "vial_of_dye_gray",
+        "kit_2993",
+        "kit_2989",
+        "merchant_stock_2110",
+        "flute"
+      ]
+    },
+    {
+      "map": 163,
+      "npc": "Riley",
+      "stock": [
+        "focus_pre_searing",
+        "starter_shield",
+        "vial_of_dye_gray",
+        "kit_2993",
+        "kit_2989",
+        "merchant_stock_2110",
+        "flute"
+      ]
+    },
+    {
+      "map": 162,
+      "npc": "Vencel",
+      "stock": [
+        "focus_pre_searing",
+        "starter_shield",
+        "vial_of_dye_gray",
+        "kit_2993",
+        "kit_2989",
+        "merchant_stock_2110",
+        "flute"
+      ]
+    },
+    {
+      "map": 166,
+      "npc": "Gram",
+      "stock": [
+        "focus_pre_searing",
+        "starter_shield",
+        "vial_of_dye_gray",
+        "kit_2993",
+        "kit_2989",
+        "merchant_stock_2110",
+        "flute"
+      ]
+    },
+    {
+      "map": 164,
+      "npc": "Spence",
+      "stock": [
+        "focus_pre_searing",
+        "starter_shield",
+        "vial_of_dye_gray",
+        "kit_2993",
+        "kit_2989",
+        "merchant_stock_2110",
+        "flute"
+      ]
+    },
+    {
+      "map": 165,
+      "npc": "Laren",
+      "stock": [
+        "focus_pre_searing",
+        "starter_shield",
+        "vial_of_dye_gray",
+        "kit_2993",
+        "kit_2989",
+        "merchant_stock_2110",
+        "flute"
+      ]
+    },
+    {
+      "map": 146,
+      "npc": "Hamish",
+      "stock": [
+        "focus_pre_searing",
+        "starter_shield",
+        "vial_of_dye_gray",
+        "kit_2993",
+        "kit_2989",
+        "merchant_stock_2110",
+        "flute"
+      ]
+    }
+  ],
+  "collectors": [
+    {
+      "map": 146,
+      "npc": "Brownlow",
+      "trophy": "skale_fin",
+      "cost": 5,
+      "heading": [11059, 55010, 55495, 2666, 266, 10502, 1, 257, 261],
+      "offers": [
+        {
+          "reward": "belt_pouch_33",
+          "profession": 0
+        },
+        {
+          "reward": "devourer_egg_2556",
+          "profession": 0
+        }
+      ]
+    },
+    {
+      "map": 146,
+      "npc": "Humphreys",
+      "trophy": "worn_belt",
+      "cost": 5,
+      "heading": [11059, 55010, 55495, 2666, 266, 10494, 1, 257, 261],
+      "offers": [
+        {
+          "reward": "belt_pouch_33",
+          "profession": 0
+        },
+        {
+          "reward": "inscribed_staff_2830",
+          "profession": 0
+        },
+        {
+          "reward": "battle_axe_1",
+          "profession": 0
+        },
+        {
+          "reward": "holy_rod_2758",
+          "profession": 0
+        },
+        {
+          "reward": "crimson_carapace_shield_2801",
+          "profession": 0
+        },
+        {
+          "reward": "fire_wand_2726",
+          "profession": 0
+        }
+      ]
+    },
+    {
+      "map": 146,
+      "npc": "Jacobs",
+      "trophy": "baked_husk",
+      "cost": 3,
+      "heading": [11059, 55010, 55495, 2666, 266, 10508, 1, 257, 259],
+      "offers": [
+        {
+          "reward": "accursed_icon_1049",
+          "profession": 0
+        },
+        {
+          "reward": "flame_artifact_1152",
+          "profession": 0
+        },
+        {
+          "reward": "healing_ankh_1211",
+          "profession": 0
+        }
+      ]
+    },
+    {
+      "map": 146,
+      "npc": "Kaylee",
+      "trophy": "grawl_necklace",
+      "cost": 3,
+      "heading": [11059, 55010, 55495, 2666, 266, 10506, 1, 257, 259],
+      "offers": [
+        {
+          "reward": "jeweled_chalice_1008",
+          "profession": 0
+        },
+        {
+          "reward": "idol_1029",
+          "profession": 0
+        },
+        {
+          "reward": "earth_scroll_1142",
+          "profession": 0
+        },
+        {
+          "reward": "divine_symbol_1192",
+          "profession": 0
+        }
+      ]
+    },
+    {
+      "map": 146,
+      "npc": "Walden",
+      "trophy": "unnatural_seed",
+      "cost": 3,
+      "heading": [11059, 55010, 55495, 2666, 266, 10499, 1, 257, 259],
+      "offers": [
+        {
+          "reward": "bone_staff_2871",
+          "profession": 0
+        },
+        {
+          "reward": "truncheon_2668",
+          "profession": 0
+        },
+        {
+          "reward": "earth_scroll_1123",
+          "profession": 0
+        },
+        {
+          "reward": "water_staff_2911",
+          "profession": 0
+        },
+        {
+          "reward": "battle_axe_0",
+          "profession": 0
+        },
+        {
+          "reward": "ascalon_longbow_426",
+          "profession": 0
+        }
+      ]
+    },
+    {
+      "map": 161,
+      "npc": "Savich",
+      "trophy": "icy_lodestone",
+      "cost": 3,
+      "heading": [11059, 55010, 55495, 2666, 266, 10479, 1, 257, 259],
+      "offers": [
+        {
+          "reward": "krytan_gloves_1426",
+          "profession": 6
+        }
+      ]
+    },
+    {
+      "map": 166,
+      "npc": "Hatcher",
+      "trophy": "unnatural_seed",
+      "cost": 5,
+      "heading": [11059, 55010, 55495, 2666, 266, 10499, 1, 257, 261],
+      "offers": [
+        {
+          "reward": "krytan_robes_651",
+          "profession": 6
+        }
+      ]
+    },
+    {
+      "map": 166,
+      "npc": "Varis",
+      "trophy": "spider_leg",
+      "cost": 3,
+      "heading": [11059, 55010, 55495, 2666, 266, 10474, 1, 257, 259],
+      "offers": [
+        {
+          "reward": "krytan_leggings_2268",
+          "profession": 6
+        }
+      ]
+    },
+    {
+      "map": 148,
+      "npc": "Gift-Giver Pinn",
+      "trophy": "gift_giver_pinn_37798",
+      "cost": 1,
+      "heading": [33027, 2659, 48104, 35009, 18455, 266, 33027, 2634, 1, 257, 257],
+      "offers": [
+        {
+          "reward": "gift_giver_pinn_37799",
+          "profession": 0
+        },
+        {
+          "reward": "gift_giver_pinn_37800",
+          "profession": 0
+        },
+        {
+          "reward": "gift_giver_pinn_37801",
+          "profession": 0
+        },
+        {
+          "reward": "gift_giver_pinn_37802",
+          "profession": 0
+        },
+        {
+          "reward": "gift_giver_pinn_37803",
+          "profession": 0
+        },
+        {
+          "reward": "gift_giver_pinn_37804",
+          "profession": 0
+        },
+        {
+          "reward": "gift_giver_pinn_37805",
+          "profession": 0
+        }
+      ]
+    }
+  ],
+  "storage": [
+    {
+      "map": null,
+      "npc": "Xunlai Agent"
+    },
+    {
+      "map": null,
+      "npc": "Xunlai Chest"
+    }
+  ]
+}

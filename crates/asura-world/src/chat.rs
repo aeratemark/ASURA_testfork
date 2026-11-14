@@ -1,12 +1,88 @@
 //! Chat: spoken lines, and the command table they arrive through.
 //!
 //! The reference has no chat handler; it prints and answers into its own log
-//! (`docs/HANDOFF.md`). This module is that half, plus the `!`/`#`/`$` channel rule and the
-//! `/maps`, `/stuck` and `/tp` command table ([`Command`], [`command`]) a player types into a
+//! (`docs/HANDOFF.md`). This module is that half, plus the `!`/`#`/`$` channel rule, the `"` whisper
+//! and the `/maps`, `/stuck` and `/tp` command table ([`Command`], [`command`]) a player types into a
 //! chat line. The travel `/tp` starts lives in `travel.rs`; this module only decides which
-//! command a line names.
+//! command a line names. The party channel, the whisper, `/roll` and `/age` follow preforged
+//! (`docs/51-compass-and-chat.md`).
 
 use crate::*;
+
+/// The file inside a pack that holds the chat rules.
+pub const CHAT_FILE: &str = "chat.json";
+
+/// The values the chat commands decide by: the pack's `chat.json`.
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+pub struct ChatRules {
+    /// Free text for whoever opens the file.
+    #[serde(default)]
+    pub note: Option<String>,
+    /// The fewest sides `/roll` accepts.
+    pub roll_min_sides: crate::character_defaults::Value<u32>,
+    /// The most sides `/roll` accepts.
+    pub roll_max_sides: crate::character_defaults::Value<u32>,
+    /// The most characters a whisper's recipient name may have.
+    pub whisper_name_chars: crate::character_defaults::Value<usize>,
+}
+
+/// Read `<pack>/chat.json`.
+pub fn load_chat_rules(pack: &std::path::Path) -> Result<ChatRules, String> {
+    let path = pack.join(CHAT_FILE);
+    let text = std::fs::read_to_string(&path)
+        .map_err(|err| format!("{} is not readable: {err}", path.display()))?;
+    serde_json::from_str(&text)
+        .map_err(|err| format!("{} is not a chat rules file: {err}", path.display()))
+}
+
+/// The chat rules in force, read once per process. A missing or broken file is logged once and answers
+/// `None`: `/roll` and a whisper are then refused with a logged reason.
+pub fn chat_rules() -> Option<&'static ChatRules> {
+    static IN_FORCE: std::sync::OnceLock<Option<ChatRules>> = std::sync::OnceLock::new();
+    IN_FORCE
+        .get_or_init(|| {
+            let pack = crate::spawns::pack();
+            match load_chat_rules(&pack) {
+                Ok(rules) => {
+                    eprintln!("asura: chat rules from {}", pack.display());
+                    Some(rules)
+                }
+                Err(err) => {
+                    eprintln!("asura: {err}; /roll and whispers are refused");
+                    None
+                }
+            }
+        })
+        .as_ref()
+}
+
+/// A whisper line's two halves: the client sends `<name>,<message>` after the `"` channel mark. `None`
+/// when either half is empty or the name is longer than `name_chars`.
+pub fn whisper_parts(line: &str, name_chars: usize) -> Option<(&str, &str)> {
+    let (name, message) = line.split_once(',')?;
+    let (name, message) = (name.trim(), message.trim());
+    let fits = !name.is_empty() && name.chars().count() <= name_chars;
+    (fits && !message.is_empty()).then_some((name, message))
+}
+
+/// `/roll`'s argument as a number of sides within `rules`, or `None`.
+pub fn roll_sides(argument: &str, rules: &ChatRules) -> Option<u32> {
+    let sides: u32 = argument.parse().ok()?;
+    (rules.roll_min_sides.value..=rules.roll_max_sides.value)
+        .contains(&sides)
+        .then_some(sides)
+}
+
+/// A die's face for 32 random bits: 1 to `sides`. `sides` is never 0 (`roll_sides`).
+pub fn roll_face(random: u32, sides: u32) -> u32 {
+    1 + random % sides
+}
+
+/// One line of the server's own, in the player's chat log and in the console.
+pub(crate) fn tell(player: &Player, line: &str) -> Vec<Frame> {
+    eprintln!("world: chat: to {:?}: {line}", player.name);
+    game::server_chat_line(player.player_id, game::CHANNEL_GLOBAL, line)
+}
 
 /// The reference's `/maps`, line for line (`GmCommand_ListTargets`).
 ///
@@ -170,10 +246,58 @@ pub const COMMANDS: &[Command] = &[
         answer: "`/guild create` opens the Guild Registration window (0x00C4, 0x0084, 0x00CA, 0x00C3 {8, 0})",
     },
     Command {
+        names: &["item"],
+        reference: "none -- an ASURA test command, not in the reference",
+        takes_argument: true,
+        answer: "gives one live-verified catalogue definition (0x0161 then 0x014B) in the next free carrying slot; `/item clear` empties the carrying bags (0x014D per item)",
+    },
+    Command {
         names: &["resign"],
         reference: "the client's own /resign chat line; the live server's batch is `multiplay-live-20261106-200638.jsonl`",
         takes_argument: false,
         answer: "the member resigns, then dies; when every member has resigned the party is defeated (0x01D9) and the leader's 0x80A7 returns it to its last outpost",
+    },
+    Command {
+        names: &["roll"],
+        reference: "none -- preforged's /roll (gw_chat_commands.h), not in the reference",
+        takes_argument: true,
+        answer: "one line on the emote channel to the whole instance: `<name> rolls <face> on a <sides>-sided die.`; the bounds are the pack's chat.json",
+    },
+    Command {
+        names: &["age"],
+        reference: "none -- preforged's /age (gw_chat_commands.h), not in the reference",
+        takes_argument: false,
+        answer: "a server line to the asker: minutes this connection has been in this map",
+    },
+    Command {
+        names: &["skill"],
+        reference: "none -- an ASURA test command (owner, 2026-11-12), standing in for the quests and trainers that teach skills",
+        takes_argument: true,
+        answer: "`/skill list`, `/skill learn <id|all>`, `/skill forget <id>`: the learned set (0x00DB) with 0x00DC or 0x00DD per skill, and a server line",
+    },
+    Command {
+        names: &["npc"],
+        reference: "none -- an ASURA test command, not in the reference",
+        takes_argument: true,
+        answer: "`/npc list` prints each placement's body, route and held items; `/npc patrol <placement|all>` starts an authored route; `/npc stop <placement|all>` halts a body (0x0028 on the next tick)",
+    },
+    Command {
+        names: &["xunlai"],
+        reference: "none -- an ASURA test command, standing in for a Xunlai NPC on maps that have none (docs/53-npc-services.md)",
+        takes_argument: false,
+        answer: "opens the Xunlai storage window on the player's own agent (0x0083 {agent, 0, 3}); storage moves and gold moves are then accepted",
+    },
+    Command {
+        names: &[".exp"],
+        reference: "preforged's /.exp (gw_development_commands.h), an ASURA test command",
+        takes_argument: true,
+        answer: "sets total experience; the level follows the pack's curve, and the progress block (0x00E9), public level (0x009F 36) and attribute points (0x0037) are re-sent",
+    },
+    Command {
+        names: &["xp"],
+        reference: "preforged's /xp (gw_chat_commands.h), an ASURA test command",
+        takes_argument: true,
+        answer: "with a total, sets experience like /.exp; without one, a server line with the total and level",
     },
 ];
 
@@ -253,13 +377,50 @@ pub async fn handle_chat_message(
             }
             // The body is a coded string (`game::player_chat_line`): plain text hit the client's
             // coded-string assert, which is why no chat line had ever rendered here. Everyone in the
-            // instance hears `!` and `$`; `#` is the party channel, and a party here is the speaker
-            // alone, so it goes back to the speaker only.
+            // instance hears `!` and `$`; `#` is the party channel, heard by the speaker's party
+            // members standing in the instance.
             let line = game::player_chat_line(player.player_id, channel, &spoken);
-            if speaker != '#' {
+            if speaker == '#' {
+                crate::compass::party_send(&player.instance, player.player_id, &line, false);
+            } else {
                 player.instance.broadcast(player.player_id, &line);
             }
             send(stream, session, line, trace).await?;
+            Ok(true)
+        }
+        '"' => {
+            // A whisper: `<name>,<message>`. Delivered on the whisper channel to a player standing
+            // in this instance, as preforged delivers it; `CHAT_MESSAGE_LOCAL` names the speaker by
+            // an id that only means something inside one instance, so a recipient anywhere else is
+            // refused with a line of the server's own rather than guessed at.
+            let answer = match chat_rules()
+                .and_then(|rules| whisper_parts(&spoken, rules.whisper_name_chars.value))
+            {
+                None => tell(player, "Usage: /whisper <character name>, <message>"),
+                Some((name, message)) => match player.instance.player_named(name) {
+                    None => tell(
+                        player,
+                        &format!(
+                            "{name} is not in this map; a whisper only reaches a player here."
+                        ),
+                    ),
+                    Some(recipient) => {
+                        if trace {
+                            eprintln!("world: {:?} whispers to player {recipient}", player.name);
+                        }
+                        player.instance.send_to(
+                            recipient,
+                            &game::player_chat_line(
+                                player.player_id,
+                                game::CHANNEL_WHISPER,
+                                message,
+                            ),
+                        );
+                        tell(player, &format!("Whisper sent to {name}."))
+                    }
+                },
+            };
+            send(stream, session, answer, trace).await?;
             Ok(true)
         }
         '/' => {
@@ -341,14 +502,21 @@ pub async fn handle_chat_message(
                         }
                     }
                     let answer = maps_answer(&listed);
+                    let mut frames = Vec::new();
                     for line in &answer.table {
                         eprintln!("world: {line}");
+                        frames.extend(game::server_chat_line(
+                            player.player_id,
+                            game::CHANNEL_GLOBAL,
+                            line,
+                        ));
                     }
                     if trace {
                         for line in &answer.chat {
                             eprintln!("world: /maps (chat, not sent): {line}");
                         }
                     }
+                    send(stream, session, frames, trace).await?;
                     Ok(true)
                 }
                 Some(named) if named.names.contains(&"tp") && !argument.is_empty() => {
@@ -370,6 +538,19 @@ pub async fn handle_chat_message(
                     crate::guild::handle_guild_command(stream, session, player, argument, trace)
                         .await
                 }
+                Some(named) if named.names.contains(&"item") && argument == "clear" => {
+                    // A test helper: empty the carrying bags (the measured trash answer per item),
+                    // so a catalogue sweep does not run out of slots.
+                    crate::item::clear_carrying(stream, session, world, player, trace).await?;
+                    Ok(true)
+                }
+                Some(named) if named.names.contains(&"item") && !argument.is_empty() => {
+                    // Verified definitions only: the command was never the crash, the
+                    // unverified item ids were. Send the measured create/move pair.
+                    crate::item::grant_definition(stream, session, world, player, argument, trace)
+                        .await?;
+                    Ok(true)
+                }
                 Some(named) if named.names.contains(&"resign") && argument.is_empty() => {
                     // `/resign` is a chat line in the client, not a GAME_CMSG. Every member types
                     // its own; each dies after the pack's delay, and the last death is what sends
@@ -380,6 +561,102 @@ pub async fn handle_chat_message(
                         player.agent_id,
                         trace,
                     );
+                    Ok(true)
+                }
+                Some(named) if named.names.contains(&"roll") => {
+                    // Preforged's `/roll`: one line on the emote channel, heard by the whole
+                    // instance, with the face chosen here. The bounds are the pack's.
+                    let Some(sides) = chat_rules().and_then(|rules| roll_sides(argument, rules))
+                    else {
+                        let usage = match chat_rules() {
+                            Some(rules) => format!(
+                                "Usage: /roll <sides>, from {} to {}.",
+                                rules.roll_min_sides.value, rules.roll_max_sides.value
+                            ),
+                            None => {
+                                "Rolls are unavailable: the pack has no chat rules.".to_string()
+                            }
+                        };
+                        send(stream, session, tell(player, &usage), trace).await?;
+                        return Ok(true);
+                    };
+                    let face = roll_face(crate::random_u32()?, sides);
+                    let line = game::player_chat_line(
+                        player.player_id,
+                        game::CHANNEL_EMOTE,
+                        &format!("{} rolls {face} on a {sides}-sided die.", player.name),
+                    );
+                    player.instance.broadcast(player.player_id, &line);
+                    send(stream, session, line, trace).await?;
+                    Ok(true)
+                }
+                Some(named) if named.names.contains(&"age") && argument.is_empty() => {
+                    // Preforged's `/age`, the part this server can answer: how long this connection
+                    // has been in this map. Character and account age are not kept.
+                    let minutes = player.started.elapsed().as_secs() / 60;
+                    let line = format!("You have been in this map for {minutes} minute(s).");
+                    send(stream, session, tell(player, &line), trace).await?;
+                    Ok(true)
+                }
+                Some(named) if named.names.contains(&"skill") => {
+                    // Not the reference's: the owner's test command for skills (`crate::skill`).
+                    crate::skill::character::handle_skill_command(
+                        stream, session, world, player, argument, trace,
+                    )
+                    .await
+                }
+                Some(named) if named.names.contains(&"xunlai") && argument.is_empty() => {
+                    // Not the reference's: the owner's test command for storage (`crate::vendor`).
+                    crate::vendor::open_own_storage(stream, session, player, trace).await
+                }
+                Some(named) if named.names.contains(&".exp") && !argument.is_empty() => {
+                    // Preforged's /.exp: set the total, and let the curve answer the level.
+                    let Ok(total) = argument.parse::<u32>() else {
+                        eprintln!("world: /.exp: {argument:?} is not a total experience");
+                        let line = "Usage: /.exp <total experience>, e.g. /.exp 2000";
+                        send(stream, session, tell(player, line), trace).await?;
+                        return Ok(true);
+                    };
+                    crate::player::set_experience(stream, session, world, player, total, trace)
+                        .await
+                }
+                Some(named) if named.names.contains(&"xp") => {
+                    // Preforged's /xp is the reading half; with an argument it sets, like /.exp.
+                    if argument.is_empty() {
+                        let line = format!(
+                            "Experience {}; level {}.",
+                            player.traits.experience, player.traits.level
+                        );
+                        send(stream, session, tell(player, &line), trace).await?;
+                        Ok(true)
+                    } else {
+                        let Ok(total) = argument.parse::<u32>() else {
+                            eprintln!("world: /xp: {argument:?} is not a total experience");
+                            let line = "Usage: /xp <total experience>, e.g. /xp 2000";
+                            send(stream, session, tell(player, line), trace).await?;
+                            return Ok(true);
+                        };
+                        crate::player::set_experience(
+                            stream, session, world, player, total, trace,
+                        )
+                        .await
+                    }
+                }
+                Some(named) if named.names.contains(&"npc") && !argument.is_empty() => {
+                    // Not the reference's: the owner's test command for the NPC table. The answer is
+                    // printed to the console and also committed to the client's chat log as a
+                    // server-composed line, so the tester sees it without leaving the game.
+                    let lines = player.instance.npc_command(argument);
+                    let mut frames = Vec::new();
+                    for line in &lines {
+                        eprintln!("world: /npc {line}");
+                        frames.extend(game::server_chat_line(
+                            player.player_id,
+                            game::CHANNEL_GLOBAL,
+                            line,
+                        ));
+                    }
+                    send(stream, session, frames, trace).await?;
                     Ok(true)
                 }
                 _ => {
@@ -393,8 +670,8 @@ pub async fn handle_chat_message(
             }
         }
         other => {
-            // `@`, `%` and `"` are ignored by the reference; anything else it refuses.
-            if matches!(other, '@' | '%' | '"') {
+            // `@` and `%` are ignored by the reference; anything else it refuses.
+            if matches!(other, '@' | '%') {
                 if trace {
                     eprintln!("world: channel {other:?} ignored, as the reference ignores it");
                 }
@@ -403,5 +680,48 @@ pub async fn handle_chat_message(
             eprintln!("world: chat on channel {other:?} refused, as the reference refuses it");
             Ok(true)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn rules() -> ChatRules {
+        load_chat_rules(&crate::spawns::pack()).expect("the pack's chat rules load")
+    }
+
+    #[test]
+    fn a_whisper_is_a_name_a_comma_and_a_message() {
+        assert_eq!(
+            whisper_parts("Gwen Thackeray, hello, you", 19),
+            Some(("Gwen Thackeray", "hello, you"))
+        );
+        assert_eq!(whisper_parts("Gwen Thackeray", 19), None, "no comma");
+        assert_eq!(whisper_parts(", hello", 19), None, "no name");
+        assert_eq!(whisper_parts("Gwen,  ", 19), None, "no message");
+        assert_eq!(whisper_parts("Twenty Letters Long X, hi", 19), None);
+    }
+
+    #[test]
+    fn a_roll_stays_inside_the_packs_bounds() {
+        let rules = rules();
+        let (low, high) = (rules.roll_min_sides.value, rules.roll_max_sides.value);
+        assert_eq!(roll_sides(&low.to_string(), &rules), Some(low));
+        assert_eq!(roll_sides(&high.to_string(), &rules), Some(high));
+        assert_eq!(roll_sides(&(high + 1).to_string(), &rules), None);
+        assert_eq!(roll_sides(&(low - 1).to_string(), &rules), None);
+        assert_eq!(roll_sides("six", &rules), None);
+        assert_eq!(roll_sides("", &rules), None);
+        for random in [0, 1, 5, 6, u32::MAX] {
+            assert!((1..=6).contains(&roll_face(random, 6)));
+        }
+        assert_eq!((roll_face(0, 6), roll_face(5, 6)), (1, 6));
+    }
+
+    #[test]
+    fn the_new_commands_are_in_the_table() {
+        assert!(command("roll").is_some_and(|named| named.takes_argument));
+        assert!(command("age").is_some_and(|named| !named.takes_argument));
     }
 }

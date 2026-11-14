@@ -72,6 +72,7 @@ pub fn creation_inventory(creation: Creation) -> Inventory {
         by_seed.insert(seed_item.id, next_id);
         items.push(db_inventory::Item {
             id: next_id,
+            definition_id: Some(seed_item.definition_id.to_string()),
             bag_id: seed_item.bag_id,
             slot: seed_item.slot,
             file_id: seed_item.file_id,
@@ -97,6 +98,9 @@ pub fn creation_inventory(creation: Creation) -> Inventory {
         let slot = game::equipped_slot(spec.item_type).map(i32::from);
         items.push(db_inventory::Item {
             id: next_id,
+            // The starting equipment still comes from the generated reference table, which has not
+            // been moved into the catalogue yet. It is a complete row without a definition link.
+            definition_id: None,
             bag_id: equipped_bag,
             slot,
             file_id: i64::from(spec.file_id),
@@ -155,6 +159,7 @@ pub fn creation_equipment_rows(creation: Creation) -> Vec<db_inventory::NewItem>
     crate::default_equipment::default_equipment(creation.campaign, creation.profession)
         .iter()
         .map(|spec| db_inventory::NewItem {
+            definition_id: None,
             bag_id: equipped_bag,
             slot: game::equipped_slot(spec.item_type).map(i32::from),
             file_id: i64::from(spec.file_id),
@@ -172,14 +177,6 @@ pub fn creation_equipment_rows(creation: Creation) -> Vec<db_inventory::NewItem>
             modifiers: spec.modifiers.iter().map(|word| i64::from(*word)).collect(),
         })
         .collect()
-}
-
-/// Re-read the inventory after a change, so the next message built from it is the new truth.
-pub async fn reload(world: &World, player: &mut Player) -> Result<(), GameError> {
-    player.inventory = db_inventory::load(&world.pool, player.character)
-        .await
-        .map_err(GameError::Database)?;
-    Ok(())
 }
 
 /// ---- character creation (a connection in a `MapType_CharacterCreation` instance) -------------
@@ -421,6 +418,9 @@ pub async fn handle_confirm(
         campaign: creation.campaign,
         secondary_profession: defaults.secondary_profession(),
         level: defaults.level(),
+        experience: 0,
+        skill_points: 0,
+        skill_points_total: 0,
     };
     // Where the character starts, which is not where it was made. A live creation redirects a Factions
     // character to map 212 (`crates/asura-db/migrations/0017_starter_outpost.sql`). Every other

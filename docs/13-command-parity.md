@@ -19,6 +19,33 @@ sends a different message from the cancel that looks like it. All three are impl
 
 The reference's names, from its two dispatch points: `/tp` (GmCommands.c), `/teleport` (GmCommands.c), `/maps` (GmCommands.c), `/stuck` (GmChat.c).
 
+## ASURA test commands
+
+These are not in the reference. They exist so a tester can drive this server's own systems without editing
+the pack or restarting the world. Their answers are printed to the console and, for `/maps` and `/npc`,
+also committed to the client's chat log as server-composed lines (`0x005D` + `0x005E`, the pair the live
+server uses for a drop and a pickup).
+
+| what a player types | takes an argument | what this server answers |
+|---|---|---|
+| `/title` | yes | sets a title's points |
+| `/guild create` | yes | opens the Guild Registration window in place of the Guild Registrar |
+| `/item <id>` / `/item clear` | yes | grants a verified catalogue definition / empties the carrying bags |
+| `/resign` | no | the member resigns and dies; the last death defeats the party |
+| `/npc list` | yes | each placement's live agent, state, route and held-item count |
+| `/npc patrol <placement\|all>` | yes | starts the placement's authored route |
+| `/npc stop <placement\|all>` | yes | halts the body and sends `0x0028` on the next tick |
+
+## Commands from preforged
+
+Not in the reference either: these follow preforged's chat commands (`docs/51-compass-and-chat.md`). Their
+wire form is not measured.
+
+| what a player types | takes an argument | what this server answers |
+|---|---|---|
+| `/roll <sides>` | yes | `<name> rolls <face> on a <sides>-sided die.` on the emote channel, to the instance |
+| `/age` | no | minutes this connection has been in this map, as a server line |
+
 ## The `/tp` aliases
 
 `s_teleport_targets` is twenty aliases over twelve maps: two for most, because the reference lets a

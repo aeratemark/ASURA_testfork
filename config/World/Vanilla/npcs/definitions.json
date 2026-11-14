@@ -1,0 +1,3233 @@
+{
+  "note": "The NPC types of this pack, from preforged's gw-npcs 1 catalog. A definition id is local to its map there, so each row's definition_index is pack-wide and its id is npc-<map>-<definition>.",
+  "fields": {
+    "id": "The pack key a placement names. Never sent; the row's definition_index is what the client keys its NPC table by.",
+    "definition_index": "0x0056/0x0057 field 1 and the low bits of the create's model word: the client's NPC table index, unique across this pack.",
+    "file_id": "0x0056 field 2: the model file.",
+    "h000a": "0x0056 field 3 (body offset 0x0A): 0 in every captured row; unnamed.",
+    "visual": "0x0056 field 4: the visual word; its top byte is the scale in percent.",
+    "h0012": "0x0056 field 5 (body offset 0x12): 0 in every captured row; unnamed.",
+    "flags": "0x0056 field 6: a flags word.",
+    "primary": "0x0056 byte 1: the primary profession.",
+    "level": "0x0056 byte 2: the definition's level.",
+    "name": "0x0056's name: encoded-string UTF-16 units, 1 to 8.",
+    "model_files": "0x0057's model files, 0 to 8; empty sends no 0x0057.",
+    "h000b": "The create's byte at body offset 0x0B: 9 for a person, 8 for an animal in the capture.",
+    "speed": "The create's speed, in units per second. 220 is cmonmeow's NPC value.",
+    "team": "The create's team dword as the client's four-character code."
+  },
+  "definitions": [
+    {
+      "id": "npc-145-1",
+      "definition_index": 1,
+      "file_id": 116225,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 4,
+      "level": 5,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116784
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-145-2",
+      "definition_index": 2,
+      "file_id": 116225,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 3,
+      "level": 5,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116741
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-145-3",
+      "definition_index": 3,
+      "file_id": 116225,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 1,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116754
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-145-4",
+      "definition_index": 4,
+      "file_id": 116378,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 4,
+      "primary": 1,
+      "level": 1,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116797
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-146-1",
+      "definition_index": 5,
+      "file_id": 116225,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 3,
+      "level": 5,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116741
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-146-2",
+      "definition_index": 6,
+      "file_id": 82023,
+      "h000a": 0,
+      "visual": 1509949440,
+      "h0012": 0,
+      "flags": 8,
+      "primary": 6,
+      "level": 0,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-146-3",
+      "definition_index": 7,
+      "file_id": 82023,
+      "h000a": 0,
+      "visual": 1509949440,
+      "h0012": 0,
+      "flags": 8,
+      "primary": 6,
+      "level": 0,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-146-4",
+      "definition_index": 8,
+      "file_id": 82023,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 8,
+      "primary": 6,
+      "level": 1,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-146-5",
+      "definition_index": 9,
+      "file_id": 116228,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 3,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116703
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-146-6",
+      "definition_index": 10,
+      "file_id": 116228,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 10,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        129997
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-146-7",
+      "definition_index": 11,
+      "file_id": 141551,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 20,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116661
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-146-8",
+      "definition_index": 12,
+      "file_id": 116228,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116671
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-146-9",
+      "definition_index": 13,
+      "file_id": 116377,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 3,
+      "level": 1,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116759,
+        116760
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-147-1",
+      "definition_index": 14,
+      "file_id": 62131,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 72,
+      "primary": 3,
+      "level": 5,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-147-2",
+      "definition_index": 15,
+      "file_id": 16695,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 9,
+      "primary": 2,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-147-3",
+      "definition_index": 16,
+      "file_id": 16695,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 9,
+      "primary": 2,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-147-4",
+      "definition_index": 17,
+      "file_id": 16695,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 9,
+      "primary": 2,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-1",
+      "definition_index": 18,
+      "file_id": 116227,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        129945
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-2",
+      "definition_index": 19,
+      "file_id": 141285,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116727
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-3",
+      "definition_index": 20,
+      "file_id": 116225,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 1,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116754
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-4",
+      "definition_index": 21,
+      "file_id": 279140,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 1,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        279142
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-5",
+      "definition_index": 22,
+      "file_id": 116227,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 7,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        142142
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-6",
+      "definition_index": 23,
+      "file_id": 116228,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 10,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        129997
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-7",
+      "definition_index": 24,
+      "file_id": 116228,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 3,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116703
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-8",
+      "definition_index": 25,
+      "file_id": 116228,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 3,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116703
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-9",
+      "definition_index": 26,
+      "file_id": 116227,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 3,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116698
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-10",
+      "definition_index": 27,
+      "file_id": 116228,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116684
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-11",
+      "definition_index": 28,
+      "file_id": 116228,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116685
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-12",
+      "definition_index": 29,
+      "file_id": 141285,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116727
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-13",
+      "definition_index": 30,
+      "file_id": 141285,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116727
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-14",
+      "definition_index": 31,
+      "file_id": 141285,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116727
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-15",
+      "definition_index": 32,
+      "file_id": 141285,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116727
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-16",
+      "definition_index": 33,
+      "file_id": 16271,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 20,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        369100
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-17",
+      "definition_index": 34,
+      "file_id": 141285,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 5,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116727
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-18",
+      "definition_index": 35,
+      "file_id": 16377,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 5,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116691
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-19",
+      "definition_index": 36,
+      "file_id": 141286,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 3,
+      "level": 5,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116741
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-20",
+      "definition_index": 37,
+      "file_id": 74213,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 512,
+      "primary": 1,
+      "level": 20,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-21",
+      "definition_index": 38,
+      "file_id": 141285,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116727
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-22",
+      "definition_index": 39,
+      "file_id": 141285,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116727
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-148-23",
+      "definition_index": 40,
+      "file_id": 141285,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116727
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-160-1",
+      "definition_index": 41,
+      "file_id": 17253,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 0,
+      "primary": 6,
+      "level": 3,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-160-2",
+      "definition_index": 42,
+      "file_id": 17253,
+      "h000a": 0,
+      "visual": 1174405120,
+      "h0012": 0,
+      "flags": 0,
+      "primary": 6,
+      "level": 1,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-160-3",
+      "definition_index": 43,
+      "file_id": 17253,
+      "h000a": 0,
+      "visual": 1174405120,
+      "h0012": 0,
+      "flags": 0,
+      "primary": 6,
+      "level": 1,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-160-4",
+      "definition_index": 44,
+      "file_id": 17253,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 0,
+      "primary": 6,
+      "level": 3,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-160-5",
+      "definition_index": 45,
+      "file_id": 141285,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116727
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-160-6",
+      "definition_index": 46,
+      "file_id": 141285,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116727
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-160-7",
+      "definition_index": 47,
+      "file_id": 116225,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 1,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116754
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-160-8",
+      "definition_index": 48,
+      "file_id": 16689,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 9,
+      "primary": 2,
+      "level": 1,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-160-9",
+      "definition_index": 49,
+      "file_id": 16689,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 9,
+      "primary": 2,
+      "level": 1,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-160-10",
+      "definition_index": 50,
+      "file_id": 128619,
+      "h000a": 0,
+      "visual": 1006632960,
+      "h0012": 0,
+      "flags": 140,
+      "primary": 1,
+      "level": 0,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        129934
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-160-11",
+      "definition_index": 51,
+      "file_id": 128619,
+      "h000a": 0,
+      "visual": 1006632960,
+      "h0012": 0,
+      "flags": 140,
+      "primary": 1,
+      "level": 0,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        129934
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-161-1",
+      "definition_index": 52,
+      "file_id": 116225,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 3,
+      "level": 5,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116741
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-161-2",
+      "definition_index": 53,
+      "file_id": 17253,
+      "h000a": 0,
+      "visual": 1174405120,
+      "h0012": 0,
+      "flags": 0,
+      "primary": 6,
+      "level": 1,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-161-3",
+      "definition_index": 54,
+      "file_id": 17253,
+      "h000a": 0,
+      "visual": 1174405120,
+      "h0012": 0,
+      "flags": 0,
+      "primary": 6,
+      "level": 1,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-161-4",
+      "definition_index": 55,
+      "file_id": 17253,
+      "h000a": 0,
+      "visual": 1174405120,
+      "h0012": 0,
+      "flags": 0,
+      "primary": 6,
+      "level": 1,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-161-5",
+      "definition_index": 56,
+      "file_id": 116228,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 3,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116703
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-161-6",
+      "definition_index": 57,
+      "file_id": 129706,
+      "h000a": 0,
+      "visual": 1174405120,
+      "h0012": 0,
+      "flags": 0,
+      "primary": 6,
+      "level": 3,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-161-7",
+      "definition_index": 58,
+      "file_id": 129706,
+      "h000a": 0,
+      "visual": 1174405120,
+      "h0012": 0,
+      "flags": 0,
+      "primary": 6,
+      "level": 3,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-162-1",
+      "definition_index": 59,
+      "file_id": 116225,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 1,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116754
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-162-2",
+      "definition_index": 60,
+      "file_id": 116225,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 3,
+      "level": 5,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116741
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-162-3",
+      "definition_index": 61,
+      "file_id": 82023,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 8,
+      "primary": 6,
+      "level": 1,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-162-4",
+      "definition_index": 62,
+      "file_id": 82023,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 8,
+      "primary": 6,
+      "level": 1,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-163-1",
+      "definition_index": 63,
+      "file_id": 116228,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 5,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116776
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-163-2",
+      "definition_index": 64,
+      "file_id": 116228,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116676
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-163-3",
+      "definition_index": 65,
+      "file_id": 116227,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 3,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116698
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-164-1",
+      "definition_index": 66,
+      "file_id": 116227,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 3,
+      "level": 5,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        129991
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-164-2",
+      "definition_index": 67,
+      "file_id": 116227,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 3,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116698
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-164-3",
+      "definition_index": 68,
+      "file_id": 16202,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 3,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116721
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-165-1",
+      "definition_index": 69,
+      "file_id": 16258,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 6,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116712
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-165-2",
+      "definition_index": 70,
+      "file_id": 16377,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 5,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116691
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-165-3",
+      "definition_index": 71,
+      "file_id": 116227,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 3,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116698
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-166-1",
+      "definition_index": 72,
+      "file_id": 116227,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 7,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        142142
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-166-2",
+      "definition_index": 73,
+      "file_id": 116227,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 3,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116698
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-166-3",
+      "definition_index": 74,
+      "file_id": 116228,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 3,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116703
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-166-4",
+      "definition_index": 75,
+      "file_id": 116228,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 3,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116703
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-166-5",
+      "definition_index": 76,
+      "file_id": 141285,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116727
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-166-6",
+      "definition_index": 77,
+      "file_id": 141285,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116727
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-166-7",
+      "definition_index": 78,
+      "file_id": 141285,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116727
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "npc-166-8",
+      "definition_index": 79,
+      "file_id": 141285,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3933,
+        50198,
+        44838,
+        5755
+      ],
+      "model_files": [
+        116727
+      ],
+      "h000b": 9,
+      "speed": 120.0,
+      "team": "nonc"
+    },
+    {
+      "id": "mob-1346-type",
+      "definition_index": 1346,
+      "file_id": 128483,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 13,
+      "primary": 2,
+      "level": 2,
+      "name": [
+        3860,
+        53781,
+        64002,
+        19726
+      ],
+      "model_files": [
+        129929
+      ],
+      "h000b": 9,
+      "speed": 360.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 120,
+        "armor": 16,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 1,
+        "profession": 2,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 2000,
+          "damage_type": "piercing",
+          "ranged": false,
+          "min": 4,
+          "max": 6
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1352-type",
+      "definition_index": 1352,
+      "file_id": 128347,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 13,
+      "primary": 2,
+      "level": 3,
+      "name": [
+        3850,
+        50404,
+        47062,
+        23628
+      ],
+      "model_files": [
+        129923
+      ],
+      "h000b": 9,
+      "speed": 300.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 140,
+        "armor": 19,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 2,
+        "profession": 2,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 2000,
+          "damage_type": "piercing",
+          "ranged": false,
+          "min": 1,
+          "max": 6
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1354-type",
+      "definition_index": 1354,
+      "file_id": 128464,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 13,
+      "primary": 2,
+      "level": 2,
+      "name": [
+        3859,
+        62576,
+        63366,
+        29301
+      ],
+      "model_files": [
+        129928
+      ],
+      "h000b": 9,
+      "speed": 288.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 120,
+        "armor": 16,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 1,
+        "profession": 2,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 2000,
+          "damage_type": "piercing",
+          "ranged": false,
+          "min": 4,
+          "max": 8
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1397-type",
+      "definition_index": 1397,
+      "file_id": 116295,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 9,
+      "primary": 1,
+      "level": 5,
+      "name": [
+        3852,
+        53364,
+        47895,
+        22410
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 288.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 80,
+        "armor": 35,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 3,
+        "profession": 1,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1900,
+          "damage_type": "slashing",
+          "ranged": false,
+          "min": 5,
+          "max": 8
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1405-type",
+      "definition_index": 1405,
+      "file_id": 17397,
+      "h000a": 0,
+      "visual": 1174405120,
+      "h0012": 0,
+      "flags": 136,
+      "primary": 2,
+      "level": 1,
+      "name": [
+        3866,
+        33894,
+        48337,
+        20374
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 280.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 80,
+        "armor": 13,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 1,
+        "profession": 2,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 2000,
+          "damage_type": "piercing",
+          "ranged": false,
+          "min": 1,
+          "max": 3
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1407-type",
+      "definition_index": 1407,
+      "file_id": 17397,
+      "h000a": 0,
+      "visual": 1174405120,
+      "h0012": 0,
+      "flags": 136,
+      "primary": 2,
+      "level": 1,
+      "name": [
+        3867,
+        52700,
+        40810,
+        3869
+      ],
+      "model_files": [],
+      "h000b": 8,
+      "speed": 280.0,
+      "team": "aniv",
+      "combat": {
+        "hostile": true,
+        "health": 100,
+        "armor": 13,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 1,
+        "profession": 2,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 2000,
+          "damage_type": "piercing",
+          "ranged": false,
+          "min": 3,
+          "max": 6
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1408-type",
+      "definition_index": 1408,
+      "file_id": 17397,
+      "h000a": 0,
+      "visual": 1174412800,
+      "h0012": 0,
+      "flags": 136,
+      "primary": 2,
+      "level": 0,
+      "name": [
+        3869,
+        42177,
+        47566,
+        24237
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 280.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 10,
+        "armor": 10,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 0,
+        "profession": 2,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 2000,
+          "damage_type": "piercing",
+          "ranged": false,
+          "min": 2,
+          "max": 4
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1409-type",
+      "definition_index": 1409,
+      "file_id": 17400,
+      "h000a": 0,
+      "visual": 1174405120,
+      "h0012": 0,
+      "flags": 136,
+      "primary": 2,
+      "level": 1,
+      "name": [
+        3871,
+        53477,
+        45901,
+        27404
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 280.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 80,
+        "armor": 13,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 1,
+        "profession": 2,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "piercing",
+          "ranged": true,
+          "min": 1,
+          "max": 2,
+          "projectile": 143,
+          "projectile_flag": 1
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1412-ice-elemental",
+      "definition_index": 1412,
+      "file_id": 129706,
+      "h000a": 0,
+      "visual": 1174405120,
+      "h0012": 0,
+      "flags": 0,
+      "primary": 6,
+      "level": 3,
+      "name": [
+        3873,
+        34590,
+        34907,
+        26435
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 288.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 140,
+        "armor": 9,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 2,
+        "profession": 6,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "fire",
+          "ranged": false,
+          "min": 3,
+          "max": 11
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1414-stone-elemental",
+      "definition_index": 1414,
+      "file_id": 17253,
+      "h000a": 0,
+      "visual": 1174405120,
+      "h0012": 0,
+      "flags": 0,
+      "primary": 6,
+      "level": 1,
+      "name": [
+        3898,
+        49008,
+        49548,
+        14043
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 288.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 80,
+        "armor": 3,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 1,
+        "profession": 6,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 4500,
+          "damage_type": "fire",
+          "ranged": false,
+          "min": 2,
+          "max": 6
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1415-hulking-stone-elemental",
+      "definition_index": 1415,
+      "file_id": 17253,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 0,
+      "primary": 6,
+      "level": 3,
+      "name": [
+        3899,
+        39204,
+        34189,
+        11043
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 288.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 140,
+        "armor": 9,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 2,
+        "profession": 6,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 4500,
+          "damage_type": "fire",
+          "ranged": false,
+          "min": 1,
+          "max": 6
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1417-type",
+      "definition_index": 1417,
+      "file_id": 128564,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 12,
+      "primary": 5,
+      "level": 1,
+      "name": [
+        3877,
+        42351,
+        54964,
+        13962
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 350.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 80,
+        "armor": 3,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 1,
+        "profession": 5,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "piercing",
+          "ranged": false,
+          "min": 2,
+          "max": 5
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1420-bandit-firestarter",
+      "definition_index": 1420,
+      "file_id": 116226,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 12,
+      "primary": 6,
+      "level": 1,
+      "name": [
+        3881,
+        39821,
+        49912,
+        32497
+      ],
+      "model_files": [
+        116642
+      ],
+      "h000b": 9,
+      "speed": 288.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 100,
+        "armor": 3,
+        "energy": 30,
+        "energy_regen": 4,
+        "rank": 1,
+        "profession": 6,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "fire",
+          "ranged": true,
+          "min": 1,
+          "max": 27,
+          "projectile": 343,
+          "projectile_flag": 0
+        },
+        "skills": [
+          194
+        ]
+      }
+    },
+    {
+      "id": "mob-1421-bandit-raider",
+      "definition_index": 1421,
+      "file_id": 141267,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 12,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3884,
+        43762,
+        40100,
+        4764
+      ],
+      "model_files": [
+        116647
+      ],
+      "h000b": 9,
+      "speed": 288.0,
+      "team": "band",
+      "combat": {
+        "hostile": true,
+        "health": 120,
+        "armor": 26,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 1,
+        "profession": 1,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "slashing",
+          "ranged": false,
+          "min": 2,
+          "max": 5
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1422-bandit-blood-sworn",
+      "definition_index": 1422,
+      "file_id": 116225,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 12,
+      "primary": 1,
+      "level": 3,
+      "name": [
+        3882,
+        46458,
+        42308,
+        793
+      ],
+      "model_files": [
+        207903
+      ],
+      "h000b": 9,
+      "speed": 288.0,
+      "team": "band",
+      "combat": {
+        "hostile": true,
+        "health": 140,
+        "armor": 29,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 2,
+        "profession": 1,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "slashing",
+          "ranged": false,
+          "min": 1,
+          "max": 6
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1424-type",
+      "definition_index": 1424,
+      "file_id": 58082,
+      "h000a": 0,
+      "visual": 2013265920,
+      "h0012": 0,
+      "flags": 0,
+      "primary": 4,
+      "level": 4,
+      "name": [
+        3886,
+        55821,
+        34391,
+        20542
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 288.0,
+      "team": "aniv",
+      "combat": {
+        "hostile": true,
+        "health": 120,
+        "armor": 12,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 2,
+        "profession": 4,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1900,
+          "damage_type": "cold",
+          "ranged": false,
+          "min": 9,
+          "max": 10
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1428-aloe-seed",
+      "definition_index": 1428,
+      "file_id": 128619,
+      "h000a": 0,
+      "visual": 1006632960,
+      "h0012": 0,
+      "flags": 140,
+      "primary": 1,
+      "level": 0,
+      "name": [
+        3888,
+        56158,
+        37839,
+        16916
+      ],
+      "model_files": [
+        129934
+      ],
+      "h000b": 9,
+      "speed": 12.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 5,
+        "armor": 20,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 0,
+        "profession": 1,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "slashing",
+          "ranged": false,
+          "min": 2,
+          "max": 4
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1429-type",
+      "definition_index": 1429,
+      "file_id": 62131,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 72,
+      "primary": 3,
+      "level": 5,
+      "name": [
+        3890,
+        47443,
+        52299,
+        29791
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 200.0,
+      "team": "mons",
+      "combat": {
+        "hostile": true,
+        "health": 180,
+        "armor": 15,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 3,
+        "profession": 3,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "holy",
+          "ranged": true,
+          "min": 5,
+          "max": 11,
+          "projectile": 147,
+          "projectile_flag": 1
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1431-river-skale",
+      "definition_index": 1431,
+      "file_id": 82023,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 8,
+      "primary": 6,
+      "level": 1,
+      "name": [
+        3891,
+        36316,
+        36833,
+        24600
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 300.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 70,
+        "armor": 3,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 1,
+        "profession": 6,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "fire",
+          "ranged": true,
+          "min": 2,
+          "max": 8,
+          "projectile": 1,
+          "projectile_flag": 0
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1432-skale-broodcaller",
+      "definition_index": 1432,
+      "file_id": 82023,
+      "h000a": 0,
+      "visual": 2013265920,
+      "h0012": 0,
+      "flags": 8,
+      "primary": 6,
+      "level": 2,
+      "name": [
+        3893,
+        62821,
+        53621,
+        2998
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 300.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 120,
+        "armor": 6,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 1,
+        "profession": 6,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "fire",
+          "ranged": true,
+          "min": 4,
+          "max": 8,
+          "projectile": 1,
+          "projectile_flag": 0
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1433-type",
+      "definition_index": 1433,
+      "file_id": 82023,
+      "h000a": 0,
+      "visual": 1509949440,
+      "h0012": 0,
+      "flags": 8,
+      "primary": 6,
+      "level": 0,
+      "name": [
+        3892,
+        37535,
+        40127,
+        30650
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 288.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "aggression": "when_provoked",
+        "health": 10,
+        "armor": 0,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 0,
+        "profession": 6,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "fire",
+          "ranged": true,
+          "min": 2,
+          "max": 4,
+          "projectile": 1,
+          "projectile_flag": 0
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1436-river-skale-brood",
+      "definition_index": 1436,
+      "file_id": 82023,
+      "h000a": 0,
+      "visual": 2181038080,
+      "h0012": 0,
+      "flags": 8,
+      "primary": 6,
+      "level": 4,
+      "name": [
+        3896,
+        48706,
+        59929,
+        13964
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 288.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 100,
+        "armor": 12,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 2,
+        "profession": 6,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "fire",
+          "ranged": true,
+          "min": 1,
+          "max": 37,
+          "projectile": 379,
+          "projectile_flag": 0
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1437-grawl",
+      "definition_index": 1437,
+      "file_id": 141274,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 12,
+      "primary": 2,
+      "level": 1,
+      "name": [
+        3901,
+        34556,
+        36746,
+        25603
+      ],
+      "model_files": [
+        141908
+      ],
+      "h000b": 9,
+      "speed": 288.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 80,
+        "armor": 13,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 1,
+        "profession": 2,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 2475,
+          "damage_type": "piercing",
+          "ranged": true,
+          "min": 5,
+          "max": 20,
+          "projectile": 143,
+          "projectile_flag": 1
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1438-grawl-longspear",
+      "definition_index": 1438,
+      "file_id": 141274,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 12,
+      "primary": 2,
+      "level": 3,
+      "name": [
+        3902,
+        60155,
+        56202,
+        8328
+      ],
+      "model_files": [
+        141908
+      ],
+      "h000b": 9,
+      "speed": 288.0,
+      "team": "mons",
+      "combat": {
+        "hostile": true,
+        "health": 140,
+        "armor": 19,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 2,
+        "profession": 2,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 2475,
+          "damage_type": "piercing",
+          "ranged": true,
+          "min": 6,
+          "max": 20,
+          "projectile": 143,
+          "projectile_flag": 1
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1439-grawl-shaman",
+      "definition_index": 1439,
+      "file_id": 141276,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 12,
+      "primary": 3,
+      "level": 2,
+      "name": [
+        3900,
+        52586,
+        36301,
+        15142
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 288.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 120,
+        "armor": 6,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 1,
+        "profession": 3,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "holy",
+          "ranged": true,
+          "min": 8,
+          "max": 12,
+          "projectile": 5,
+          "projectile_flag": 0
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1442-type",
+      "definition_index": 1442,
+      "file_id": 116366,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 8,
+      "primary": 1,
+      "level": 0,
+      "name": [
+        3905,
+        48742,
+        61994,
+        1236
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 12.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "stationary": true,
+        "aggression": "when_provoked",
+        "health": 50,
+        "armor": 20,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 0,
+        "profession": 1,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "piercing",
+          "ranged": true,
+          "min": 1,
+          "max": 2,
+          "projectile": 143,
+          "projectile_flag": 1
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1444-plague-worm",
+      "definition_index": 1444,
+      "file_id": 116366,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 8,
+      "primary": 1,
+      "level": 1,
+      "name": [
+        3909,
+        33905,
+        36383,
+        29574
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 12.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "stationary": true,
+        "aggression": "when_provoked",
+        "health": 80,
+        "armor": 23,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 1,
+        "profession": 1,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "piercing",
+          "ranged": true,
+          "min": 2,
+          "max": 6,
+          "projectile": 143,
+          "projectile_flag": 1
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1445-type",
+      "definition_index": 1445,
+      "file_id": 116366,
+      "h000a": 0,
+      "visual": 2516582400,
+      "h0012": 0,
+      "flags": 8,
+      "primary": 1,
+      "level": 2,
+      "name": [
+        3908,
+        47321,
+        53829,
+        2088
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 12.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "stationary": true,
+        "aggression": "when_provoked",
+        "health": 100,
+        "armor": 26,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 1,
+        "profession": 1,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "piercing",
+          "ranged": true,
+          "min": 7,
+          "max": 9,
+          "projectile": 143,
+          "projectile_flag": 1
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1494-type",
+      "definition_index": 1494,
+      "file_id": 116225,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 524,
+      "primary": 1,
+      "level": 1,
+      "name": [
+        3953,
+        37865,
+        64772,
+        24678
+      ],
+      "model_files": [
+        207903
+      ],
+      "h000b": 8,
+      "speed": 200.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 100,
+        "armor": 23,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 1,
+        "profession": 1,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "slashing",
+          "ranged": false,
+          "min": 3,
+          "max": 6
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1518-type",
+      "definition_index": 1518,
+      "file_id": 116378,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 4,
+      "primary": 1,
+      "level": 1,
+      "name": [
+        3976,
+        63528,
+        64671,
+        31414
+      ],
+      "model_files": [
+        116797
+      ],
+      "h000b": 9,
+      "speed": 270.0,
+      "team": "mon1",
+      "combat": {
+        "hostile": true,
+        "health": 80,
+        "armor": 23,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 1,
+        "profession": 1,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1330,
+          "damage_type": "slashing",
+          "ranged": false,
+          "min": 5,
+          "max": 9
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1638-type",
+      "definition_index": 1638,
+      "file_id": 129114,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 12,
+      "primary": 5,
+      "level": 8,
+      "name": [
+        4117,
+        43242,
+        50794,
+        22985
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 350.0,
+      "team": "char",
+      "combat": {
+        "hostile": true,
+        "health": 240,
+        "armor": 24,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 5,
+        "profession": 5,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "piercing",
+          "ranged": false,
+          "min": 15,
+          "max": 16
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1641-type",
+      "definition_index": 1641,
+      "file_id": 129130,
+      "h000a": 0,
+      "visual": 1845493760,
+      "h0012": 0,
+      "flags": 12,
+      "primary": 4,
+      "level": 8,
+      "name": [
+        4120,
+        54504,
+        41833,
+        20325
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 350.0,
+      "team": "char",
+      "combat": {
+        "hostile": true,
+        "health": 240,
+        "armor": 24,
+        "energy": 30,
+        "energy_regen": 4,
+        "rank": 5,
+        "profession": 4,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "cold",
+          "ranged": true,
+          "min": 12,
+          "max": 15,
+          "projectile": 1,
+          "projectile_flag": 0
+        },
+        "skills": [
+          109,
+          135
+        ]
+      }
+    },
+    {
+      "id": "mob-1654-type",
+      "definition_index": 1654,
+      "file_id": 128772,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 12,
+      "primary": 1,
+      "level": 8,
+      "name": [
+        4133,
+        43197,
+        50296,
+        18370
+      ],
+      "model_files": [
+        378949
+      ],
+      "h000b": 9,
+      "speed": 350.0,
+      "team": "char",
+      "combat": {
+        "hostile": true,
+        "health": 240,
+        "armor": 44,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 5,
+        "profession": 1,
+        "attack": {
+          "item_type": 2,
+          "period_ms": 1330,
+          "damage_type": "slashing",
+          "ranged": false,
+          "min": 10,
+          "max": 20
+        },
+        "skills": [
+          330,
+          346
+        ]
+      }
+    },
+    {
+      "id": "mob-1656-type",
+      "definition_index": 1656,
+      "file_id": 128772,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 12,
+      "primary": 1,
+      "level": 8,
+      "name": [
+        4135,
+        56496,
+        33677,
+        12318
+      ],
+      "model_files": [
+        378949
+      ],
+      "h000b": 9,
+      "speed": 350.0,
+      "team": "char",
+      "combat": {
+        "hostile": true,
+        "health": 240,
+        "armor": 44,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 5,
+        "profession": 1,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 1750,
+          "damage_type": "slashing",
+          "ranged": false,
+          "min": 10,
+          "max": 20
+        },
+        "skills": []
+      }
+    },
+    {
+      "id": "mob-1659-type",
+      "definition_index": 1659,
+      "file_id": 128744,
+      "h000a": 0,
+      "visual": 1677721600,
+      "h0012": 0,
+      "flags": 12,
+      "primary": 2,
+      "level": 8,
+      "name": [
+        4138,
+        57430,
+        34808,
+        5780
+      ],
+      "model_files": [],
+      "h000b": 9,
+      "speed": 350.0,
+      "team": "char",
+      "combat": {
+        "hostile": true,
+        "health": 240,
+        "armor": 34,
+        "energy": 0,
+        "energy_regen": 0,
+        "rank": 5,
+        "profession": 2,
+        "attack": {
+          "item_type": 0,
+          "period_ms": 2025,
+          "damage_type": "piercing",
+          "ranged": true,
+          "min": 10,
+          "max": 26,
+          "projectile": 735,
+          "projectile_flag": 1
+        },
+        "skills": []
+      }
+    }
+  ]
+}

@@ -126,3 +126,6 @@ What the inventory still cannot do, in the order a player would notice it: **pic
 one, interact with one, read the header out of the trace); split a stack by hand
 (`GAME_CMSG_ITEM_SPLIT_STACK`, `0x8075`); buy and sell (`GAME_CMSG_TRANSACT_ITEMS`, `0x804D`); and
 `UNEQUIP_ITEM` (`0x804F`), whose 6-byte layout carries no item id and has never been seen from a client.
+
+The item definitions those operations will need, and the boundary between a definition and an owned
+item, are in `docs/47-item-system.md`.

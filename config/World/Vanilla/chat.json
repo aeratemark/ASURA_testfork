@@ -1,0 +1,15 @@
+{
+  "note": "The values the chat commands decide by. Read once when the world starts: restart the world after changing it.",
+  "roll_min_sides": {
+    "value": 2,
+    "doc": "The fewest sides /roll accepts."
+  },
+  "roll_max_sides": {
+    "value": 100,
+    "doc": "The most sides /roll accepts."
+  },
+  "whisper_name_chars": {
+    "value": 19,
+    "doc": "The most characters a whisper's recipient name may have: the longest character name."
+  }
+}

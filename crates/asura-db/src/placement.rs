@@ -537,6 +537,10 @@ pub struct Transfer {
     pub character_id: uuid::Uuid,
     /// Only a doorway transfer names an origin. A saved position cannot identify its trigger.
     pub arrival_from_map_id: Option<i32>,
+    /// True for the auth service's login handoff, false for a travel a world starts. On a login the
+    /// client's presented character is the one it just chose; on a travel the row's character is the
+    /// one the world is moving (`docs/56-character-on-travel.md`).
+    pub is_login: bool,
 }
 
 /// Write the pending transfer for a travel that is about to be announced.
@@ -552,12 +556,13 @@ pub async fn begin_transfer(
     session_id: uuid::Uuid,
     account_id: uuid::Uuid,
     character_id: uuid::Uuid,
+    is_login: bool,
 ) -> sqlx::Result<()> {
     sqlx::query(
         "INSERT INTO t_transfer
              (player_token, world_id, map_id, session_id, account_id, character_id, created_at,
-              claimed_at)
-         VALUES ($1, $2, $3, $4, $5, $6, now(), NULL)",
+              claimed_at, is_login)
+         VALUES ($1, $2, $3, $4, $5, $6, now(), NULL, $7)",
     )
     .bind(i64::from(player_token))
     .bind(world_id)
@@ -565,6 +570,7 @@ pub async fn begin_transfer(
     .bind(session_id)
     .bind(account_id)
     .bind(character_id)
+    .bind(is_login)
     .execute(pool)
     .await?;
     Ok(())
@@ -597,11 +603,12 @@ pub async fn claim_transfer(
         uuid::Uuid,
         uuid::Uuid,
         Option<i32>,
+        bool,
     )> = sqlx::query_as(
         "UPDATE t_transfer SET claimed_at = now()
           WHERE player_token = $1 AND world_id = $2
           RETURNING player_token, world_id, map_id, session_id, account_id, character_id,
-                    arrival_from_map_id",
+                    arrival_from_map_id, is_login",
     )
     .bind(i64::from(player_token))
     .bind(world_id)
@@ -617,6 +624,7 @@ pub async fn claim_transfer(
             account_id,
             character_id,
             arrival_from_map_id,
+            is_login,
         )| Transfer {
             player_token,
             world_id,
@@ -625,6 +633,7 @@ pub async fn claim_transfer(
             account_id,
             character_id,
             arrival_from_map_id,
+            is_login,
         },
     ))
 }

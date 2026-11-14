@@ -32,6 +32,11 @@ pub enum Order {
         /// The agents of every traveller, this one's own included.
         companions: Vec<u32>,
     },
+    /// The player's walk to an NPC arrived (`crate::approach`): answer the talk (`crate::vendor::talk`).
+    Talk {
+        /// The NPC's agent.
+        npc: u32,
+    },
 }
 
 /// Carry out an order on this connection's own socket.
@@ -72,6 +77,12 @@ pub async fn carry_out(
                 crate::party::stays_behind(&player.instance, player.player_id, trace);
             }
             answer
+        }
+        Order::Talk { npc } => {
+            if player.moved {
+                return Ok(true);
+            }
+            crate::vendor::talk(stream, session, world, player, npc, trace).await
         }
     }
 }
@@ -460,8 +471,13 @@ pub async fn handle_party_travel(
     // with no 10-second timer (`multiplay-live-20261106-225615.jsonl` seq 176-177, then seq 181
     // and the lock at seq 190). A normal party keeps the countdown.
     let left_out = if decision == asura_rules::party::TravelRequest::PartyAfterCountdown {
-        members_who_cannot_travel(world, &player.instance, player.player_id, destination.map_id)
-            .await
+        members_who_cannot_travel(
+            world,
+            &player.instance,
+            player.player_id,
+            destination.map_id,
+        )
+        .await
     } else {
         Vec::new()
     };
@@ -878,6 +894,7 @@ async fn begin_transfer(
         player.session_id,
         player.account_id,
         player.character,
+        false,
     )
     .await
     .map_err(GameError::Database)?;

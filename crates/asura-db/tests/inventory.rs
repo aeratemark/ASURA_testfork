@@ -83,6 +83,7 @@ async fn a_new_character_is_seeded_with_the_default_inventory() {
         .item(backpack.assoc_item_id)
         .expect("the item that is the backpack");
     assert_eq!((own.bag_id, own.slot), (None, None));
+    assert_eq!(own.definition_id.as_deref(), Some("backpack"));
     assert_eq!(own.name_units(), vec![0x21A8, 0xD157, 0xB58F, 0x166F]);
     assert_eq!(own.modifier_dwords(), vec![0x2448_1400]);
 
@@ -93,6 +94,12 @@ async fn a_new_character_is_seeded_with_the_default_inventory() {
     assert_eq!(cupcakes[1].slot, Some(1));
     assert!(cupcakes.iter().all(|item| item.quantity == 100));
     assert!(cupcakes.iter().all(|item| item.file_id == 0x47C34));
+    assert!(
+        cupcakes
+            .iter()
+            .all(|item| item.definition_id.as_deref() == Some("birthday_cupcake")),
+        "both stacks name the one Birthday Cupcake definition"
+    );
 
     // The equipped-items bag holds the armour, and the ids the client is told are its own.
     let worn = inventory.equipped_item_ids();
@@ -279,6 +286,44 @@ async fn a_stack_can_be_split_and_emptied() {
 }
 
 #[tokio::test]
+async fn an_item_can_be_destroyed_but_a_bag_cannot() {
+    let Some(pool) = pool().await else {
+        return skip();
+    };
+    let (name, character) = character(&pool, "destroy").await;
+    db::seed_default(&pool, character).await.expect("seed");
+    let inventory = db::load(&pool, character).await.expect("load");
+    let cupcake = inventory.items_in(1)[0].clone();
+
+    assert!(
+        db::destroy_item(&pool, character, cupcake.id)
+            .await
+            .expect("destroy"),
+        "an item in a slot is destroyed"
+    );
+    let after = db::load(&pool, character).await.expect("load");
+    assert_eq!(after.item(cupcake.id), None, "the row is gone");
+    assert!(
+        !db::destroy_item(&pool, character, cupcake.id)
+            .await
+            .expect("destroy again"),
+        "a second destroy has nothing to delete"
+    );
+
+    let own = after.bags[0].assoc_item_id;
+    assert!(
+        !db::destroy_item(&pool, character, own)
+            .await
+            .expect("destroy a bag"),
+        "a bag's own item has no slot and is not trash"
+    );
+
+    asura_db::login::remove_account(&pool, &name)
+        .await
+        .expect("clean up");
+}
+
+#[tokio::test]
 async fn an_item_moves_between_slots_and_refuses_the_impossible_ones() {
     let Some(pool) = pool().await else {
         return skip();
@@ -388,6 +433,77 @@ async fn an_item_moves_between_slots_and_refuses_the_impossible_ones() {
         ),
         "taking the weapon off is a move"
     );
+
+    asura_db::login::remove_account(&pool, &name)
+        .await
+        .expect("clean up");
+}
+
+#[tokio::test]
+async fn one_operation_is_written_whole_or_not_at_all() {
+    let Some(pool) = pool().await else {
+        return skip();
+    };
+    let (name, character) = character(&pool, "apply").await;
+    db::seed_default(&pool, character).await.expect("seed");
+    let inventory = db::load(&pool, character).await.expect("load");
+    let first = inventory.items_in(1)[0].clone();
+    let second = inventory.items_in(1)[1].clone();
+    let (a, b) = (first.slot.unwrap(), second.slot.unwrap());
+
+    // A swap is a cycle: each row takes the other's slot. Two plain updates in either order would hit
+    // the one-item-per-slot index; `apply_changes` lifts both first.
+    db::apply_changes(
+        &pool,
+        character,
+        &[
+            db::RowChange::Place { item_id: first.id, bag_id: 1, slot: b },
+            db::RowChange::Place { item_id: second.id, bag_id: 1, slot: a },
+        ],
+    )
+    .await
+    .expect("a swap is written");
+    let swapped = db::load(&pool, character).await.expect("load");
+    assert_eq!(swapped.item(first.id).and_then(|item| item.slot), Some(b));
+    assert_eq!(swapped.item(second.id).and_then(|item| item.slot), Some(a));
+
+    // A quantity, a new row under an id allocated first, and a change that misses: nothing is kept.
+    let id = db::allocate_item_id(&pool).await.expect("an id");
+    let new = db::Item {
+        id,
+        bag_id: Some(1),
+        slot: Some(10),
+        ..first.clone()
+    };
+    let refused = db::apply_changes(
+        &pool,
+        character,
+        &[
+            db::RowChange::Quantity { item_id: first.id, quantity: 7 },
+            db::RowChange::Insert { item: new.clone() },
+            db::RowChange::Delete { item_id: 999_999_999 },
+        ],
+    )
+    .await;
+    assert!(refused.is_err(), "a change that matches no row fails the operation");
+    let untouched = db::load(&pool, character).await.expect("load");
+    assert_eq!(untouched.item(first.id).map(|item| item.quantity), Some(first.quantity));
+    assert!(untouched.item(id).is_none(), "the new row was rolled back too");
+
+    // The same writes without the miss are kept, and the new row keeps the id it was given.
+    db::apply_changes(
+        &pool,
+        character,
+        &[
+            db::RowChange::Quantity { item_id: first.id, quantity: 7 },
+            db::RowChange::Insert { item: new },
+        ],
+    )
+    .await
+    .expect("written");
+    let written = db::load(&pool, character).await.expect("load");
+    assert_eq!(written.item(first.id).map(|item| item.quantity), Some(7));
+    assert_eq!(written.item(id).and_then(|item| item.slot), Some(10));
 
     asura_db::login::remove_account(&pool, &name)
         .await
@@ -514,6 +630,9 @@ async fn the_character_settings_come_back_from_the_row_the_creation_wrote() {
         campaign: 1,
         secondary_profession: 0,
         level: 1,
+        experience: 0,
+        skill_points: 0,
+        skill_points_total: 0,
     };
     let created = db::create_character(&pool, account, "Settings Subject Jr", MAP, traits, &[])
         .await

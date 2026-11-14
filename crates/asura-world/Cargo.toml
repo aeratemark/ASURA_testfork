@@ -26,6 +26,8 @@ serde_json = { workspace = true }
 # The game connection's key exchange needs 20 bytes of real randomness per connection, from the
 # operating system (docs/adr/0009-crypto-primitives.md).
 getrandom = { workspace = true }
+# NPC behavior is declared in Lua content and executed by the Rust tree runtime (docs/30, ADR 0014).
+mlua = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }

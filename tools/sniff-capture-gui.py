@@ -13,6 +13,9 @@ format are that script's and are not repeated here.
 When a capture ends, the window lists the title records it holds (`0x00F3` rank records, `0x00F6`
 tracks, `0x00F4` display bindings): the rank names `config/Server/titles.json` is waiting for.
 
+The Items tab runs `tools/item-id-probe.py` against the running client and writes the item records
+(model id, model file id, type, flags and modifier words) to JSON. It is read-only.
+
 Needs Python 3.8+ with tkinter (part of the standard Windows installer) and nothing from pip. Windows
 only, like the capture itself.
 """
@@ -31,6 +34,7 @@ from pathlib import Path
 TOOLS = Path(__file__).resolve().parent
 ROOT = TOOLS.parent
 CAPTURE_SCRIPT = TOOLS / "sniff-capture.py"
+ITEM_PROBE_SCRIPT = TOOLS / "item-id-probe.py"
 FEATURE_DIR = ROOT / "recordings" / "client" / "feature"
 SETTINGS_FILE = Path.home() / ".asura_sniff_gui.json"
 IS_WIN = os.name == "nt"
@@ -44,8 +48,9 @@ TYPE_HEADERS = {
     "travel": "0x0199,0x0099,0x01A6,0x017C,0x0186,0x017D,0x019A,0x008B,0x008A",
     "maps": "0x008A,0x008B,0x008C,0x0099,0x0091,0x0199,0x0094",
     "chat": "0x005D,0x005E,0x0061,0x8064",
-    "items": ("0x013E,0x013F,0x0144,0x0148,0x015A,0x015E,0x0161,"
-              "0x806C,0x8072,0x8030,0x804F"),
+    "items": ("0x0020,0x0021,0x0022,0x006E,0x006F,0x013E,0x013F,0x0144,0x0145,"
+              "0x0148,0x014B,0x014D,0x0152,0x015A,0x015E,0x0161,0x802C,0x8030,"
+              "0x803F,0x804D,0x804F,0x8069,0x806C,0x8072,0x8075"),
     "guild": "0x011C,0x0120,0x0121,0x0127,0x012E,0x012F,0x0133",
     "multiplay": "0x0020,0x0021,0x0022,0x00B0,0x00B1,0x01DA,0x01DF,0x01E0,0x01E1",
 }
@@ -201,12 +206,19 @@ def run_window():
     settings = load_settings()
     root = tk.Tk()
     root.title("ASURA - packet capture")
-    root.geometry("860x620")
+    root.geometry("860x680")
 
     lines = queue.Queue()
-    state = {"proc": None, "stop_file": None, "out": None, "started": None}
+    state = {"proc": None, "stop_file": None, "out": None, "started": None, "item_proc": None}
 
-    form = ttk.Frame(root, padding=10)
+    notebook = ttk.Notebook(root)
+    notebook.pack(fill="both", expand=True)
+    capture_tab = ttk.Frame(notebook)
+    items_tab = ttk.Frame(notebook)
+    notebook.add(capture_tab, text="Capture")
+    notebook.add(items_tab, text="Items")
+
+    form = ttk.Frame(capture_tab, padding=10)
     form.pack(fill="x")
     form.columnconfigure(1, weight=1)
 
@@ -226,6 +238,10 @@ def run_window():
         kind = kind or type_folder()
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         return str(FEATURE_DIR / kind / ("%s-live-%s.jsonl" % (kind, stamp)))
+
+    def default_items_out():
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        return str(FEATURE_DIR / "items" / ("items-live-%s.json" % stamp))
 
     out_var = tk.StringVar(value=default_out())
     header_var = tk.StringVar(value=settings.get("header", TYPE_HEADERS.get(type_var.get(), "")))
@@ -279,7 +295,7 @@ def run_window():
     ttk.Checkbutton(form, text="Raw (keeps player names - never commit a raw capture)",
                     variable=raw_var).grid(row=row, column=1, sticky="w")
 
-    buttons = ttk.Frame(root, padding=(10, 0))
+    buttons = ttk.Frame(capture_tab, padding=(10, 0))
     buttons.pack(fill="x")
     start_button = ttk.Button(buttons, text="Go")
     stop_button = ttk.Button(buttons, text="Stop", state="disabled")
@@ -289,10 +305,28 @@ def run_window():
     report_button.pack(side="right")
     status_var = tk.StringVar(value="Ready." if is_admin() or not IS_WIN
                               else "Not running as administrator: the capture will refuse.")
-    ttk.Label(root, textvariable=status_var, padding=(10, 6)).pack(fill="x")
+    ttk.Label(capture_tab, textvariable=status_var, padding=(10, 6)).pack(fill="x")
 
-    log = tk.Text(root, wrap="none", font=("Consolas", 9))
-    scroll = ttk.Scrollbar(root, command=log.yview)
+    items_form = ttk.Frame(items_tab, padding=10)
+    items_form.pack(fill="x")
+    items_form.columnconfigure(1, weight=1)
+    items_out_var = tk.StringVar(value=default_items_out())
+    items_status_var = tk.StringVar(
+        value="Read the running client's item records with Py4GW (read-only)."
+    )
+    ttk.Label(items_form, text="Py4GW Stealth folder").grid(row=0, column=0, sticky="w")
+    ttk.Entry(items_form, textvariable=py4gw_var).grid(row=0, column=1, sticky="ew")
+    ttk.Button(items_form, text="Browse...", command=browse_py4gw).grid(row=0, column=2, padx=4)
+    ttk.Label(items_form, text="Write item JSON to").grid(row=1, column=0, sticky="w")
+    ttk.Entry(items_form, textvariable=items_out_var).grid(row=1, column=1, sticky="ew")
+    read_items_button = ttk.Button(items_form, text="Read items from the running client")
+    read_items_button.grid(row=2, column=1, sticky="w", pady=(8, 0))
+    ttk.Label(items_tab, textvariable=items_status_var, padding=(10, 6)).pack(fill="x")
+
+    log_frame = ttk.Frame(root)
+    log_frame.pack(fill="both", expand=True)
+    log = tk.Text(log_frame, wrap="none", font=("Consolas", 9))
+    scroll = ttk.Scrollbar(log_frame, command=log.yview)
     log.configure(yscrollcommand=scroll.set)
     scroll.pack(side="right", fill="y")
     log.pack(fill="both", expand=True, padx=(10, 0), pady=(0, 10))
@@ -376,6 +410,61 @@ def run_window():
                 show(line)
         out_var.set(default_out())
 
+    def read_items():
+        if state["item_proc"] is not None:
+            return
+        out = Path(items_out_var.get().strip() or default_items_out())
+        out.parent.mkdir(parents=True, exist_ok=True)
+        command = [console_interpreter(), "-u", str(ITEM_PROBE_SCRIPT), "--out", str(out)]
+        if py4gw_var.get().strip():
+            command += ["--py4gw", py4gw_var.get().strip()]
+        show("$ " + " ".join(command))
+        try:
+            proc = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                env=dict(os.environ, PYTHONUNBUFFERED="1"),
+                cwd=str(ROOT),
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+        except OSError as err:
+            show("could not start the item probe: %s" % err)
+            return
+        state["item_proc"] = proc
+
+        def item_reader():
+            for raw in proc.stdout:
+                lines.put(raw.rstrip("\r\n"))
+            lines.put(("items-done", proc.wait(), str(out)))
+
+        threading.Thread(target=item_reader, daemon=True).start()
+        read_items_button.configure(state="disabled")
+        items_status_var.set("Reading the running client's item records...")
+
+    def finished_items(code, out):
+        state["item_proc"] = None
+        read_items_button.configure(state="normal")
+        meaning = {
+            0: "done",
+            2: "refused (administrator, 32-bit Python, or Py4GW missing - see above)",
+            3: "no Guild Wars client found, or the read was refused",
+            4: "probe failed",
+        }
+        items_status_var.set("Item read %s (exit %s)." % (meaning.get(code, "ended"), code))
+        path = Path(out)
+        if path.is_file():
+            try:
+                report = json.loads(path.read_text(encoding="utf-8"))
+                count = len(report.get("items", []))
+                show("items: %d written to %s" % (count, path))
+            except (OSError, ValueError) as err:
+                show("could not read %s: %s" % (path, err))
+        items_out_var.set(default_items_out())
+
     def report_file():
         chosen = filedialog.askopenfilename(
             initialdir=str(FEATURE_DIR), filetypes=[("Capture", "*.jsonl"), ("All files", "*.*")])
@@ -389,6 +478,8 @@ def run_window():
                 item = lines.get_nowait()
                 if isinstance(item, tuple) and item and item[0] == "done":
                     finished(item[1])
+                elif isinstance(item, tuple) and item and item[0] == "items-done":
+                    finished_items(item[1], item[2])
                 else:
                     show(item)
         except queue.Empty:
@@ -415,6 +506,7 @@ def run_window():
     start_button.configure(command=start)
     stop_button.configure(command=stop)
     report_button.configure(command=report_file)
+    read_items_button.configure(command=read_items)
     root.protocol("WM_DELETE_WINDOW", on_close)
     show("Steps: start Guild Wars to character select, press Go, then enter the map. Press Stop "
          "when the load is finished.")

@@ -1,0 +1,19 @@
+{
+  "note": "The experience curve and the skill points a level grants (docs/54-experience.md). Read once when the world starts: restart the world after changing it.",
+  "first_level_xp": {
+    "value": 2000,
+    "doc": "Total experience level 1 to 2 costs (preforged gw_experience_level.h)."
+  },
+  "xp_per_level_step": {
+    "value": 600,
+    "doc": "How much more each later level costs than the one before it; the same file gives level 20 at 140600 total."
+  },
+  "max_level": {
+    "value": 20,
+    "doc": "The highest level this curve reaches. The client's character sheet stops at 20."
+  },
+  "skill_points_per_level": {
+    "value": 1,
+    "doc": "Skill points each level grants on top of the previous level's total; level 1 has none."
+  }
+}

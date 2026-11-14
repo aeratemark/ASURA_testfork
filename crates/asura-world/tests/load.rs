@@ -13,7 +13,8 @@
 //! * the players request ends with `INSTANCE_LOAD_FINISH`, which is what takes a client off the loading
 //!   screen;
 //! * the world keeps the clock running without being asked, and answers a ping;
-//! * a dropped item becomes an agent of its own, and -'- as in the reference -'- stays in its bag;
+//! * a dropped item becomes a ground agent, a pickup puts it back, and a trash drag answers
+//!   `ITEM_REMOVE` -'- the live server's own sequence;
 //! * a character that leaves standing somewhere comes back standing there, and the slot it took goes
 //!   back to the pool both times.
 //!
@@ -242,6 +243,7 @@ impl Harness {
             seeded.session,
             seeded.account,
             seeded.character,
+            false,
         )
         .await
         .expect("write the pending transfer");
@@ -298,6 +300,7 @@ impl Harness {
             self.session,
             self.account,
             self.character,
+            false,
         )
         .await
         .expect("write the pending transfer");
@@ -737,12 +740,26 @@ async fn say(stream: &mut TcpStream, client: &mut ReferenceClient, header: u16, 
     stream.write_all(&bytes).await.expect("write the message");
 }
 
+fn u32_at(frame: &Frame, offset: usize) -> u32 {
+    let body = frame.body();
+    u32::from_le_bytes([
+        body[offset],
+        body[offset + 1],
+        body[offset + 2],
+        body[offset + 3],
+    ])
+}
+
+fn u16_at(frame: &Frame, offset: usize) -> u16 {
+    let body = frame.body();
+    u16::from_le_bytes([body[offset], body[offset + 1]])
+}
+
 #[tokio::test]
-async fn a_drop_deducts_the_stack_and_says_nothing() {
+async fn a_drop_and_a_pickup_and_a_trash_answer_the_way_the_live_server_does() {
     if skip() {
         return;
     }
-    // The default mode: no message at all, because both candidate messages crashed a live client.
     let Some(harness) = Harness::start().await else {
         return;
     };
@@ -751,82 +768,287 @@ async fn a_drop_deducts_the_stack_and_says_nothing() {
     let Some((mut stream, mut client)) = connect_properly(harness.address, &version).await else {
         panic!("the world refused a token the auth service had just issued");
     };
-    // The load block, so the character exists on this connection before anything is asked of it.
     read_until(&mut stream, &mut client, game::INSTANCE_LOAD_INFO).await;
 
-    // The world seeds the default inventory on the way in, so the cupcake's id is only known now.
     let inventory = db_inventory::load(&harness.pool, harness.character)
         .await
         .expect("read the inventory");
-    assert_eq!(
-        inventory.bags.len(),
-        6,
-        "a character that has never been played was given the reference's bags"
-    );
     let cupcake = inventory.items_in(1)[0].clone();
-    assert_eq!(cupcake.slot, Some(0));
     assert_eq!(cupcake.quantity, 100);
-    assert_eq!(cupcake.model_id, 22269, "the cupcake's own model");
 
-    // `GAME_CMSG_DROP_ITEM`: `{item_id: u32, count: u8}`. **One** of a stack of a hundred, which is what
-    // a real client sends when an item is dragged out of the bag -- and what the reference refuses,
-    // because its partial-stack branch is a `TODO`.
-    let mut body = Vec::new();
-    body.extend_from_slice(&(cupcake.id as u32).to_le_bytes());
+    // Drop one of a hundred. The live server leaves the stack and gives the ground part its own record
+    // (`items-live-20261108-174014.jsonl` seq 132-137).
+    let mut body = (cupcake.id as u32).to_le_bytes().to_vec();
     body.push(1);
     say(&mut stream, &mut client, 0x802C, &body).await;
-
-    // A ping is how this test knows the server has read the drop, since the drop itself answers nothing.
     ask(&mut stream, &mut client, 0x800D, 2).await;
     let frames = read_until(&mut stream, &mut client, game::PING_REPLY).await;
-    for forbidden in [
-        game::ITEM_REMOVE,
-        game::CREATE_NAMED_ITEM,
-        game::WORLD_CREATE_AGENT,
-    ] {
-        assert!(
-            !frames.iter().any(|frame| frame.header() == forbidden),
-            "{forbidden:#06X} must not be sent by a drop: a live client crashed on two of these and \
-             no capture of any of them exists"
-        );
-    }
 
-    // It was one of a hundred, so ninety-nine are left, in the slot they were in.
+    let quantity = frames
+        .iter()
+        .find(|frame| frame.header() == game::ITEM_UPDATE_QUANTITY)
+        .expect("the stack's new quantity");
+    assert_eq!(u32_at(quantity, 0), cupcake.id as u32);
+    assert_eq!(u32_at(quantity, 4), 99, "one went to the ground");
+
+    let ground = frames
+        .iter()
+        .find(|frame| frame.header() == game::ITEM_UPDATE)
+        .expect("the ground part's own item record");
+    let ground_id = u32_at(ground, 0);
+    assert_ne!(ground_id, cupcake.id as u32);
+    assert_eq!(u32_at(ground, 27), 1, "the dropped count");
+
+    let agent = frames
+        .iter()
+        .find(|frame| frame.header() == game::WORLD_CREATE_AGENT)
+        .expect("the item agent");
+    let agent_id = u32_at(agent, 0);
+    assert_eq!(u32_at(agent, 4), ground_id, "the agent names the item id");
+    assert_eq!(agent.body()[8], game::AGENT_TYPE_ITEM);
+    assert!(
+        frames
+            .iter()
+            .any(|frame| frame.header() == game::CHAT_MESSAGE_CORE),
+        "the live server also says what was dropped"
+    );
+    assert!(
+        frames
+            .iter()
+            .filter(|frame| frame.header() == game::CHAT_MESSAGE_SERVER)
+            .any(|frame| frame.body()[2] == game::CHANNEL_GLOBAL as u8),
+        "on Channel_Global"
+    );
+
     let after = db_inventory::load(&harness.pool, harness.character)
         .await
         .expect("read the inventory");
-    let left = after.item(cupcake.id).expect("the stack is still there");
-    assert_eq!(left.quantity, 99, "one cupcake went to the ground");
-    assert_eq!(left.slot, Some(0), "and the rest stayed where they were");
+    assert_eq!(after.item(cupcake.id).expect("the stack").quantity, 99);
+    assert!(
+        after.item(ground_id as i32).is_none(),
+        "the ground record is not a bag row"
+    );
 
-    // Dropping the rest empties the row: the item is gone, and nothing re-creates it.
+    // Pick it up: the live server merges it back into the stack and removes the agent
+    // (`items-live-20261108-174014.jsonl` seq 156-164).
+    let mut body = agent_id.to_le_bytes().to_vec();
+    body.push(0);
+    say(&mut stream, &mut client, 0x803F, &body).await;
+    ask(&mut stream, &mut client, 0x800D, 2).await;
+    let frames = read_until(&mut stream, &mut client, game::PING_REPLY).await;
+
+    let picked = frames
+        .iter()
+        .find(|frame| frame.header() == game::ITEM_PICKED_UP)
+        .expect("the pickup record");
+    assert_eq!(u32_at(picked, 0), ground_id);
+    let merged = frames
+        .iter()
+        .find(|frame| frame.header() == game::ITEM_UPDATE_QUANTITY)
+        .expect("the stack grows back");
+    assert_eq!(u32_at(merged, 0), cupcake.id as u32);
+    assert_eq!(u32_at(merged, 4), 100);
+    assert!(
+        frames
+            .iter()
+            .any(|frame| frame.header() == game::WORLD_REMOVE_AGENT
+                && u32_at(frame, 0) == agent_id),
+        "the ground agent goes away"
+    );
+    let after = db_inventory::load(&harness.pool, harness.character)
+        .await
+        .expect("read the inventory");
+    assert_eq!(after.item(cupcake.id).expect("the stack").quantity, 100);
+
+    // Drop the whole stack: ITEM_REMOVE, an agent naming the item id, and no 0x0162
+    // (`items-live-20261108-173913.jsonl` seq 40-43).
     let mut body = (cupcake.id as u32).to_le_bytes().to_vec();
-    body.push(99);
+    body.push(100);
     say(&mut stream, &mut client, 0x802C, &body).await;
     ask(&mut stream, &mut client, 0x800D, 2).await;
-    read_until(&mut stream, &mut client, game::PING_REPLY).await;
+    let frames = read_until(&mut stream, &mut client, game::PING_REPLY).await;
+
+    let removed = frames
+        .iter()
+        .find(|frame| frame.header() == game::ITEM_REMOVE)
+        .expect("the whole-stack removal");
+    assert_eq!(u32_at(removed, 2), cupcake.id as u32);
+    let agent = frames
+        .iter()
+        .find(|frame| frame.header() == game::WORLD_CREATE_AGENT)
+        .expect("the whole stack's agent");
+    let agent_id = u32_at(agent, 0);
+    assert_eq!(u32_at(agent, 4), cupcake.id as u32);
+    assert!(
+        !frames
+            .iter()
+            .any(|frame| frame.header() == game::ITEM_UPDATE),
+        "a whole stack needs no second item record"
+    );
     let emptied = db_inventory::load(&harness.pool, harness.character)
         .await
         .expect("read the inventory");
+    assert!(emptied.item(cupcake.id).is_none());
+
+    // Pick the whole stack up: the live server puts the row back under its own id
+    // (`items-live-20261108-173913.jsonl` seq 55-63).
+    let mut body = agent_id.to_le_bytes().to_vec();
+    body.push(0);
+    say(&mut stream, &mut client, 0x803F, &body).await;
+    ask(&mut stream, &mut client, 0x800D, 2).await;
+    let frames = read_until(&mut stream, &mut client, game::PING_REPLY).await;
+    let moved = frames
+        .iter()
+        .find(|frame| frame.header() == game::ITEM_MOVE_TO_LOCATION)
+        .expect("the whole stack goes back into a bag");
+    assert_eq!(u32_at(moved, 2), cupcake.id as u32);
+    let restored = db_inventory::load(&harness.pool, harness.character)
+        .await
+        .expect("read the inventory");
     assert_eq!(
-        emptied.item(cupcake.id),
-        None,
-        "the last of the stack went to the ground and the row with it"
+        restored
+            .item(cupcake.id)
+            .expect("the row came back")
+            .quantity,
+        100
     );
 
-    // A drop of something that is not carried is answered with nothing at all, and does not end the
-    // session: the reference's handler returns ERR_OK and sends no message.
-    let mut body = 999_999u32.to_le_bytes().to_vec();
-    body.push(1);
-    say(&mut stream, &mut client, 0x802C, &body).await;
+    // Trash it: the live server deletes the row and answers ITEM_REMOVE
+    // (`items-live-20261108-173913.jsonl` seq 192-193).
+    say(
+        &mut stream,
+        &mut client,
+        0x8069,
+        &(cupcake.id as u32).to_le_bytes(),
+    )
+    .await;
+    ask(&mut stream, &mut client, 0x800D, 2).await;
+    let frames = read_until(&mut stream, &mut client, game::PING_REPLY).await;
+    let removed = frames
+        .iter()
+        .find(|frame| frame.header() == game::ITEM_REMOVE)
+        .expect("the trash answer");
+    assert_eq!(u32_at(removed, 2), cupcake.id as u32);
+    let trashed = db_inventory::load(&harness.pool, harness.character)
+        .await
+        .expect("read the inventory");
+    assert!(trashed.item(cupcake.id).is_none(), "the row is gone");
+
+    // A trash of something not carried is answered with nothing at all.
+    say(&mut stream, &mut client, 0x8069, &999_999u32.to_le_bytes()).await;
     ask(&mut stream, &mut client, 0x800D, 2).await;
     let frames = read_until(&mut stream, &mut client, game::PING_REPLY).await;
     assert!(
         !frames
             .iter()
-            .any(|frame| frame.header() == game::WORLD_CREATE_AGENT),
-        "an item nobody carries creates no agent"
+            .any(|frame| frame.header() == game::ITEM_REMOVE),
+        "a destroy of something absent has no answer"
     );
+
+    drop(stream);
+    assert!(harness.slot_released().await, "the slot went back");
+    placement::remove_world(&harness.pool, harness.world_id)
+        .await
+        .expect("remove the world");
+    harness.stop();
+}
+
+#[tokio::test]
+async fn an_item_can_be_unequipped_and_worn_again() {
+    if skip() {
+        return;
+    }
+    let Some(harness) = Harness::start().await else {
+        return;
+    };
+
+    let version = harness.version(harness.player_token);
+    let Some((mut stream, mut client)) = connect_properly(harness.address, &version).await else {
+        panic!("the world refused a token the auth service had just issued");
+    };
+    read_until(&mut stream, &mut client, game::INSTANCE_LOAD_INFO).await;
+
+    let inventory = db_inventory::load(&harness.pool, harness.character)
+        .await
+        .expect("read the inventory");
+    let equipped = inventory
+        .bags
+        .iter()
+        .find(|bag| bag.bag_model_id == db_inventory::EQUIPPED_ITEMS_MODEL)
+        .copied()
+        .expect("the equipped-items bag");
+    let body = inventory
+        .items_in(equipped.bag_id)
+        .into_iter()
+        .find(|item| item.slot == Some(2))
+        .cloned()
+        .expect("the body piece");
+    let (to_bag, to_slot) =
+        db_inventory::first_free_carrying_slot(&harness.pool, harness.character)
+            .await
+            .expect("a free slot")
+            .expect("somewhere to put it");
+
+    // `UNEQUIP_ITEM {equipped_slot: u8, bag: u16, slot: u8}`: the item leaves the equipped bag, the
+    // client is told where it went, and the body's visual slot is cleared
+    // (`items-live-20261108-174014.jsonl` seq 22-24).
+    let mut request = vec![2u8];
+    request.extend_from_slice(&(to_bag as u16).to_le_bytes());
+    request.push(to_slot as u8);
+    say(&mut stream, &mut client, 0x804F, &request).await;
+    ask(&mut stream, &mut client, 0x800D, 2).await;
+    let frames = read_until(&mut stream, &mut client, game::PING_REPLY).await;
+
+    let moved = frames
+        .iter()
+        .find(|frame| frame.header() == game::ITEM_CHANGE_LOCATION)
+        .expect("the unequip echo");
+    assert_eq!(u32_at(moved, 2), body.id as u32);
+    assert_eq!(u16_at(moved, 6), to_bag as u16);
+    assert_eq!(moved.body()[8], to_slot as u8);
+    let visual = frames
+        .iter()
+        .find(|frame| frame.header() == game::UPDATE_AGENT_VISUAL_EQUIPMENT_SLOT)
+        .expect("the body slot is cleared");
+    assert_eq!(u32_at(visual, 4), 2, "visual slot 2 is the body");
+    assert_eq!(u32_at(visual, 8), 0);
+    let after = db_inventory::load(&harness.pool, harness.character)
+        .await
+        .expect("read the inventory");
+    assert_eq!(after.item(body.id).expect("the body").bag_id, Some(to_bag));
+
+    // `EQUIP_ITEM {item_id: u32}`: it goes back to the equipped bag slot its type belongs to.
+    say(
+        &mut stream,
+        &mut client,
+        0x8030,
+        &(body.id as u32).to_le_bytes(),
+    )
+    .await;
+    ask(&mut stream, &mut client, 0x800D, 2).await;
+    let frames = read_until(&mut stream, &mut client, game::PING_REPLY).await;
+
+    let moved = frames
+        .iter()
+        .find(|frame| frame.header() == game::ITEM_CHANGE_LOCATION)
+        .expect("the equip echo");
+    assert_eq!(u32_at(moved, 2), body.id as u32);
+    assert_eq!(u16_at(moved, 6), equipped.bag_id as u16);
+    assert_eq!(moved.body()[8], 2);
+    let visual = frames
+        .iter()
+        .find(|frame| frame.header() == game::UPDATE_AGENT_VISUAL_EQUIPMENT_SLOT)
+        .expect("the body slot is filled");
+    assert_eq!(u32_at(visual, 4), 2, "visual slot 2 is the body");
+    assert_eq!(u32_at(visual, 8), body.id as u32);
+    let after = db_inventory::load(&harness.pool, harness.character)
+        .await
+        .expect("read the inventory");
+    assert_eq!(
+        after.item(body.id).expect("the body").bag_id,
+        Some(equipped.bag_id)
+    );
+    assert_eq!(after.item(body.id).expect("the body").slot, Some(2));
 
     drop(stream);
     assert!(harness.slot_released().await, "the slot went back");
@@ -866,15 +1088,15 @@ async fn an_item_can_be_moved_between_slots_and_the_server_agrees() {
         body
     };
     say(&mut stream, &mut client, 0x8072, &move_to(1, 5, cupcake.id)).await;
-    // With the echo (the default) the client is told where the item ended up. A silent answer left a
-    // live client's item back where it started, which is why the echo is the default and `silent` is the
-    // switch nobody has needed yet.
-    let frames = read_until(&mut stream, &mut client, game::ITEM_MOVE_TO_LOCATION).await;
+    // The mid-session move reply is ITEM_CHANGE_LOCATION (0x014B), not the load block's
+    // ITEM_MOVE_TO_LOCATION (0x013E). Rurik measured 0x014B for a move; a live client given 0x013E
+    // drew a second copy of the item in the destination slot.
+    let frames = read_until(&mut stream, &mut client, game::ITEM_CHANGE_LOCATION).await;
     let echo = frames
         .iter()
         .rev()
-        .find(|frame| frame.header() == game::ITEM_MOVE_TO_LOCATION)
-        .expect("an accepted move is echoed");
+        .find(|frame| frame.header() == game::ITEM_CHANGE_LOCATION)
+        .expect("an accepted move is answered with ITEM_CHANGE_LOCATION");
     assert_eq!(
         u32::from_le_bytes([
             echo.body()[2],
@@ -915,11 +1137,11 @@ async fn an_item_can_be_moved_between_slots_and_the_server_agrees() {
         &move_to(1, occupied as u8, cupcake.id),
     )
     .await;
-    let frames = read_until(&mut stream, &mut client, game::ITEM_MOVE_TO_LOCATION).await;
+    let frames = read_until(&mut stream, &mut client, game::ITEM_CHANGE_LOCATION).await;
     let snap_back = frames
         .iter()
         .rev()
-        .find(|frame| frame.header() == game::ITEM_MOVE_TO_LOCATION)
+        .find(|frame| frame.header() == game::ITEM_CHANGE_LOCATION)
         .expect("a refusal puts the client's model back");
     assert_eq!(snap_back.body()[8], 5, "still in the slot it really is in");
     let unchanged = db_inventory::load(&harness.pool, harness.character)
@@ -1023,7 +1245,9 @@ async fn an_item_can_be_taken_off_and_worn_again() {
         "the weapon slot is empty now"
     );
 
-    // Put it back on: `GAME_CMSG_EQUIP_ITEM`, `{item_id: u32}`.
+    // Put it back on: `GAME_CMSG_EQUIP_ITEM`, `{item_id: u32}`. The live server answers an equip with
+    // the single visual slot (`0x006F`, `items-live-20261108-174014.jsonl` seq 31-32), not the bulk
+    // `0x006E`: `{agent, visual slot, item}`, and the weapon's visual slot is 0.
     say(
         &mut stream,
         &mut client,
@@ -1034,21 +1258,17 @@ async fn an_item_can_be_taken_off_and_worn_again() {
     let frames = read_until(
         &mut stream,
         &mut client,
-        game::UPDATE_AGENT_VISUAL_EQUIPMENT,
+        game::UPDATE_AGENT_VISUAL_EQUIPMENT_SLOT,
     )
     .await;
     let wearing_again = frames
         .iter()
         .rev()
-        .find(|frame| frame.header() == game::UPDATE_AGENT_VISUAL_EQUIPMENT)
+        .find(|frame| frame.header() == game::UPDATE_AGENT_VISUAL_EQUIPMENT_SLOT)
         .expect("equipping changes what the agent wears");
+    assert_eq!(u32_at(wearing_again, 4), 0, "the weapon's visual slot");
     assert_eq!(
-        u32::from_le_bytes([
-            wearing_again.body()[4],
-            wearing_again.body()[5],
-            wearing_again.body()[6],
-            wearing_again.body()[7]
-        ]),
+        u32_at(wearing_again, 8),
         weapon.id as u32,
         "and the hammer is back in the weapon slot"
     );
@@ -1451,6 +1671,7 @@ async fn a_second_player_is_introduced_to_the_first_and_withdrawn_again() {
         second.session,
         second.account,
         second.character,
+        false,
     )
     .await
     .expect("write the second transfer");
@@ -2030,6 +2251,7 @@ async fn a_travel_to_an_unhosted_map_is_loaded_on_demand() {
         seeded.session,
         seeded.account,
         seeded.character,
+        false,
     )
     .await
     .expect("write the pending transfer");
@@ -2272,6 +2494,7 @@ async fn a_connection_to_an_unhosted_map_is_loaded_on_demand() {
         seeded.session,
         seeded.account,
         seeded.character,
+        false,
     )
     .await
     .expect("write the pending transfer");
@@ -2575,6 +2798,7 @@ async fn an_idle_pair_keeps_its_rhythm_and_its_count() {
         second.session,
         second.account,
         second.character,
+        false,
     )
     .await
     .expect("write the second transfer");
@@ -2776,6 +3000,7 @@ async fn a_ten_minute_idle_pair_keeps_its_rhythm() {
         second.session,
         second.account,
         second.character,
+        false,
     )
     .await
     .expect("write the second transfer");
@@ -2975,6 +3200,7 @@ async fn a_walk_is_answered_with_the_first_waypoint_of_the_servers_own_path() {
         second.session,
         second.account,
         second.character,
+        false,
     )
     .await
     .expect("write the transfer");

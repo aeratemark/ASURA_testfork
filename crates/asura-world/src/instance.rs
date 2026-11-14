@@ -55,6 +55,9 @@ pub struct Slot {
     /// The guild another client is told this player is in (`crate::guild`). `None` until the connection
     /// has read it, and for a player in no guild.
     pub guild: Option<crate::guild::Badge>,
+    /// The agent this player is walking to, if any (`crate::approach`): an NPC it interacts with, a foe
+    /// it attacks, a player it follows. The tick steers it.
+    pub approach: Option<crate::approach::Approach>,
 }
 
 /// A player as another client draws it. Retail introduces every other player with its profession
@@ -83,6 +86,57 @@ impl Look {
     }
 }
 
+/// An NPC body as a talk sees it ([`Instance::npc_target`]).
+#[derive(Debug, Clone, PartialEq)]
+pub struct NpcTarget {
+    /// Its agent.
+    pub agent_id: u32,
+    /// The map-local key of the placement it was made from (`"148-10050"`).
+    pub placement: String,
+    /// The placement's own name, the coded units its `0x009B` carries; `None` for a body that has none.
+    pub name: Option<Vec<u16>>,
+    /// Where it stands now.
+    pub position: (f32, f32),
+}
+
+impl NpcTarget {
+    /// The name as text, when it is a literal: the `0x0108 0x0107 ... 0x0001` form a pack writes for a
+    /// placement (`tools/npcs-from-preforged.py`). `None` for a coded string id the server cannot read.
+    pub fn name_text(&self) -> Option<String> {
+        let units = self.name.as_deref()?;
+        let inner = units.strip_prefix(&[0x0108, 0x0107])?;
+        let inner = inner.strip_suffix(&[0x0001]).unwrap_or(inner);
+        Some(
+            char::decode_utf16(inner.iter().copied())
+                .map(|unit| unit.unwrap_or(char::REPLACEMENT_CHARACTER))
+                .collect(),
+        )
+    }
+}
+
+/// One item lying on the ground: the record the client draws, where it lies, and the agent it is.
+///
+/// A drop is not a bag row. The live server takes the whole stack's row out of the bag and keeps its id
+/// for the ground agent (`items-live-20261108-173913.jsonl` seq 41-43), or keeps a partial stack and
+/// gives the ground part a fresh id (`items-live-20261108-174014.jsonl` seq 133-136). Both forms are
+/// carried here: `source_item_id` is `Some` exactly for the partial form, the stack the pickup merges
+/// back into.
+#[derive(Debug, Clone)]
+pub struct GroundItem {
+    /// The agent the client interacts with and `WORLD_REMOVE_AGENT` takes away.
+    pub agent_id: u32,
+    /// The item record the ground agent's `model_id` names. Its `bag_id` and `slot` are `None`.
+    pub item: db_inventory::Item,
+    /// The bag row the dropped part came from, when that row stayed behind. `None` for a whole drop.
+    pub source_item_id: Option<i32>,
+    /// Where it lies.
+    pub position: (f32, f32),
+    /// The pathing plane, not a height.
+    pub plane: u16,
+    /// Which way it faces, as the unit vector the live server uses for a dropped item: `(1, 0)`.
+    pub direction: (f32, f32),
+}
+
 /// One hosted map: its description, and everyone standing in it.
 pub struct Instance {
     /// The map this instance runs: what a client is told it is entering (`MapEntry`).
@@ -92,6 +146,9 @@ pub struct Instance {
     slots: Mutex<HashMap<u32, Slot>>,
     /// The next agent id handed out for something that is not a joining avatar.
     next_agent_id: Mutex<u32>,
+    /// Items lying on the ground, by agent id. The instance owns them, not the bag: a client that
+    /// leaves and comes back finds them where it left them, and every client in the map is told.
+    ground_items: Mutex<HashMap<u32, GroundItem>>,
     /// The parties of the players in it (`crate::party`).
     pub parties: crate::party::Parties,
     /// The local ids its messages name guilds by (`crate::guild`).
@@ -100,18 +157,81 @@ pub struct Instance {
     /// or one whose party holds its place after a drop (`crate::party`). Its lock is taken after the
     /// slots' and never the other way round.
     reserved: Mutex<HashMap<Uuid, u32>>,
+    /// The NPCs, seeded when the instance is created (`crate::npc`). Its lock is taken after the slots'
+    /// and the ground items', never before them.
+    npcs: Mutex<crate::npc::NpcTable>,
+    /// The graphs an NPC's walk and a player's walk to an agent ask (`crate::approach`); empty for an
+    /// instance made without the world's NPCs ([`Instance::new`]).
+    graphs: PathGraphs,
+    /// The fight: every player and every NPC with a combat block, their vitals, casts and effects
+    /// (`crate::skill`). Its lock is taken after the slots' and the NPCs', never before them, and a
+    /// request handler that takes it alone drops it before it delivers anything.
+    combat: Mutex<crate::skill::Combat>,
 }
 
 impl Instance {
+    /// An instance with no NPCs.
     pub fn new(map: MapEntry) -> Instance {
+        Instance::with_npcs(map, None)
+    }
+
+    /// An instance whose map's NPCs, if the pack has any, exist from now on (`docs/36` R29): each
+    /// placement becomes a body under the next free agent id, before any player can join.
+    pub fn with_npcs(map: MapEntry, npcs: Option<&crate::npc::NpcWorld>) -> Instance {
+        // The reference's first free agent id; the bodies take the ids from it, in file order.
+        let first_agent_id = 2;
+        let content = npcs.and_then(|world| Some((world, world.content.map(map.map_id)?)));
+        let (table, graphs) = match content {
+            Some((world, content)) => {
+                let (table, notes) = crate::npc::NpcTable::seed(
+                    content,
+                    world.content.sight,
+                    world.behaviors.as_ref(),
+                    first_agent_id,
+                );
+                for note in notes {
+                    eprintln!("world: npc: {note}");
+                }
+                (table, world.graphs.clone())
+            }
+            // No NPCs here, but a player still walks to another player on the world's graphs
+            // (`crate::approach`).
+            None => (
+                crate::npc::NpcTable::default(),
+                npcs.map(|world| world.graphs.clone())
+                    .unwrap_or_else(PathGraphs::empty),
+            ),
+        };
+        let next_agent_id = first_agent_id + table.len() as u32;
+        // The NPCs that fight are in the fight from the start, like the bodies themselves.
+        let mut combat = crate::skill::Combat::default();
+        for (agent_id, block, level, position) in table.combatants() {
+            combat
+                .engine
+                .join(agent_id, crate::skill::npc_spec(&block, level), position);
+        }
         Instance {
             map,
             slots: Mutex::new(HashMap::new()),
-            next_agent_id: Mutex::new(2),
+            next_agent_id: Mutex::new(next_agent_id),
+            ground_items: Mutex::new(HashMap::new()),
             parties: crate::party::Parties::default(),
             guild_ids: crate::guild::LocalIds::default(),
             reserved: Mutex::new(HashMap::new()),
+            npcs: Mutex::new(table),
+            graphs,
+            combat: Mutex::new(combat),
         }
+    }
+
+    /// The instance's fight (`crate::skill`). Never held across an await, and never while taking the
+    /// slots' or the NPCs' lock.
+    pub fn combat(&self) -> std::sync::MutexGuard<'_, crate::skill::Combat> {
+        self.combat.lock().unwrap_or_else(|err| err.into_inner())
+    }
+
+    fn npc_table(&self) -> std::sync::MutexGuard<'_, crate::npc::NpcTable> {
+        self.npcs.lock().unwrap_or_else(|err| err.into_inner())
     }
 
     fn locked(&self) -> std::sync::MutexGuard<'_, HashMap<u32, Slot>> {
@@ -120,6 +240,12 @@ impl Instance {
 
     fn reservations(&self) -> std::sync::MutexGuard<'_, HashMap<Uuid, u32>> {
         self.reserved.lock().unwrap_or_else(|err| err.into_inner())
+    }
+
+    fn grounds(&self) -> std::sync::MutexGuard<'_, HashMap<u32, GroundItem>> {
+        self.ground_items
+            .lock()
+            .unwrap_or_else(|err| err.into_inner())
     }
 
     /// Keep a player id for a character that is not here yet, and return it. A character that already
@@ -178,9 +304,17 @@ impl Instance {
                 .unwrap_or(1),
         };
         drop(reserved);
+        let ground = self.grounds();
+        let npcs = self.npc_table();
         let agent_id = (1..)
-            .find(|id| !slots.values().any(|slot| slot.agent.agent_id == *id))
+            .find(|id| {
+                !slots.values().any(|slot| slot.agent.agent_id == *id)
+                    && !ground.values().any(|item| item.agent_id == *id)
+                    && !npcs.holds(*id)
+            })
             .unwrap_or(1);
+        drop(npcs);
+        drop(ground);
         slots.insert(
             player_id,
             Slot {
@@ -204,6 +338,7 @@ impl Instance {
                 look: Look::default(),
                 wearing: Vec::new(),
                 guild: None,
+                approach: None,
             },
         );
         (player_id, agent_id)
@@ -267,33 +402,118 @@ impl Instance {
 
     /// Whether a player with this character name is in the instance, matched without regard to case.
     pub fn has_player_named(&self, name: &str) -> bool {
-        self.locked()
-            .values()
-            .any(|slot| slot.name.eq_ignore_ascii_case(name))
+        self.player_named(name).is_some()
     }
 
-    /// Remove a player, and say whether it was there.
+    /// The player with this character name in the instance, matched without regard to case.
+    pub fn player_named(&self, name: &str) -> Option<u32> {
+        self.locked()
+            .values()
+            .find(|slot| slot.name.eq_ignore_ascii_case(name))
+            .map(|slot| slot.player_id)
+    }
+
+    /// Remove a player, and say whether it was there. What its client was told about the NPCs goes
+    /// with it: the bodies stay, and a return is a fresh entry with their current state.
     pub fn leave(&self, player_id: u32) -> bool {
-        self.locked().remove(&player_id).is_some()
+        let gone = self.locked().remove(&player_id);
+        let left = gone.is_some();
+        if let Some(slot) = gone {
+            self.combat().leave(slot.agent.agent_id);
+        }
+        self.npc_table().forget(player_id);
+        left
     }
 
     /// The next free agent id for something the world creates that is not a joining avatar (a
     /// dropped item's ground agent). A counter, as the reference's `GmIdAllocate` is a table.
     pub fn allocate_agent_id(&self) -> u32 {
+        let slots = self.locked();
+        let ground = self.grounds();
+        let npcs = self.npc_table();
         let mut next = self
             .next_agent_id
             .lock()
             .unwrap_or_else(|err| err.into_inner());
-        let id = *next;
-        *next = next.saturating_add(1);
-        id
+        loop {
+            let id = *next;
+            *next = next.saturating_add(1);
+            if !slots.values().any(|slot| slot.agent.agent_id == id)
+                && !ground.values().any(|item| item.agent_id == id)
+                && !npcs.holds(id)
+            {
+                return id;
+            }
+        }
     }
 
-    /// Whether this instance's agents hold `agent_id`.
+    /// The NPC bodies within a loading client's range, each as the frames of its entry burst, by agent
+    /// id - the NPC half of the load's agent array (`player::handle_request_players`). From here on the
+    /// instance's tick keeps that client's view of them current.
+    pub fn npc_arrival(&self, player_id: u32, position: (f32, f32)) -> Vec<(u32, Vec<Frame>)> {
+        self.npc_table()
+            .arrive(player_id, position)
+            .into_iter()
+            .map(|(agent_id, msgs)| (agent_id, crate::npc::frames::frames(&msgs)))
+            .collect()
+    }
+
+    /// How many NPC bodies the instance has.
+    pub fn npc_count(&self) -> usize {
+        self.npc_table().len()
+    }
+
+    /// Answer an owner's `/npc` test command against this instance's table.
+    pub fn npc_command(&self, argument: &str) -> Vec<String> {
+        self.npc_table().command(argument)
+    }
+
+    /// The agent whose placement carries this literal name, for a quest marker or a script.
+    pub fn npc_agent_named(&self, name: &str) -> Option<u32> {
+        self.npc_table().agent_named(name)
+    }
+
+    /// One NPC body as a talk needs it (`crate::vendor`): the placement it was made from, its name and
+    /// where it stands now. `None` for an agent that is not an NPC of this instance.
+    pub fn npc_target(&self, agent_id: u32) -> Option<NpcTarget> {
+        let table = self.npc_table();
+        let placement = table.placement_of(agent_id)?;
+        let body = &table.agent(agent_id)?.body;
+        Some(NpcTarget {
+            agent_id,
+            placement: placement.id.clone(),
+            name: placement.name.clone(),
+            position: body.position,
+        })
+    }
+
+    /// Put one dropped item on the ground under an agent id from [`Instance::allocate_agent_id`].
+    pub fn put_ground_item(&self, item: GroundItem) {
+        self.grounds().insert(item.agent_id, item);
+    }
+
+    /// One ground item, as a copy, without taking it.
+    pub fn ground_item(&self, agent_id: u32) -> Option<GroundItem> {
+        self.grounds().get(&agent_id).cloned()
+    }
+
+    /// Take a ground item off the map, so a pickup can claim it before it awaits.
+    pub fn take_ground_item(&self, agent_id: u32) -> Option<GroundItem> {
+        self.grounds().remove(&agent_id)
+    }
+
+    /// Every ground item, by agent id, for a client that is entering the map.
+    pub fn ground_items(&self) -> Vec<GroundItem> {
+        let mut items: Vec<GroundItem> = self.grounds().values().cloned().collect();
+        items.sort_by_key(|item| item.agent_id);
+        items
+    }
+
+    /// Whether this instance's agents - its players' and its NPCs' - hold `agent_id`.
     pub fn has_agent(&self, agent_id: u32) -> bool {
-        self.locked()
-            .values()
-            .any(|slot| slot.agent.agent_id == agent_id)
+        let slots = self.locked();
+        slots.values().any(|slot| slot.agent.agent_id == agent_id)
+            || self.npc_table().holds(agent_id)
     }
 
     /// The player ids of everyone in the instance.
@@ -376,6 +596,19 @@ impl Instance {
     pub fn broadcast_all(&self, frames: &[Frame]) {
         for slot in self.locked().values().filter(|slot| slot.entered) {
             let _ = slot.outbox.send(frames.to_vec());
+        }
+    }
+
+    /// Push frames about `subjects` to every client that knows every one of them. A player's own
+    /// agent is known to every entered client; an NPC must have been sent to that client and not
+    /// removed (`NpcTable::knows`).
+    pub fn broadcast_known(&self, subjects: &[u32], frames: &[Frame]) {
+        let slots = self.locked();
+        let table = self.npc_table();
+        for slot in slots.values().filter(|slot| slot.entered) {
+            if knows_all(&table, slot.player_id, subjects) {
+                let _ = slot.outbox.send(frames.to_vec());
+            }
         }
     }
 
@@ -481,6 +714,250 @@ impl Instance {
             }
             let _ = player_id;
         }
+
+        // The NPCs: what each active body did this tick, and which bodies came into or left each client's
+        // range (`crate::npc::table`). A client is a viewer once it has entered and finished loading; a
+        // loading one has the bodies in range in its own block.
+        let viewers: Vec<crate::npc::Viewer> = slots
+            .values()
+            .filter(|slot| slot.entered && !slot.loading)
+            .map(|slot| crate::npc::Viewer {
+                player_id: slot.player_id,
+                position: slot.agent.position,
+            })
+            .collect();
+        // The fight, then the NPCs, then the fight's clock. The creatures think on where everyone stood
+        // after the walks above (`crate::npc::fight`): their attacks and skills go to the engine, their
+        // walks to the table, which sends them with the bodies' other moves. Locks: slots (held), NPCs,
+        // then the fight, never the other way round.
+        let pack = crate::skill::catalog::current().ok();
+        let mut table = self.npc_table();
+        if let Some(pack) = pack {
+            let rules = crate::npc::fight::rules().copied().unwrap_or_default();
+            let reach = crate::npc::fight::Reach {
+                melee: pack.rules.melee_range,
+                ranged: pack.rules.bow_range,
+                spell: pack.rules.spell_range,
+            };
+            let bodies = table.positions();
+            let orders = {
+                let mut combat = self.combat();
+                // A player's damage last tick is what wakes a body that only fights when provoked.
+                for (mob, attacker) in combat.engine.take_provoked() {
+                    table.fight.provoke(mob, attacker);
+                }
+                for slot in slots.values() {
+                    combat
+                        .engine
+                        .set_position(slot.agent.agent_id, slot.agent.position);
+                }
+                for (agent_id, position) in &bodies {
+                    combat.engine.set_position(*agent_id, *position);
+                }
+                let seen = |agent: u32| {
+                    combat
+                        .engine
+                        .actor(agent)
+                        .map(|actor| crate::npc::fight::Seen {
+                            agent,
+                            position: actor.position,
+                            alive: actor.alive,
+                        })
+                };
+                let players: Vec<crate::npc::fight::Seen> = slots
+                    .values()
+                    .filter(|slot| slot.entered && !slot.loading)
+                    .filter_map(|slot| seen(slot.agent.agent_id))
+                    .collect();
+                let creatures: std::collections::BTreeMap<u32, crate::npc::fight::Seen> = table
+                    .fight
+                    .agents()
+                    .into_iter()
+                    .filter_map(|agent| Some((agent, seen(agent)?)))
+                    .collect();
+                let orders = table.fight.think(
+                    u64::from(delta_ms),
+                    &rules,
+                    reach,
+                    &creatures,
+                    &players,
+                );
+                for (agent, order) in &orders {
+                    use crate::npc::fight::Order;
+                    match order {
+                        Order::Attack { target } => {
+                            let _ = combat.engine.attack(*agent, *target);
+                        }
+                        Order::UseSkills { skills, target } => {
+                            for skill in skills {
+                                let used = combat.engine.use_skill(
+                                    *agent,
+                                    *skill,
+                                    0,
+                                    *target,
+                                    &pack.skills,
+                                    &pack.rules,
+                                );
+                                if used.is_ok() {
+                                    break;
+                                }
+                            }
+                        }
+                        Order::StopAttack => combat.engine.stop_attack(*agent),
+                        Order::Restore => combat.engine.restore(*agent, &pack.rules),
+                        Order::Revive { at } => combat.engine.revive(*agent, *at, &pack.rules),
+                        Order::Walk { .. } | Order::Halt | Order::Fall => {}
+                    }
+                }
+                orders
+            };
+            table.obey(&orders, &self.graphs);
+        }
+        let mut ticked = table.tick(delta, &viewers, &self.graphs);
+        let stopped = std::mem::take(&mut ticked.stopped);
+        let bodies = table.positions();
+        let spots = table.spots();
+        drop(table);
+        for note in &ticked.notes {
+            eprintln!("world: npc: {note}");
+        }
+        for (player_id, msgs) in ticked.deliveries {
+            if let Some(slot) = slots.get(&player_id) {
+                let _ = slot.outbox.send(crate::npc::frames::frames(&msgs));
+            }
+        }
+
+        // Players walking to an agent (`crate::approach`): steered on where everyone stands now. The
+        // fight's lock comes after the slots' and the NPCs' (released above).
+        let approached = self.steer_approaches(&mut slots, spots, delta_ms);
+        if !approached.is_empty() {
+            for slot in slots.values().filter(|slot| slot.entered && !slot.loading) {
+                let _ = slot.outbox.send(approached.clone());
+            }
+        }
+
+        // The fight's clock: casts that finish, swings that land, recharges that end, effects that run
+        // out, areas that pulse and regeneration (`crate::skill::engine`). Positions are the walk's, as
+        // of this tick.
+        if let Some(pack) = pack {
+            let deliveries = {
+                let mut combat = self.combat();
+                for agent in &stopped {
+                    combat.engine.stop_attack(*agent);
+                }
+                for slot in slots.values() {
+                    combat
+                        .engine
+                        .set_position(slot.agent.agent_id, slot.agent.position);
+                }
+                for (agent_id, position) in bodies {
+                    combat.engine.set_position(agent_id, position);
+                }
+                combat
+                    .engine
+                    .tick(u64::from(delta_ms), &pack.skills, &pack.rules);
+                combat.deliveries(pack)
+            };
+            // A fight message names agent ids. A client that was never sent a body cannot look one
+            // up, and the client asserts on the lookup (`docs/49` 2.1), so a broadcast goes only to
+            // the clients that know every body it names.
+            let table = self.npc_table();
+            for (recipient, subjects, frames) in deliveries {
+                match recipient {
+                    crate::skill::Recipient::Player(player_id) => {
+                        if let Some(slot) = slots.get(&player_id) {
+                            let _ = slot.outbox.send(frames);
+                        }
+                    }
+                    crate::skill::Recipient::Everyone => {
+                        for slot in slots.values().filter(|slot| slot.entered && !slot.loading) {
+                            if !knows_all(&table, slot.player_id, &subjects) {
+                                continue;
+                            }
+                            let _ = slot.outbox.send(frames.clone());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// One tick of every player's walk to an agent (`crate::approach`), with the frames everyone is told.
+    /// An attack's walk ends with the fight's attack; a walk to an agent that is gone ends there.
+    fn steer_approaches(
+        &self,
+        slots: &mut HashMap<u32, Slot>,
+        npcs: Vec<(u32, crate::pathfind::Pos)>,
+        delta_ms: u32,
+    ) -> Vec<Frame> {
+        use crate::approach::{abandon, steer, Purpose};
+        if !slots.values().any(|slot| slot.approach.is_some()) {
+            return Vec::new();
+        }
+        let targets_npc: std::collections::HashSet<u32> =
+            npcs.iter().map(|(agent, _)| *agent).collect();
+        let mut targets: HashMap<u32, crate::pathfind::Pos> = npcs.into_iter().collect();
+        for slot in slots.values() {
+            targets.insert(slot.agent.agent_id, slot.agent.here());
+        }
+        let attacking: HashMap<u32, Option<u32>> = {
+            let combat = self.combat();
+            slots
+                .values()
+                .filter(|slot| {
+                    slot.approach
+                        .as_ref()
+                        .is_some_and(|approach| approach.purpose == Purpose::Attack)
+                })
+                .map(|slot| {
+                    let agent = slot.agent.agent_id;
+                    let on = combat
+                        .engine
+                        .actor(agent)
+                        .and_then(|actor| actor.attack_target);
+                    (agent, on)
+                })
+                .collect()
+        };
+        let mut frames = Vec::new();
+        for slot in slots.values_mut() {
+            if slot.loading {
+                continue;
+            }
+            let Some(mut approach) = slot.approach.take() else {
+                continue;
+            };
+            let attack_over = approach.purpose == Purpose::Attack
+                && attacking.get(&slot.agent.agent_id).copied().flatten() != Some(approach.target);
+            let Some(target) = targets
+                .get(&approach.target)
+                .copied()
+                .filter(|_| !attack_over)
+            else {
+                frames.extend(abandon(&mut slot.agent));
+                continue;
+            };
+            let steered = steer(
+                &mut approach,
+                &mut slot.agent,
+                target,
+                self.map.map_id,
+                &self.graphs,
+                delta_ms,
+            );
+            frames.extend(steered.frames);
+            // At the NPC: its own connection answers the talk, with the database and the socket the
+            // tick does not hold (`crate::vendor::talk`). A player is never talked to.
+            if steered.arrived && targets_npc.contains(&approach.target) {
+                let _ = slot.orders.send(crate::travel::Order::Talk {
+                    npc: approach.target,
+                });
+            }
+            if !steered.done {
+                slot.approach = Some(approach);
+            }
+        }
+        frames
     }
 
     /// The instance's clock: one task per map, ticking while the instance exists.
@@ -599,16 +1076,14 @@ pub fn introduction(peer: &PeerView) -> Vec<Frame> {
     // And the agent's initial effects immediately before the agent itself (seq 220, 307, 1010, 1344;
     // `GameSrv_SendAgentInitialEffects` in the reference's `GameSrv_SendWorldAgents`).
     frames.push(game::agent_initial_effects(peer.agent_id, 0));
-    frames.push(game::world_create_agent(&game::CreateAgent {
-        agent_id: peer.agent_id,
-        model_id: game::CHAR_CLASS_PLAYER_BASE | peer.player_id,
-        agent_type: game::AGENT_TYPE_LIVING,
-        position: peer.standing.position,
-        plane: peer.standing.plane,
-        direction: peer.standing.direction,
-        speed_base: game::PLAYER_SPEED_BASE,
-        player_team_token: PLAYER_TEAM_TOKEN,
-    }));
+    frames.push(game::player_create_agent(
+        peer.agent_id,
+        peer.player_id,
+        peer.standing.position,
+        peer.standing.plane,
+        peer.standing.direction,
+        PLAYER_TEAM_TOKEN,
+    ));
     // What it takes to draw it dressed, in retail's order right after the agent: each equipped item as
     // the low-detail record, the visual equipment that names them, the cape (pre-searing-load-3.jsonl
     // seq 222-228, 309-317, 1347-1353). Both directions go through here, so a newcomer sees the players
@@ -650,21 +1125,34 @@ pub fn farewell(player_id: u32, agent_id: u32) -> Vec<Frame> {
 /// Every instance this world is running, by map id.
 ///
 /// A world hosts one instance per map (outposts never end; explorable pools are a later policy), so
-/// the map id is the key. The first join to a map creates its instance and starts its clock.
+/// the map id is the key. The first join to a map creates its instance - with its NPCs - and starts
+/// its clock.
 #[derive(Default, Clone)]
-pub struct Instances(Arc<Mutex<HashMap<i32, Arc<Instance>>>>);
+pub struct Instances {
+    running: Arc<Mutex<HashMap<i32, Arc<Instance>>>>,
+    /// What a new instance seeds its NPCs from; `None` runs every instance without NPCs.
+    npcs: Option<crate::npc::NpcWorld>,
+}
 
 impl Instances {
-    fn locked(&self) -> std::sync::MutexGuard<'_, HashMap<i32, Arc<Instance>>> {
-        self.0.lock().unwrap_or_else(|err| err.into_inner())
+    /// Instances that seed their maps' NPCs from `npcs`.
+    pub fn with_npcs(npcs: crate::npc::NpcWorld) -> Instances {
+        Instances {
+            running: Arc::default(),
+            npcs: Some(npcs),
+        }
     }
 
-    /// The running instance for a map, created - with its clock running - on first use.
+    fn locked(&self) -> std::sync::MutexGuard<'_, HashMap<i32, Arc<Instance>>> {
+        self.running.lock().unwrap_or_else(|err| err.into_inner())
+    }
+
+    /// The running instance for a map, created - with its NPCs and its clock running - on first use.
     pub fn for_map(&self, map: &MapEntry) -> Arc<Instance> {
         if let Some(instance) = self.locked().get(&map.map_id) {
             return instance.clone();
         }
-        let instance = Arc::new(Instance::new(map.clone()));
+        let instance = Arc::new(Instance::with_npcs(map.clone(), self.npcs.as_ref()));
         let ticking = Arc::clone(&instance);
         tokio::spawn(async move { ticking.run().await });
         self.locked().insert(map.map_id, instance.clone());
@@ -707,4 +1195,12 @@ impl Instances {
             .flat_map(|instance| instance.others(except))
             .collect()
     }
+}
+
+/// Whether a client knows every agent a message names. The table holds only NPC bodies; a player's
+/// agent id is not in it, and every entered client has been sent every player.
+fn knows_all(table: &crate::npc::NpcTable, player_id: u32, subjects: &[u32]) -> bool {
+    subjects
+        .iter()
+        .all(|agent| !table.holds(*agent) || table.knows(player_id, *agent))
 }

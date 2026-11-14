@@ -167,46 +167,44 @@ pub async fn handle_connection(
     // whatever it had - measured 2026-10-28, the row named Asura Three while the client was entering
     // with Asura One, and every login of Asura One died here as "no pending transfer".
     //
+    // **A travel is not a choice.** The world writes its own transfer for the character it is moving,
+    // and the client's version message may still carry the character it selected at login: measured
+    // 2026-11-13, a doorway from Foibles Fair to Wizard's Folly served the account's Monk while the
+    // player was playing its Warrior. So only a login handoff (`transfer.is_login`) may prefer the
+    // presented character; a travel uses the transfer's own character, which is the one the old map's
+    // seat and the movement belong to.
+    //
     // What must still hold is the reference's own rule (`AuthSrv_DoPostHandshake`): the character must
     // belong to the account the transfer was issued for. Anything else is refused, and the refusal
     // names both ids so a mismatch is readable instead of inferred.
-    // A character-creation connection presents **no** character of its own - the character is what is
-    // about to be made - and the client's idea of it can be a character that has just been deleted.
-    // Measured 2026-10-28: the version message carried 00000000-... after one delete and the deleted
-    // character's own uuid after another, and both were refused here.
-    //
-    // What must hold is the reference's own rule (`AuthSrv_DoPostHandshake`): the character played must
-    // belong to the account the transfer was issued for. So a presented character is used only if it is
-    // on that account; anything else - nil, deleted, or someone else's - falls back to the character the
-    // transfer itself names, which is on the account by construction. That is not a widening: a client
-    // cannot reach a character this way that it could not reach before, it can only be served the one
-    // its own token was issued for.
     let presented = Uuid::from_bytes_le(game_version.character);
-    let mut character = if presented.is_nil() {
-        transfer.character_id
-    } else {
-        presented
-    };
-    if character != transfer.character_id {
+    let mut character = transfer.character_id;
+    if transfer.is_login && !presented.is_nil() && presented != transfer.character_id {
         let owned = asura_db::login::characters(&world.pool, transfer.account_id)
             .await
             .map_err(GameError::Database)?
             .iter()
-            .any(|candidate| candidate.id == character);
-        if !owned {
+            .any(|candidate| candidate.id == presented);
+        character = served_character(true, transfer.character_id, presented, owned);
+        if character == presented {
             eprintln!(
-                "world: token {:#010X} is for account {}, and character {} is not on it; using the \
-                 one the transfer names ({})",
-                game_version.player_token, transfer.account_id, character, transfer.character_id
+                "world: login token {:#010X} named character {} but the client entered with {}; using \
+                 the client's, which is on the same account",
+                game_version.player_token, transfer.character_id, presented
             );
-            character = transfer.character_id;
         } else {
             eprintln!(
-                "world: token {:#010X} named character {} but the client entered with {}; using the \
-                 client's, which is on the same account",
-                game_version.player_token, transfer.character_id, character
+                "world: login token {:#010X} is for account {}, and character {} is not on it; using the \
+                 one the transfer names ({})",
+                game_version.player_token, transfer.account_id, presented, transfer.character_id
             );
         }
+    } else if !transfer.is_login && !presented.is_nil() && presented != transfer.character_id {
+        eprintln!(
+            "world: travel token {:#010X} moves character {}; the client presented {} and the transfer \
+             wins",
+            game_version.player_token, transfer.character_id, presented
+        );
     }
 
     let map_id = transfer.map_id;
@@ -378,6 +376,7 @@ pub async fn handle_connection(
         instance,
         name,
         inventory,
+        items_sent: false,
         session_id: transfer.session_id,
         account_id: transfer.account_id,
         moved: false,
@@ -410,7 +409,39 @@ pub async fn handle_connection(
             crate::guild::load(&world.pool, character).await
         },
         said_goodbye: false,
+        // The gold in storage (migration 0035); 0 for a character with no row yet.
+        storage_gold: db_game::storage_gold(&world.pool, character)
+            .await
+            .map_err(GameError::Database)?,
+        // No NPC window is open on a new connection (`crate::vendor`).
+        vendor: crate::vendor::Windows::default(),
+        // A creation instance has no character to have skills yet.
+        skills: if map_type == map_kinds().character_creation {
+            crate::skill::Loadout::default()
+        } else {
+            crate::skill::character::load(world, character).await
+        },
+        // A creation instance has no character to have quests yet. A bad row is an unknown character,
+        // the same answer a row that cannot be read gets (`docs/58-quests.md`).
+        quests: if map_type == map_kinds().character_creation {
+            asura_rules::quest::Profile::default()
+        } else {
+            let rows = db_quest::load(&world.pool, character)
+                .await
+                .map_err(GameError::Database)?;
+            crate::quest::profile(rows).map_err(|err| {
+                eprintln!("world: {err}");
+                GameError::UnknownCharacter
+            })?
+        },
+        // Every load restores the log (`crate::quest::restore`); the client asks for each marker.
+        restore_quests: transfer.is_login,
+        quest_markers_sent: Default::default(),
     };
+    // Its agent joins the instance's fight: its bar, ranks, level and what it wears (`crate::skill`).
+    if player.creation.is_none() {
+        crate::skill::character::enter_combat(&player);
+    }
     // Its guild, so a player who joins after it is introduced with the guild's badge.
     player.instance.wear_guild(
         player.player_id,
@@ -680,6 +711,9 @@ pub async fn run(
             // mechanism: the reference writes into every other connection's buffer, and here every
             // other connection's task writes into this channel.
             Some(frames) = inbox.recv() => {
+                // A body the instance tick just created gets its quest marker too, so an NPC walked
+                // into range carries the exclamation before it is talked to (`crate::quest`).
+                let frames = crate::quest::with_npc_markers(frames, player);
                 send(stream, session, frames, trace).await?;
             }
 
@@ -769,6 +803,58 @@ pub struct Placement {
     pub bag_id: i32,
     pub slot: i32,
 }
+
+/// The character a world connection serves. A login handoff may use the character the client presents
+/// when it is on the same account, because the client chose it after the auth service wrote the transfer.
+/// A travel may not: the world wrote that transfer for the character it is moving, and the client's
+/// version message can still name the login selection (`docs/56-character-on-travel.md`).
+fn served_character(
+    is_login: bool,
+    transfer_character: Uuid,
+    presented: Uuid,
+    presented_owned: bool,
+) -> Uuid {
+    if is_login && !presented.is_nil() && presented != transfer_character && presented_owned {
+        presented
+    } else {
+        transfer_character
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_travel_serves_the_character_the_transfer_moves() {
+        let warrior = Uuid::new_v4();
+        let monk = Uuid::new_v4();
+        assert_eq!(
+            served_character(false, warrior, monk, true),
+            warrior,
+            "the client presented the account's Monk; the travel still moves the Warrior"
+        );
+    }
+
+    #[test]
+    fn a_login_may_use_the_character_the_client_selected_when_it_is_owned() {
+        let selected_at_login = Uuid::new_v4();
+        let client_choice = Uuid::new_v4();
+        assert_eq!(
+            served_character(true, selected_at_login, client_choice, true),
+            client_choice
+        );
+        assert_eq!(
+            served_character(true, selected_at_login, client_choice, false),
+            selected_at_login
+        );
+        assert_eq!(
+            served_character(true, selected_at_login, Uuid::nil(), true),
+            selected_at_login
+        );
+    }
+}
+
 
 /// The client asks to be pinged back.
 pub async fn handle_ping_request(

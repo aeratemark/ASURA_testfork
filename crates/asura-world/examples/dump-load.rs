@@ -65,6 +65,9 @@ fn main() {
         campaign: 1,
         secondary_profession: 0,
         level: 1,
+        experience: 0,
+        skill_points: 0,
+        skill_points_total: 0,
     };
     dump(&player_block(&asura_world::player::PlayerBlock {
         name: &name,
@@ -76,6 +79,7 @@ fn main() {
         party_id: asura_world::PARTY_ID,
         traits,
         unlocked: asura_world::player::UNLOCKED_MAP_ZEROS,
+        loadout: None,
     }));
 }
 

@@ -182,6 +182,14 @@ is_explorable, map_id`). The port target was named by the user all along.
 
 ## Where this stands
 
+- **The quest framework's first slice is built, client-unverified (2026-11-13).** The pack carries 38
+  quests (`config/World/Vanilla/quests.json`, `docs/58-quests.md`), the stage rule is
+  `asura-rules/src/quest.rs`, the log messages are `asura-protocol/src/game/quest.rs`, the row is
+  migration 0038 (`t_character_quests`), and quest 80 runs from the Town Crier's offer to Sir Tydus's
+  turn-in: 100 experience and 10 gold in one transaction, the log restored after a login. The floating
+  marker is `0x009F` property 11 (5 an open offer, 4 a turn-in). The one link no capture establishes is
+  which of the Town Crier's two captured buttons is the acceptance; the first button carries it, and the
+  real client is the judge. No other quest accepts or rewards yet.
 - **Portal wall crossing repair (2026-11-06), awaiting client confirmation.** The accepted reports in
   `logs/world-8001.log:410655` and `:410664`, `(7277.4, 5417.9)` -> `(7184.3, 5307.3)`, intersect map
   148's authored wall at approximately `(7256.8, 5393.4)`, but no travel followed. `Player` now keeps the

@@ -44,6 +44,10 @@ pub struct Bag {
 pub struct Item {
     /// The client-visible id: what a drop names, and what `UPDATE_AGENT_VISUAL_EQUIPMENT` carries.
     pub id: i32,
+    /// The static definition this instance names in the world pack, when the row records one.
+    /// Null is a complete row: every wire field below still rebuilds its message. The definition
+    /// itself is never stored here (`crates/asura-world/src/item_catalogue.rs`).
+    pub definition_id: Option<String>,
     /// Where it sits. `None` for an item that is not in a slot - a bag's own item.
     pub bag_id: Option<i32>,
     /// Which slot inside that bag; `None` for a bag`s own item.
@@ -202,6 +206,9 @@ pub struct SeedBag {
 pub struct SeedItem {
     /// The capture's item id. Renumbered from the sequence when it is written.
     pub id: i32,
+    /// The id of this item's static definition in `config/World/<pack>/items.json`. This is a
+    /// reference, not a copy: the definition's facts stay in the pack.
+    pub definition_id: &'static str,
     /// Which bag the record belongs to; `None` for an item that is not in a slot.
     pub bag_id: Option<i32>,
     /// Which slot inside that bag; `None` for a bag`s own item.
@@ -239,6 +246,7 @@ impl SeedItem {
     pub fn item(&self) -> Item {
         Item {
             id: self.id,
+            definition_id: Some(self.definition_id.to_string()),
             bag_id: self.bag_id,
             slot: self.slot,
             file_id: self.file_id,
@@ -282,10 +290,12 @@ pub fn default_inventory() -> Inventory {
     }
 }
 
-/// The item columns, in the order [`ItemRow`] expects. One list, so no query can select a shape the
-/// row type does not decode.
-const ITEM_COLUMNS: &str = "id, bag_id, slot, file_id, item_type, model_id, dye_tint, dye_colors, \
-                            materials, unk1, flags, value, quantity, profession, name, modifiers";
+/// The item columns every query selects. One list, so no query can select a shape [`ItemRow`] does
+/// not decode; the row decodes by column name, not by position.
+const ITEM_COLUMNS: &str =
+    "id, definition_id, bag_id, slot, file_id, item_type, model_id, dye_tint, \
+                            dye_colors, materials, unk1, flags, value, quantity, profession, name, \
+                            modifiers";
 
 /// The same columns, qualified for a query that has more than one table in it.
 fn item_columns(alias: &str) -> String {
@@ -296,64 +306,78 @@ fn item_columns(alias: &str) -> String {
         .join(", ")
 }
 
-/// One item row as both queries select it, in the order they select it (`load` and
-/// `find_in_carrying_bags` share the column list so the two cannot drift apart).
-type ItemRow = (
-    i32,
-    Option<i32>,
-    Option<i32>,
-    i64,
-    i32,
-    i32,
-    i32,
-    i32,
-    i32,
-    i32,
-    i64,
-    i32,
-    i32,
-    i32,
-    Vec<i32>,
-    Vec<i64>,
-);
+/// One item row as both queries select it (`load` and `find_in_carrying_bags` share the column list
+/// so the two cannot drift apart).
+///
+/// A named struct rather than a tuple: `sqlx` decodes tuples only up to sixteen fields, and the
+/// instance gained `definition_id` as its seventeenth. The columns are selected by name here, which
+/// also keeps a query's order from silently becoming the row's order.
+#[derive(Debug)]
+struct ItemRow {
+    id: i32,
+    definition_id: Option<String>,
+    bag_id: Option<i32>,
+    slot: Option<i32>,
+    file_id: i64,
+    item_type: i32,
+    model_id: i32,
+    dye_tint: i32,
+    dye_colors: i32,
+    materials: i32,
+    unk1: i32,
+    flags: i64,
+    value: i32,
+    quantity: i32,
+    profession: i32,
+    name: Vec<i32>,
+    modifiers: Vec<i64>,
+}
+
+impl<'r> sqlx::FromRow<'r, sqlx::postgres::PgRow> for ItemRow {
+    fn from_row(row: &'r sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
+        use sqlx::Row;
+        Ok(ItemRow {
+            id: row.try_get("id")?,
+            definition_id: row.try_get("definition_id")?,
+            bag_id: row.try_get("bag_id")?,
+            slot: row.try_get("slot")?,
+            file_id: row.try_get("file_id")?,
+            item_type: row.try_get("item_type")?,
+            model_id: row.try_get("model_id")?,
+            dye_tint: row.try_get("dye_tint")?,
+            dye_colors: row.try_get("dye_colors")?,
+            materials: row.try_get("materials")?,
+            unk1: row.try_get("unk1")?,
+            flags: row.try_get("flags")?,
+            value: row.try_get("value")?,
+            quantity: row.try_get("quantity")?,
+            profession: row.try_get("profession")?,
+            name: row.try_get("name")?,
+            modifiers: row.try_get("modifiers")?,
+        })
+    }
+}
 
 /// A row as [`Item`].
 fn item_from_row(row: ItemRow) -> Item {
-    let (
-        id,
-        bag_id,
-        slot,
-        file_id,
-        item_type,
-        model_id,
-        dye_tint,
-        dye_colors,
-        materials,
-        unk1,
-        flags,
-        value,
-        quantity,
-        profession,
-        name,
-        modifiers,
-    ) = row;
     Item {
-        id,
-        bag_id,
-        slot,
-        file_id,
-        item_type,
-        model_id,
-        dye_tint,
-        dye_colors,
-        materials,
-        unk1,
-        flags,
-        value,
-        quantity,
-        profession,
-        name,
-        modifiers,
+        id: row.id,
+        definition_id: row.definition_id,
+        bag_id: row.bag_id,
+        slot: row.slot,
+        file_id: row.file_id,
+        item_type: row.item_type,
+        model_id: row.model_id,
+        dye_tint: row.dye_tint,
+        dye_colors: row.dye_colors,
+        materials: row.materials,
+        unk1: row.unk1,
+        flags: row.flags,
+        value: row.value,
+        quantity: row.quantity,
+        profession: row.profession,
+        name: row.name,
+        modifiers: row.modifiers,
     }
 }
 
@@ -403,6 +427,9 @@ pub async fn load(pool: &PgPool, character: Uuid) -> sqlx::Result<Inventory> {
 /// profession the client picked, so it owns its slices.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NewItem {
+    /// The static definition this instance names, when its caller has one. A caller that has only
+    /// wire values leaves it `None`; the row is still complete.
+    pub definition_id: Option<String>,
     /// Which bag the record belongs to; `None` for an item that is not in a slot.
     pub bag_id: Option<i32>,
     /// Which slot inside that bag; `None` for a bag`s own item.
@@ -523,7 +550,7 @@ pub async fn create_character(
 
 /// One item row from the generated seed, returning the id the sequence gave it.
 async fn insert_item(tx: &mut PgConnection, character: Uuid, seed: &SeedItem) -> sqlx::Result<i32> {
-    insert_row(tx, character, ItemColumns::from(seed)).await
+    insert_row(tx, character, None, ItemColumns::from(seed)).await
 }
 
 /// One item row from a runtime set, returning the id the sequence gave it.
@@ -532,15 +559,16 @@ async fn insert_new_item(
     character: Uuid,
     item: &NewItem,
 ) -> sqlx::Result<i32> {
-    insert_row(tx, character, ItemColumns::from(item)).await
+    insert_row(tx, character, None, ItemColumns::from(item)).await
 }
 
-/// The sixteen columns one `item` INSERT writes, borrowed from whichever record produced them.
+/// The seventeen columns one `item` INSERT writes, borrowed from whichever record produced them.
 ///
-/// A struct rather than fifteen positional arguments: `SeedItem` and `NewItem` carry the same columns
+/// A struct rather than sixteen positional arguments: `SeedItem` and `NewItem` carry the same columns
 /// with different ownership, so one borrow view serves both and a swapped pair cannot compile
 /// (`docs/38-layer-decisions.md`, D16).
 struct ItemColumns<'a> {
+    definition_id: Option<&'a str>,
     bag_id: Option<i32>,
     slot: Option<i32>,
     file_id: i64,
@@ -561,6 +589,7 @@ struct ItemColumns<'a> {
 impl<'a> From<&'a SeedItem> for ItemColumns<'a> {
     fn from(item: &'a SeedItem) -> Self {
         ItemColumns {
+            definition_id: Some(item.definition_id),
             bag_id: item.bag_id,
             slot: item.slot,
             file_id: item.file_id,
@@ -583,6 +612,7 @@ impl<'a> From<&'a SeedItem> for ItemColumns<'a> {
 impl<'a> From<&'a NewItem> for ItemColumns<'a> {
     fn from(item: &'a NewItem) -> Self {
         ItemColumns {
+            definition_id: item.definition_id.as_deref(),
             bag_id: item.bag_id,
             slot: item.slot,
             file_id: item.file_id,
@@ -602,19 +632,49 @@ impl<'a> From<&'a NewItem> for ItemColumns<'a> {
     }
 }
 
+impl<'a> From<&'a Item> for ItemColumns<'a> {
+    fn from(item: &'a Item) -> Self {
+        ItemColumns {
+            definition_id: item.definition_id.as_deref(),
+            bag_id: item.bag_id,
+            slot: item.slot,
+            file_id: item.file_id,
+            item_type: item.item_type,
+            model_id: item.model_id,
+            dye_tint: item.dye_tint,
+            dye_colors: item.dye_colors,
+            materials: item.materials,
+            unk1: item.unk1,
+            flags: item.flags,
+            value: item.value,
+            quantity: item.quantity,
+            profession: item.profession,
+            name: &item.name,
+            modifiers: &item.modifiers,
+        }
+    }
+}
+
+/// The one `t_item` INSERT. `id` is `None` for a new row (the sequence picks it) and `Some` for a row
+/// whose id the client already knows: a picked-up stack, or an item whose id was allocated first so
+/// the frames could be built before the write.
 async fn insert_row(
     tx: &mut PgConnection,
     character: Uuid,
+    id: Option<i32>,
     item: ItemColumns<'_>,
 ) -> sqlx::Result<i32> {
     sqlx::query_scalar(
-        "INSERT INTO t_item (character_id, bag_id, slot, file_id, item_type, model_id, dye_tint,
-                           dye_colors, materials, unk1, flags, value, quantity, profession,
-                           name, modifiers)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        "INSERT INTO t_item (id, character_id, definition_id, bag_id, slot, file_id, item_type,
+                           model_id, dye_tint, dye_colors, materials, unk1, flags, value, quantity,
+                           profession, name, modifiers)
+         VALUES (COALESCE($1, nextval('item_id_seq')::int), $2, $3, $4, $5, $6, $7, $8, $9, $10,
+                 $11, $12, $13, $14, $15, $16, $17, $18)
          RETURNING id",
     )
+    .bind(id)
     .bind(character)
+    .bind(item.definition_id)
     .bind(item.bag_id)
     .bind(item.slot)
     .bind(item.file_id)
@@ -671,31 +731,7 @@ pub async fn seed_default(pool: &PgPool, character: Uuid) -> sqlx::Result<bool> 
     // foreign key (the reference's two tables point at each other), so the order is free.
     let mut allocated: Vec<(i32, i32)> = Vec::with_capacity(seed::ITEMS.len());
     for seed in seed::ITEMS {
-        let id: i32 = sqlx::query_scalar(
-            "INSERT INTO t_item (character_id, bag_id, slot, file_id, item_type, model_id, dye_tint,
-                               dye_colors, materials, unk1, flags, value, quantity, profession,
-                               name, modifiers)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-             RETURNING id",
-        )
-        .bind(character)
-        .bind(seed.bag_id)
-        .bind(seed.slot)
-        .bind(seed.file_id)
-        .bind(seed.item_type)
-        .bind(seed.model_id)
-        .bind(seed.dye_tint)
-        .bind(seed.dye_colors)
-        .bind(seed.materials)
-        .bind(seed.unk1)
-        .bind(seed.flags)
-        .bind(seed.value)
-        .bind(seed.quantity)
-        .bind(seed.profession)
-        .bind(seed.name.to_vec())
-        .bind(seed.modifiers.to_vec())
-        .fetch_one(&mut *tx)
-        .await?;
+        let id = insert_item(tx.as_mut(), character, seed).await?;
         allocated.push((seed.id, id));
     }
 
@@ -971,6 +1007,292 @@ pub async fn move_item(
         bag_id,
         slot,
     })
+}
+
+/// Add one item row for a character, in one transaction, returning its id.
+///
+/// The caller chooses a free bag slot; this only writes the row. It exists for
+/// the world's verified-item test command, which is not a reference handler.
+pub async fn create_item(pool: &PgPool, character: Uuid, item: &NewItem) -> sqlx::Result<i32> {
+    let mut tx = pool.begin().await?;
+    let id = insert_new_item(tx.as_mut(), character, item).await?;
+    tx.commit().await?;
+    Ok(id)
+}
+
+/// The next item id, without writing a row.
+///
+/// A part of a stack dropped on the ground needs an id the client can name in its item table, but it
+/// is not a bag row; the live server's ground items use the same id space as carried items
+/// (`items-live-20261108-174014.jsonl` seq 134: item 622 dropped five, the ground record is item 359).
+pub async fn allocate_item_id(pool: &PgPool) -> sqlx::Result<i32> {
+    sqlx::query_scalar("SELECT nextval('item_id_seq')::int")
+        .fetch_one(pool)
+        .await
+}
+
+/// Put a whole stack back into a bag under the id it had before it was dropped.
+///
+/// A full-stack drop deletes the row and keeps the item's id; the client still knows that id from
+/// `ITEM_REMOVE`, so the pickup has to restore the same row id rather than take a new one
+/// (`items-live-20261108-173913.jsonl` seq 61: item 609 returns under its own id).
+pub async fn restore_item(
+    pool: &PgPool,
+    character: Uuid,
+    item: &Item,
+    bag_id: i32,
+    slot: i32,
+) -> sqlx::Result<()> {
+    let mut tx = pool.begin().await?;
+    let columns = ItemColumns {
+        bag_id: Some(bag_id),
+        slot: Some(slot),
+        ..ItemColumns::from(item)
+    };
+    insert_row(tx.as_mut(), character, Some(item.id), columns).await?;
+    tx.commit().await?;
+    Ok(())
+}
+
+/// One row-level write of an inventory operation (`crate`-level counterpart of the world's
+/// `inventory_model::Change`). [`apply_changes`] writes a whole operation's list in one transaction.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RowChange {
+    /// The item now sits at `(bag_id, slot)`.
+    Place {
+        /// The item.
+        item_id: i32,
+        /// Its bag.
+        bag_id: i32,
+        /// Its slot in that bag.
+        slot: i32,
+    },
+    /// The stack now holds `quantity` (at least one).
+    Quantity {
+        /// The item.
+        item_id: i32,
+        /// What the stack holds now.
+        quantity: i32,
+    },
+    /// The row is gone.
+    Delete {
+        /// The item.
+        item_id: i32,
+    },
+    /// A new row, under the id the item carries (allocated beforehand with [`allocate_item_id`], or
+    /// the id a picked-up stack had). Its `bag_id` and `slot` say where it goes.
+    Insert {
+        /// The whole row.
+        item: Item,
+    },
+    /// The gold the character carries goes from `from` to `to`. Refused unless the row still holds
+    /// `from`, so a purchase cannot spend gold another writer has already spent.
+    Gold {
+        /// The balance the operation was decided on.
+        from: i32,
+        /// The balance it leaves.
+        to: i32,
+    },
+    /// The gold in the character's storage goes from `from` to `to` (migration 0035), checked the same way.
+    StorageGold {
+        /// The balance the operation was decided on.
+        from: i32,
+        /// The balance it leaves.
+        to: i32,
+    },
+}
+
+/// Write one inventory operation's changes, all or nothing.
+///
+/// The character row is locked first, so two writers for one character cannot interleave. Every
+/// change must hit exactly one row of this character, or the whole operation is rolled back and the
+/// error says which change missed - the world then reloads and puts the client back.
+///
+/// Slot moves are written in two steps (lift every moved row out of its slot, then place them all),
+/// because a swap is a cycle: the two rows trade slots, and the one-item-per-slot index would refuse
+/// either order of two plain updates.
+pub async fn apply_changes(
+    pool: &PgPool,
+    character: Uuid,
+    changes: &[RowChange],
+) -> sqlx::Result<()> {
+    if changes.is_empty() {
+        return Ok(());
+    }
+    let mut tx = pool.begin().await?;
+    let locked: Option<Uuid> =
+        sqlx::query_scalar("SELECT id FROM t_characters WHERE id = $1 FOR UPDATE")
+            .bind(character)
+            .fetch_optional(&mut *tx)
+            .await?;
+    if locked.is_none() {
+        return Err(sqlx::Error::RowNotFound);
+    }
+
+    fn missed(what: &str, item_id: i32) -> sqlx::Error {
+        sqlx::Error::Protocol(format!(
+            "inventory write: {what} of item {item_id} matched no row of this character"
+        ))
+    }
+
+    // 1. Deletions, so their slots are free for what follows.
+    for change in changes {
+        if let RowChange::Delete { item_id } = change {
+            let hit = sqlx::query("DELETE FROM t_item WHERE character_id = $1 AND id = $2")
+                .bind(character)
+                .bind(*item_id)
+                .execute(&mut *tx)
+                .await?
+                .rows_affected();
+            if hit != 1 {
+                return Err(missed("delete", *item_id));
+            }
+        }
+    }
+    // 2. Lift every row that moves out of its slot.
+    for change in changes {
+        if let RowChange::Place { item_id, .. } = change {
+            let hit = sqlx::query(
+                "UPDATE t_item SET bag_id = NULL, slot = NULL
+                  WHERE character_id = $1 AND id = $2 AND bag_id IS NOT NULL",
+            )
+            .bind(character)
+            .bind(*item_id)
+            .execute(&mut *tx)
+            .await?
+            .rows_affected();
+            if hit != 1 {
+                return Err(missed("move", *item_id));
+            }
+        }
+    }
+    // 3. Quantities, new rows, the moved rows' new slots and the gold, in the operation's order.
+    for change in changes {
+        match change {
+            RowChange::Delete { .. } => {}
+            RowChange::Gold { from, to } | RowChange::StorageGold { from, to } => {
+                let (column, what) = match change {
+                    RowChange::Gold { .. } => ("gold", "carried gold"),
+                    _ => ("gold_storage", "storage gold"),
+                };
+                if *to < 0 {
+                    return Err(sqlx::Error::Protocol(format!(
+                        "inventory write: {what} cannot go below 0 ({to})"
+                    )));
+                }
+                let hit = sqlx::query(&format!(
+                    "UPDATE t_characters SET {column} = $3 WHERE id = $1 AND {column} = $2"
+                ))
+                .bind(character)
+                .bind(*from)
+                .bind(*to)
+                .execute(&mut *tx)
+                .await?
+                .rows_affected();
+                if hit != 1 {
+                    return Err(sqlx::Error::Protocol(format!(
+                        "inventory write: {what} was not {from} any more"
+                    )));
+                }
+            }
+            RowChange::Quantity { item_id, quantity } => {
+                if *quantity < 1 {
+                    return Err(missed("an empty quantity", *item_id));
+                }
+                let hit = sqlx::query(
+                    "UPDATE t_item SET quantity = $3 WHERE character_id = $1 AND id = $2",
+                )
+                .bind(character)
+                .bind(*item_id)
+                .bind(*quantity)
+                .execute(&mut *tx)
+                .await?
+                .rows_affected();
+                if hit != 1 {
+                    return Err(missed("quantity", *item_id));
+                }
+            }
+            RowChange::Insert { item } => {
+                insert_row(tx.as_mut(), character, Some(item.id), ItemColumns::from(item)).await?;
+            }
+            RowChange::Place {
+                item_id,
+                bag_id,
+                slot,
+            } => {
+                sqlx::query(
+                    "UPDATE t_item SET bag_id = $3, slot = $4 WHERE character_id = $1 AND id = $2",
+                )
+                .bind(character)
+                .bind(*item_id)
+                .bind(*bag_id)
+                .bind(*slot)
+                .execute(&mut *tx)
+                .await?;
+            }
+        }
+    }
+    tx.commit().await?;
+    Ok(())
+}
+
+/// Add `count` back to a stack that stayed in a bag, and say the quantity it now holds.
+///
+/// The live server does this instead of writing a new row when part of a stack is picked up: the drop
+/// kept the stack and gave the ground part its own id, so the pickup names the stack and its new
+/// quantity (`items-live-20261108-174014.jsonl` seq 162: item 622 goes from 5 back to 10).
+/// `Ok(None)` means the stack is gone; the caller has to restore the ground part as its own row.
+pub async fn merge_into_stack(
+    pool: &PgPool,
+    character: Uuid,
+    item_id: i32,
+    count: i32,
+) -> sqlx::Result<Option<i32>> {
+    if count <= 0 {
+        return Ok(None);
+    }
+    let mut tx = pool.begin().await?;
+    let row: Option<(i32,)> = sqlx::query_as(
+        "SELECT quantity FROM t_item
+          WHERE character_id = $1 AND id = $2 AND bag_id IS NOT NULL
+          FOR UPDATE",
+    )
+    .bind(character)
+    .bind(item_id)
+    .fetch_optional(&mut *tx)
+    .await?;
+    let Some((quantity,)) = row else {
+        return Ok(None);
+    };
+    let new_quantity = quantity.saturating_add(count);
+    sqlx::query("UPDATE t_item SET quantity = $3 WHERE character_id = $1 AND id = $2")
+        .bind(character)
+        .bind(item_id)
+        .bind(new_quantity)
+        .execute(&mut *tx)
+        .await?;
+    tx.commit().await?;
+    Ok(Some(new_quantity))
+}
+
+/// Delete one item row the character owns in a bag slot.
+///
+/// `Ok(false)` means nothing was deleted: no such item, or the id names a bag's
+/// own item (which has no slot). The live server answers a trash drag with
+/// `ITEM_REMOVE` (`items-live-20261108-173913.jsonl` seq 193); the world handler
+/// sends it after this returns true.
+pub async fn destroy_item(pool: &PgPool, character: Uuid, item_id: i32) -> sqlx::Result<bool> {
+    let mut tx = pool.begin().await?;
+    let deleted = sqlx::query(
+        "DELETE FROM t_item WHERE character_id = $1 AND id = $2 AND bag_id IS NOT NULL",
+    )
+    .bind(character)
+    .bind(item_id)
+    .execute(&mut *tx)
+    .await?
+    .rows_affected();
+    tx.commit().await?;
+    Ok(deleted > 0)
 }
 
 /// The first free slot in the bags a player carries, backpack first.

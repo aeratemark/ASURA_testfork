@@ -1,0 +1,7 @@
+{
+  "note": "World-wide values the NPC runtime reads.",
+  "compass_range": {
+    "value": 10000.0,
+    "doc": "The compass range, in map units, measured flat (the plane does not count): a client is sent an NPC while it stands within this distance of it and told to remove it beyond, and an NPC moves and thinks only while some client is within it."
+  }
+}

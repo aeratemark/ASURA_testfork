@@ -53,3 +53,7 @@ num-bigint-dig = { version = "0.8", default-features = false, features = ["u64_d
 getrandom = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# Content behavior is declared in Lua (docs/30, ADR 0014): the runtime is Rust, the tree's shape
+# is a content file. `vendored` compiles Lua 5.4 from source so the world does not depend on a
+# system Lua of an unknown version.
+mlua = { version = "0.10", features = ["lua54", "vendored", "send"] }

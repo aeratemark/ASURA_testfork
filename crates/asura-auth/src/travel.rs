@@ -315,6 +315,7 @@ pub async fn answer(
             session_id,
             account_id,
             character_id,
+            true,
         )
         .await
         {

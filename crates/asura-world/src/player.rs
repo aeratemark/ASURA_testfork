@@ -29,6 +29,10 @@ pub struct Player {
     pub instance: Arc<Instance>,
     pub name: String,
     pub inventory: Inventory,
+    /// Whether this connection has opened item stream 1. A second `0x8091` is answered without
+    /// `0x0144`, because the client registers one inventory per stream id and asserts `!inventory`
+    /// on a second create (`ItCliApi.cpp(2010)`, measured 2026-11-09).
+    pub items_sent: bool,
     /// The login session and account the transfer named.
     ///
     /// The reference keeps both on its player (`GmPlayer.account_id`, `.char_id`) and uses them for every
@@ -69,6 +73,25 @@ pub struct Player {
     /// and without a travel, is a network drop - the one ending an explorable party holds a place for
     /// (`crate::party::left_instance`).
     pub said_goodbye: bool,
+    /// What the character has learned, its bar and its attribute ranks, as read when the connection was
+    /// built and as this connection has changed them since (`crate::skill`).
+    pub skills: crate::skill::Loadout,
+    /// The gold in the character's storage, as read when the connection was built and as a Xunlai window
+    /// has changed it since (`crate::vendor`). The carried gold is `traits.gold`.
+    pub storage_gold: u32,
+    /// The NPC window this connection has open, if any: a merchant's, a collector's or Xunlai storage
+    /// (`crate::vendor`). What a trade request or a storage move is checked against.
+    pub vendor: crate::vendor::Windows,
+    /// The character's quest attempts, as read when the connection was built and as a dialog changes
+    /// them (`crate::quest`). The row survives the session; this is the session's copy.
+    pub quests: asura_rules::quest::Profile,
+    /// Whether this connection is a login handoff rather than a map travel. Both rebuild the quest log
+    /// inside the load (`crate::quest::LoadLog`).
+    pub restore_quests: bool,
+    /// The quests whose marker this connection has sent - in the load, with an acceptance, or in answer
+    /// to the client's `0x8012` - so the client's request for one it already has is not answered again
+    /// (`crate::quest::handle_info_request`).
+    pub quest_markers_sent: std::collections::HashSet<u32>,
 }
 
 #[allow(non_snake_case)]
@@ -179,12 +202,6 @@ pub fn name_max_units() -> usize {
 /// morale modifier (`dump4-after`, `worldcontext.morale`). Sending 0 left the client's morale at zero.
 const MORALE_FULL: u32 = 100;
 
-/// The experience this world reports for a character. There is no column for it yet, and a character
-/// that has never earned any reads 0 - but 0 and "the field was never written" look the same to the
-/// owner's eye, so this stays 1 until the column exists: a non-zero number is the proof that the
-/// message is carrying the field at all.
-const EXPERIENCE_TEST_VALUE: u32 = 500;
-
 /// What the player block is built from: everything a character's own messages carry.
 ///
 /// A struct rather than eight positional arguments, for the reason `asura-rules` and
@@ -209,6 +226,9 @@ pub struct PlayerBlock<'a> {
     pub traits: db_game::Traits,
     /// The unlocked-map bitmap, in the client's own encoding.
     pub unlocked: &'a [u32],
+    /// The character's skills (`crate::skill`). `None` keeps the reference's own values: an empty bar,
+    /// no learned skills, 50 free points of 50, no ranks, 25 energy, 400 health and no regeneration.
+    pub loadout: Option<&'a crate::skill::Loadout>,
 }
 
 /// Everything the client is told about the players in the instance, in the reference's order
@@ -229,7 +249,11 @@ pub fn player_block(block: &PlayerBlock<'_>) -> Vec<Frame> {
         party_id,
         traits,
         unlocked,
+        loadout,
     } = *block;
+    // The skill pack decides the numbers a loadout's messages carry; without it, or without a loadout,
+    // the block keeps the reference's own values.
+    let skills = loadout.zip(crate::skill::catalog::current().ok());
     let mut frames = Vec::with_capacity(30);
 
     // The PvP unlocks. The reference sends its own fixed table of 387 unlockable items
@@ -281,7 +305,17 @@ pub fn player_block(block: &PlayerBlock<'_>) -> Vec<Frame> {
     // Skills and attributes, then factions, then the attribute spread. The profession values are the
     // reference's own for its default character, read off its send log: primary 1 (Warrior) and one
     // unlocked-profession bit.
-    frames.push(game::agent_update_attribute_points(agent_id, 50, 50));
+    match skills {
+        Some((loadout, pack)) => {
+            let (free, total) = crate::skill::character::attribute_points(
+                loadout,
+                u32::from(traits.level.max(1)),
+                pack,
+            );
+            frames.push(game::agent_update_attribute_points(agent_id, free, total));
+        }
+        None => frames.push(game::agent_update_attribute_points(agent_id, 50, 50)),
+    }
     frames.push(game::player_update_profession(
         agent_id,
         traits.profession,
@@ -292,20 +326,29 @@ pub fn player_block(block: &PlayerBlock<'_>) -> Vec<Frame> {
         agent_id,
         traits.unlocked_professions,
     ));
-    frames.push(game::skillbar_update(agent_id, &[0; 8], &[0; 8], 1));
-    frames.push(game::update_unlocked_skills(&[]));
+    // The bar, then the learned set: preforged's restoration order (`gw_character_skills.h`) puts the
+    // learned set first, the reference sends the bar first; the reference's order is kept.
+    match skills {
+        Some((loadout, _)) => {
+            frames.push(crate::skill::character::bar_frame(agent_id, loadout));
+            frames.push(crate::skill::character::learned_frame(loadout));
+        }
+        None => {
+            frames.push(game::skillbar_update(agent_id, &[0; 8], &[0; 8], 1));
+            frames.push(game::update_unlocked_skills(&[]));
+        }
+    }
     // The character record's own numbers, in the reference's order (`GameSrv_UpdatePlayerFactions`).
     // This used to be thirteen zeros, and thirteen zeros is what the client showed: level 0,
     // experience 0, morale 0. A live load leaves level 13, experience 68113 and morale 100 in the
     // client's record for a level-13 character (`dump4-after`, worldcontext.level/experience/morale),
-    // and `characters.level` is where our level comes from. Experience and skill points have no column
-    // yet - a freshly created character has neither - so they go out as zero rather than as absent.
+    // and `characters.level` and `characters.experience` are where our numbers come from.
     frames.push(game::character_update_factions(&game::CharacterProgress {
-        // 500 until a column holds experience, so the sheet shows it working.
-        experience: EXPERIENCE_TEST_VALUE,
+        experience: traits.experience,
         level: u32::from(traits.level),
         morale: MORALE_FULL,
-        // Faction, skill points and their earned totals have no column yet.
+        current_skill_points: traits.skill_points,
+        total_earned_skill_points: traits.skill_points_total,
         ..game::CharacterProgress::default()
     }));
     // A live load sends these two immediately after the faction block, once per player: the visibility
@@ -314,7 +357,12 @@ pub fn player_block(block: &PlayerBlock<'_>) -> Vec<Frame> {
     // inventory display-mode column has nothing for any slot - the structures exist but stay empty.
     frames.push(game::char_visibility_flags(0xFFFF_FFFF, 0xFFFF_FFFF));
     frames.push(game::player_update_flags(player_id as u16, 0, 7));
-    frames.push(game::agent_update_attributes(agent_id, &[0; 42]));
+    match skills {
+        Some((loadout, pack)) => frames.push(crate::skill::character::attributes_frame(
+            agent_id, loadout, &traits, pack,
+        )),
+        None => frames.push(game::agent_update_attributes(agent_id, &[0; 42])),
+    }
     frames.push(game::world_update_load_time(
         started.elapsed().as_millis().min(u128::from(u32::MAX)) as u32,
     ));
@@ -346,16 +394,14 @@ pub fn player_block(block: &PlayerBlock<'_>) -> Vec<Frame> {
         0,
         0,
     ));
-    frames.push(game::world_create_agent(&game::CreateAgent {
+    frames.push(game::player_create_agent(
         agent_id,
-        model_id: game::CHAR_CLASS_PLAYER_BASE | player_id,
-        agent_type: game::AGENT_TYPE_LIVING,
-        position: standing.position,
-        plane: standing.plane,
-        direction: standing.direction,
-        speed_base: game::PLAYER_SPEED_BASE,
-        player_team_token: PLAYER_TEAM_TOKEN,
-    }));
+        player_id,
+        standing.position,
+        standing.plane,
+        standing.direction,
+        PLAYER_TEAM_TOKEN,
+    ));
     // The agent's own morale record, which the party panel's morale icon is drawn from. A live server
     // sends one per body at load with 100, the unmodified value; with the record left unset the client
     // paints a morale penalty the character does not have.
@@ -363,20 +409,26 @@ pub fn player_block(block: &PlayerBlock<'_>) -> Vec<Frame> {
     // Health and energy in the reference's order, then the regeneration rate and the public level.
     // The reference's own values, read off its send log: energy 25, health 400, regeneration 0.0 and
     // level 0 (it never sets `energy_per_sec` or `level` on a fresh agent).
+    // With a loadout the three carry the pack's own player rules (`combat.json`): maximum energy, maximum
+    // health for the character's level, and the energy regeneration the fight runs at.
+    let (energy, health, regen) = match skills {
+        Some((_, pack)) => crate::skill::character::vitals(&traits, pack),
+        None => (game::PLAYER_ENERGY_MAX, game::PLAYER_HEALTH_MAX, 0.0),
+    };
     frames.push(game::agent_property_update_int(
         game::AGENT_PROPERTY_ENERGY,
         agent_id,
-        game::PLAYER_ENERGY_MAX,
+        energy,
     ));
     frames.push(game::agent_property_update_int(
         game::AGENT_PROPERTY_HEALTH,
         agent_id,
-        game::PLAYER_HEALTH_MAX,
+        health,
     ));
     frames.push(game::agent_property_update_float(
         game::AGENT_PROPERTY_ENERGY_REGEN,
         agent_id,
-        0.0,
+        regen,
     ));
     // The agent's level, which the party window draws. It is not a field of the create message: it
     // arrives as agent int-property 36 (`PublicLevel`), which is what the client stores in
@@ -403,6 +455,113 @@ pub fn player_block(block: &PlayerBlock<'_>) -> Vec<Frame> {
 
     frames.push(game::instance_load_finish());
     frames
+}
+
+// ---- experience and the level it implies ---------------------------------------------------------
+
+/// `/.exp <total>`: the one place this world changes a character's experience.
+///
+/// The curve is the pack's (`crate::experience`); the level is what the total says, not a number the
+/// caller chooses. Three client-visible values a level change owns are re-sent together: the fifteen-
+/// dword progress block (`0x00E9`), the agent's public level (`0x009F` kind 36) and the attribute
+/// points a level grants (`0x0037`). The health and energy pools, and the fight's own copy of them,
+/// are refreshed on the next load: a level-up in the middle of a fight is not modelled yet.
+pub async fn set_experience(
+    stream: &mut TcpStream,
+    session: &mut Session,
+    world: &World,
+    player: &mut Player,
+    total: u32,
+    trace: bool,
+) -> Result<bool, GameError> {
+    let Some(curve) = crate::experience::curve() else {
+        let line = "Experience is unavailable: the pack has no experience curve.";
+        send(stream, session, crate::chat::tell(player, line), trace).await?;
+        return Ok(true);
+    };
+    let total = total.min(curve.max_total());
+    let level = curve.level_for(total);
+    let previous_level = u32::from(player.traits.level.max(1));
+    let gained = curve
+        .skill_points_for(level)
+        .saturating_sub(curve.skill_points_for(previous_level));
+    let before = player.traits;
+    player.traits.experience = total;
+    player.traits.level = u16::try_from(level).unwrap_or(u16::MAX);
+    player.traits.skill_points = player.traits.skill_points.saturating_add(gained);
+    player.traits.skill_points_total = player.traits.skill_points_total.saturating_add(gained);
+    // A lower level gives back the points its levels granted. Quests do not grant points yet, so the
+    // level's own grant is the whole ledger; a reset command that left level 1 holding level 4's
+    // points would be lying to the next load.
+    if level < previous_level {
+        let granted = curve.skill_points_for(level);
+        player.traits.skill_points = player.traits.skill_points.min(granted);
+        player.traits.skill_points_total = player
+            .traits
+            .skill_points_total
+            .min(granted)
+            .max(player.traits.skill_points);
+    }
+    if let Err(err) = db_game::set_progress(
+        &world.pool,
+        player.character,
+        player.traits.experience,
+        player.traits.level,
+        player.traits.skill_points,
+        player.traits.skill_points_total,
+    )
+    .await
+    {
+        player.traits = before;
+        eprintln!("world: /.exp: the database refused the change: {err}");
+        let line = "Experience was not changed: the character row refused the write.";
+        send(stream, session, crate::chat::tell(player, line), trace).await?;
+        return Ok(true);
+    }
+    eprintln!(
+        "world: {} experience {total}, level {level} (was {}), skill points {}/{}",
+        player.name,
+        before.level,
+        player.traits.skill_points,
+        player.traits.skill_points_total
+    );
+    // The bar moves from the delta (`0x00EE`), not from a re-sent load block: Rurik measured the client
+    // applying `[0, xp]` with `+=` (toolkit/authsrv/authsrv.py:5911-5960), and a re-sent `0x00E9` left
+    // this client's bar still. **Only the award is sent.** The public level (`0x009F` 36) and the
+    // attribute points (`0x0037`) are not: on 2026-11-13 this client crashed on a change that sent
+    // them, and the measured kill and quest paths send neither - the client works its own level out
+    // from the award, and the server's level and points are read at the next load.
+    //
+    // An award that would cross more than one level is not a shape retail sends (a kill or a 500-point
+    // quest crosses at most one), and a multi-level `0x00EE` is what the crash followed. Such a jump
+    // restates the whole `0x00E9` block instead, which is the login's own safe path; a jump of one
+    // level or less uses the measured award and moves the bar.
+    let mut frames = Vec::new();
+    if total > before.experience && level <= previous_level.saturating_add(1) {
+        frames.push(asura_protocol::game::skill::agent_kill_reward(
+            asura_protocol::game::skill::ATTRIBUTE_EXPERIENCE,
+            total - before.experience,
+        ));
+    } else if total != before.experience {
+        // A decrease has no negative delta, and a multi-level jump is not a retail award shape; both
+        // restate the whole block, which the login already sends safely.
+        frames.push(game::character_update_factions(
+            &game::CharacterProgress {
+                experience: player.traits.experience,
+                level: u32::from(player.traits.level),
+                morale: MORALE_FULL,
+                current_skill_points: player.traits.skill_points,
+                total_earned_skill_points: player.traits.skill_points_total,
+                ..game::CharacterProgress::default()
+            },
+        ));
+    }
+    frames.extend(crate::chat::tell(
+        player,
+        &format!("Experience {total}; level {level}."),
+    ));
+    send(stream, session, frames, trace).await?;
+    Ok(true)
 }
 
 // ---- the instances a character has reached, as the client addresses them ---------------------
@@ -563,6 +722,7 @@ pub async fn handle_request_players(
                     .unwrap_or(PARTY_ID),
                 traits: player.traits,
                 unlocked: &unlocked,
+                loadout: Some(&player.skills),
             });
             // The title block and this player's own binding, at the places a live load carries them
             // (`crate::titles`). Nothing when titles are off or the character has no progress.
@@ -621,8 +781,44 @@ pub async fn handle_request_players(
         block_started.elapsed().as_millis(),
         load_started.elapsed().as_millis()
     );
-    for peer in &others {
-        block.extend(introduction(peer));
+    // The agent array: every other player and every NPC within this client's range, in agent-id order.
+    // A live load interleaves the two that way (`recordings/client/feature/maps/pre-searing-load-3.jsonl`
+    // seq 210-298: player 0x28, NPCs 0x29-0x3C, player 0x3E, NPC 0x3F, ...), each NPC with its
+    // definition in front of it the first time the client needs it (`crate::npc::burst`). Not in a
+    // replayed block, whose NPCs the tick then creates as they come into range.
+    let mut agents: Vec<(u32, Vec<Frame>)> = others
+        .iter()
+        .map(|peer| (peer.agent_id, introduction(peer)))
+        .collect();
+    if built {
+        // The NPCs in range, each with the quest marker the live server puts above it: an offer (5) or
+        // a turn-in (4), from the character's own profile (`crate::quest::marker_value`). The marker
+        // follows the entry burst, where the capture sends it after `0x006D` (tick 169039203).
+        for (agent_id, mut frames) in player
+            .instance
+            .npc_arrival(player.player_id, player.standing().position)
+        {
+            if let Some(target) = player.instance.npc_target(agent_id) {
+                if let Some(name) = target.name_text() {
+                    let marker = crate::quest::marker_for(
+                        &crate::quest::Who::of(player),
+                        &name,
+                        player.instance.map.map_id,
+                    );
+                    if marker != asura_rules::quest::Marker::None {
+                        frames.push(crate::quest::marker_frame(
+                            agent_id,
+                            crate::quest::marker_value(marker),
+                        ));
+                    }
+                }
+            }
+            agents.push((agent_id, frames));
+        }
+    }
+    agents.sort_by_key(|(agent_id, _)| *agent_id);
+    for (_, frames) in agents {
+        block.extend(frames);
     }
     // The party members it was just introduced to are in the map (`crate::party::in_map_notices`).
     if built {
@@ -656,6 +852,40 @@ pub async fn handle_request_players(
     // A party member that has just arrived: its party is told, now that its player exists on their
     // clients (`crate::party::announce_arrival`).
     crate::party::announce_arrival(&player.instance, player.player_id, &entered, trace);
+    // Items already on the ground in this map, for a client that has just entered it: the record the
+    // client draws (create for a whole drop, update for the part of a stack) and its agent. A live
+    // server's ground items survive a relog; the instance owns these, so they do too.
+    if built {
+        for ground in player.instance.ground_items() {
+            block.extend(crate::item::ground_frames(&ground));
+        }
+    }
+    // The quest log, inside the load as the live server sends it (`crate::quest::LoadLog`): the
+    // general info went out with the item answer; the markers go before the load finishes, the details
+    // just after it. A replay block is the reference's own bytes.
+    if built {
+        let log = crate::quest::load_log(&player.quests, &player.name);
+        if trace && !log.details.is_empty() {
+            eprintln!(
+                "world: {}'s quest log after a {}: {} marker(s), {} detail(s)",
+                player.name,
+                if player.restore_quests {
+                    "login"
+                } else {
+                    "travel"
+                },
+                log.markers.len(),
+                log.details.len()
+            );
+        }
+        let finish = block
+            .iter()
+            .position(|frame| frame.header() == game::INSTANCE_LOAD_FINISH)
+            .unwrap_or(block.len());
+        block.splice(finish..finish, log.markers);
+        player.quest_markers_sent.extend(log.marked);
+        block.extend(log.details);
+    }
     send(stream, session, block, trace).await?;
     // The load is over: the block's last message was `INSTANCE_LOAD_FINISH`. Only now may the instance's
     // clock tick this player - measured, not assumed: 36 live loads carry no `0x001E` between the client's

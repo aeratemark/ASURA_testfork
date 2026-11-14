@@ -145,7 +145,7 @@ async fn main() -> ExitCode {
     // ever reached a client's screen in either server. Command answers are not sent -- sending them crashed
     // a live client -- while a line a player *speaks* is sent, as the reference sends it.
     eprintln!(
-        "asura-world: /maps, /stuck and unknown commands answer in this console; a spoken chat line is sent"
+        "asura-world: /maps, /stuck, /npc and unknown commands answer in this console; a spoken chat line is sent"
     );
 
     let Some(database_url) = asura_db::config::database_url() else {
@@ -377,11 +377,39 @@ async fn main() -> ExitCode {
         eprintln!("asura-world: refusing to start without the character defaults");
         return ExitCode::from(4);
     }
+    if let Err(err) = asura_world::item_catalogue::current() {
+        eprintln!("asura-world: {err}");
+        eprintln!("asura-world: refusing to start without the item definitions");
+        return ExitCode::from(4);
+    }
+    // The skill pack (`skills.json`, `combat.json`, `attributes.json`): one unknown word refuses the
+    // start, naming the skill, rather than a skill that silently does less (`docs/52-skills.md`).
+    if let Err(err) = asura_world::skill::catalog::current() {
+        eprintln!("asura-world: {err}");
+        eprintln!("asura-world: refusing to start without the skill pack");
+        return ExitCode::from(4);
+    }
+    // How hostile creatures fight (`creatures.json`, `crate::npc::fight`).
+    if let Err(err) = asura_world::npc::fight::rules() {
+        eprintln!("asura-world: {err}");
+        eprintln!("asura-world: refusing to start without the creature rules");
+        return ExitCode::from(4);
+    }
     if let Err(err) = asura_world::spawns::current() {
         eprintln!("asura-world: {err}");
         eprintln!("asura-world: refusing to start without the character spawn table");
         return ExitCode::from(4);
     }
+    // The NPC types, placements and routes (`config/World/<pack>/npcs/` and each map's `npcs.json`):
+    // one bad row refuses the start, naming the row, rather than a town with half its people.
+    let npc_content = match asura_world::npc::current() {
+        Ok(content) => content,
+        Err(err) => {
+            eprintln!("asura-world: {err}");
+            eprintln!("asura-world: refusing to start with NPC content that does not check");
+            return ExitCode::from(4);
+        }
+    };
     if let Err(err) = asura_config::directional::current() {
         eprintln!("asura-world: directional movement configuration: {err}");
         return ExitCode::from(4);
@@ -449,12 +477,28 @@ async fn main() -> ExitCode {
     // `--on-demand` was read above, before the pool rows were published, so that an on-demand world
     // lists every catalogue map as servable while it preloads only the maps it was started with.
 
+    // Every NPC position must stand on its map's walkable surface, now that the surfaces are loaded.
+    if let Err(err) = asura_world::npc::check_ground(&npc_content, &graphs) {
+        eprintln!("asura-world: {err}");
+        eprintln!("asura-world: refusing to start with NPCs off the walkable surface");
+        return ExitCode::from(4);
+    }
+    let npc_world = match asura_world::npc::NpcWorld::new(npc_content, graphs.clone()) {
+        Ok(world) => world,
+        Err(err) => {
+            eprintln!("asura-world: {err}");
+            eprintln!("asura-world: refusing to start with a behavior script that does not load");
+            return ExitCode::from(4);
+        }
+    };
+    let instances = asura_world::Instances::with_npcs(npc_world);
+
     let world = Arc::new(World {
         pool,
         world_id,
         maps,
         replay,
-        instances: Default::default(),
+        instances,
         public,
         graphs,
         lazy_maps: Default::default(),

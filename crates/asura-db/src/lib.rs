@@ -146,6 +146,27 @@ pub const SCHEMA_V31: &str = include_str!("../migrations/0031_transfer_arrival_o
 /// The client's uploaded UI settings blob, returned at login instead of the committed default.
 pub const SCHEMA_V32: &str = include_str!("../migrations/0032_account_settings.sql");
 
+/// The nullable link from an owned item to its static definition in the world pack. Definitions
+/// themselves stay content (`config/World/<pack>/items.json`), not rows.
+pub const SCHEMA_V33: &str = include_str!("../migrations/0033_item_definitions.sql");
+
+/// A character's learned skills, bar and attribute ranks (`docs/52-skills.md`). Ids and ranks only: what a
+/// skill is stays content (`config/World/<pack>/skills.json`).
+pub const SCHEMA_V34: &str = include_str!("../migrations/0034_character_skills.sql");
+
+/// The gold a character keeps in Xunlai storage (`docs/53-npc-services.md`).
+pub const SCHEMA_V35: &str = include_str!("../migrations/0035_storage_gold.sql");
+
+/// A character's experience and the skill points its levels have granted (`docs/54-experience.md`).
+pub const SCHEMA_V36: &str = include_str!("../migrations/0036_character_experience.sql");
+
+/// Whether a pending transfer is a login handoff or a world travel (`docs/56-character-on-travel.md`).
+pub const SCHEMA_V37: &str = include_str!("../migrations/0037_transfer_kind.sql");
+
+/// A character's quest attempts (`docs/58-quests.md`). The stage rule and the content stay outside the
+/// database; this is one row per (character, quest).
+pub const SCHEMA_V38: &str = include_str!("../migrations/0038_character_quests.sql");
+
 /// Every migration, in application order. A developer applying the schema gets one string per
 /// migration file, so a new file is picked up without editing the tooling.
 pub const SCHEMA: &[&str] = &[
@@ -153,6 +174,7 @@ pub const SCHEMA: &[&str] = &[
     SCHEMA_V9, SCHEMA_V10, SCHEMA_V11, SCHEMA_V12, SCHEMA_V13, SCHEMA_V14, SCHEMA_V15, SCHEMA_V16,
     SCHEMA_V17, SCHEMA_V18, SCHEMA_V19, SCHEMA_V20, SCHEMA_V21, SCHEMA_V22, SCHEMA_V23, SCHEMA_V24,
     SCHEMA_V25, SCHEMA_V26, SCHEMA_V27, SCHEMA_V28, SCHEMA_V29, SCHEMA_V30, SCHEMA_V31, SCHEMA_V32,
+    SCHEMA_V33, SCHEMA_V34, SCHEMA_V35, SCHEMA_V36, SCHEMA_V37, SCHEMA_V38,
 ];
 
 /// The tables the coordination model depends on. Used by the startup check: a service refuses to run
@@ -178,6 +200,7 @@ pub const REQUIRED_TABLES: &[&str] = &[
     "t_guild_invites",
     "t_parties",
     "t_party_members",
+    "t_character_skills",
 ];
 
 /// The account row itself: the EULA version it accepted, and whatever later column a login needs.
@@ -197,11 +220,17 @@ pub mod catalog;
 /// The reads a world server needs: the map to load, where to place a character, and its name.
 pub mod game;
 
+/// A character's quest attempts: one row per (character, quest), and the two writes the rule needs.
+pub mod quest;
+
 /// A character's explored cells, one packed grid per (character, continent).
 pub mod cartography;
 
 /// Title progress: the points per title, per character and per account, and the title a character shows.
 pub mod titles;
+
+/// A character's learned skills, bar and attribute ranks.
+pub mod skills;
 
 /// Guilds: the guild row, its members and its open invitations.
 pub mod guilds;

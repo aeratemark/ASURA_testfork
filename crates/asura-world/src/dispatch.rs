@@ -2,8 +2,8 @@
 //!
 //! The reference's `GameSrv.c` is one switch over headers and so is this; a client cannot be told
 //! about a command seam it does not speak. What this file is *not*: a home for domain logic. Each
-//! arm validates, then calls into `item`, `chat`, `travel`, `creation`, `party`, `player` or `map`; the
-//! only state it touches is the one the message is about.
+//! arm validates, then calls into `item`, `chat`, `compass`, `travel`, `creation`, `party`, `player`,
+//! `vendor` or `map`; the only state it touches is the one the message is about.
 //!
 //! A header with no arm is framed and ignored - named in the trace, never guessed at.
 
@@ -41,11 +41,15 @@ pub async fn answer(
             connection::handle_ping_request(stream, session, trace).await
         }
 
+        // A click, the keyboard or a stop is the player moving by itself: any walk to an agent
+        // (`crate::approach`) is over.
         msg::GAME_CMSG_MOVE_TO_COORD => {
+            approach::forget(player);
             agent::handle_move_to_coord(stream, session, &frame, world, player, trace).await
         }
 
         msg::GAME_CMSG_POSITION_UPDATE => {
+            approach::forget(player);
             let answer =
                 agent::handle_position_update(stream, session, &frame, world, player, trace).await;
 
@@ -59,6 +63,7 @@ pub async fn answer(
         }
 
         msg::GAME_CMSG_CANCEL_MOVEMENT => {
+            approach::forget(player);
             agent::handle_cancel_movement(stream, session, &frame, world, player, trace).await
         }
 
@@ -72,6 +77,11 @@ pub async fn answer(
             player::walked(world, player, trace).await;
             answer
         }
+
+        // Spacebar or a click on an NPC, and on another player or a party member: walk there
+        // (`crate::approach`, `docs/52-skills.md` "Walking to a target").
+        msg::GAME_CMSG_INTERACT_LIVING => approach::handle_interact_living(&frame, player, trace),
+        msg::GAME_CMSG_INTERACT_PLAYER => approach::handle_interact_player(&frame, player, trace),
 
         // The client's own travel announcement: the player touched a travel object. Named rather than
         // left to the fallthrough, because the line it prints is the measurement a portal table is
@@ -122,6 +132,10 @@ pub async fn answer(
             chat::handle_chat_message(stream, session, &frame, world, player, trace).await
         }
 
+        // What a party member shows the others (`crate::compass`, `docs/51-compass-and-chat.md`).
+        msg::GAME_CMSG_DRAW_MAP => compass::handle_draw_map(&frame, player, trace),
+        msg::GAME_CMSG_TARGET_CALL => compass::handle_target_call(&frame, player, trace),
+
         // The client is going away, and said so: a logout, not a drop.
         msg::GAME_CMSG_DISCONNECT => {
             player.said_goodbye = true;
@@ -144,7 +158,17 @@ pub async fn answer(
             creation::handle_confirm(stream, session, &frame, world, player, trace).await
         }
 
-        msg::GAME_CMSG_DROP_ITEM => item::handle_drop_item(&frame, world, player).await,
+        msg::GAME_CMSG_DROP_ITEM => {
+            item::handle_drop_item(stream, session, &frame, world, player, trace).await
+        }
+
+        msg::GAME_CMSG_INTERACT_ITEM => {
+            item::handle_interact_item(stream, session, &frame, world, player, trace).await
+        }
+
+        msg::GAME_CMSG_ITEM_DESTROY => {
+            item::handle_item_destroy(stream, session, &frame, world, player, trace).await
+        }
 
         msg::GAME_CMSG_ITEM_MOVE => {
             item::handle_item_move(stream, session, &frame, world, player, trace).await
@@ -154,7 +178,68 @@ pub async fn answer(
             item::handle_equip_item(stream, session, &frame, world, player, trace).await
         }
 
-        msg::GAME_CMSG_UNEQUIP_ITEM => item::handle_unequip_item(),
+        msg::GAME_CMSG_UNEQUIP_ITEM => {
+            item::handle_unequip_item(stream, session, &frame, world, player, trace).await
+        }
+
+        // Skills (`crate::skill`, `docs/52-skills.md`): using a bar slot, editing the bar, and the
+        // attribute window. Every layout is preforged's, matched to this build's table by shape.
+        msg::GAME_CMSG_ATTACK_AGENT => {
+            skill::character::handle_attack_agent(&frame, player, trace).await
+        }
+        msg::GAME_CMSG_USE_SKILL | msg::GAME_CMSG_USE_ATTACK_SKILL => {
+            skill::character::handle_use_skill(&frame, player, trace).await
+        }
+        msg::GAME_CMSG_SKILLBAR_SKILL_SET => {
+            skill::character::handle_bar_set(stream, session, &frame, world, player, trace).await
+        }
+        msg::GAME_CMSG_SKILLBAR_LOAD => {
+            skill::character::handle_bar_load(stream, session, &frame, world, player, trace).await
+        }
+        msg::GAME_CMSG_SKILLBAR_SKILL_REPLACE => {
+            skill::character::handle_bar_swap(stream, session, &frame, world, player, trace).await
+        }
+        msg::GAME_CMSG_SKILLBAR_SKILL_MOVE => {
+            skill::character::handle_bar_move(stream, session, &frame, world, player, trace).await
+        }
+        msg::GAME_CMSG_ATTRIBUTE_INCREASE => {
+            skill::character::handle_attribute_increase(
+                stream, session, &frame, world, player, trace,
+            )
+            .await
+        }
+        msg::GAME_CMSG_ATTRIBUTE_DECREASE => {
+            skill::character::handle_attribute_decrease(
+                stream, session, &frame, world, player, trace,
+            )
+            .await
+        }
+        msg::GAME_CMSG_ATTRIBUTE_LOAD => {
+            skill::character::handle_attribute_load(stream, session, &frame, world, player, trace)
+                .await
+        }
+
+        // An NPC's windows (`crate::vendor`, `docs/53-npc-services.md`): a trade in a merchant's or a
+        // collector's window, gold moved at a Xunlai window, and a dialog choice.
+        msg::GAME_CMSG_TRANSACT_ITEMS | msg::GAME_CMSG_BUY_MATERIALS => {
+            vendor::handle_transaction(stream, session, &frame, world, player, trace).await
+        }
+        msg::GAME_CMSG_ITEM_CHANGE_GOLD => {
+            vendor::handle_change_gold(stream, session, &frame, world, player, trace).await
+        }
+        msg::GAME_CMSG_SEND_DIALOG => {
+            vendor::handle_send_dialog(stream, session, world, &frame, player, trace).await
+        }
+
+        // The quest log's Abandon button (`crate::quest`, `docs/58-quests.md`).
+        msg::GAME_CMSG_QUEST_ABANDON => {
+            quest::handle_abandon(stream, session, &frame, world, player, trace).await
+        }
+
+        // The client asks for a quest it keeps in its log, after a map travel (`crate::quest`).
+        msg::GAME_CMSG_QUEST_REQUEST_INFOS => {
+            quest::handle_info_request(stream, session, &frame, player, trace).await
+        }
 
         // The Hero panel's title checkbox: show this title, or show none (`crate::titles`).
         msg::GAME_CMSG_TITLE_DISPLAY => {
@@ -212,6 +297,8 @@ mod tests {
             (msg::GAME_CMSG_MOVE_TO_COORD, "GAME_CMSG_MOVE_TO_COORD"),
             (msg::GAME_CMSG_POSITION_UPDATE, "GAME_CMSG_POSITION_UPDATE"),
             (msg::GAME_CMSG_CANCEL_MOVEMENT, "GAME_CMSG_CANCEL_MOVEMENT"),
+            (msg::GAME_CMSG_INTERACT_LIVING, "GAME_CMSG_INTERACT_LIVING"),
+            (msg::GAME_CMSG_INTERACT_PLAYER, "GAME_CMSG_INTERACT_PLAYER"),
             (
                 msg::GAME_CMSG_LAST_POS_BEFORE_MOVE_CANCELED,
                 "GAME_CMSG_LAST_POS_BEFORE_MOVE_CANCELED",
@@ -226,6 +313,8 @@ mod tests {
                 msg::GAME_CMSG_SEND_CHAT_MESSAGE,
                 "GAME_CMSG_SEND_CHAT_MESSAGE",
             ),
+            (msg::GAME_CMSG_DRAW_MAP, "GAME_CMSG_DRAW_MAP"),
+            (msg::GAME_CMSG_TARGET_CALL, "GAME_CMSG_TARGET_CALL"),
             (msg::GAME_CMSG_DISCONNECT, "GAME_CMSG_DISCONNECT"),
             (
                 msg::GAME_CMSG_CHAR_CREATION_REQUEST_PLAYER,
@@ -244,9 +333,51 @@ mod tests {
                 "GAME_CMSG_CHAR_CREATION_CONFIRM",
             ),
             (msg::GAME_CMSG_DROP_ITEM, "GAME_CMSG_DROP_ITEM"),
+            (msg::GAME_CMSG_INTERACT_ITEM, "GAME_CMSG_INTERACT_ITEM"),
+            (msg::GAME_CMSG_ITEM_DESTROY, "GAME_CMSG_ITEM_DESTROY"),
             (msg::GAME_CMSG_ITEM_MOVE, "GAME_CMSG_ITEM_MOVE"),
             (msg::GAME_CMSG_EQUIP_ITEM, "GAME_CMSG_EQUIP_ITEM"),
             (msg::GAME_CMSG_UNEQUIP_ITEM, "GAME_CMSG_UNEQUIP_ITEM"),
+            (msg::GAME_CMSG_ATTACK_AGENT, "GAME_CMSG_ATTACK_AGENT"),
+            (msg::GAME_CMSG_USE_SKILL, "GAME_CMSG_USE_SKILL"),
+            (
+                msg::GAME_CMSG_USE_ATTACK_SKILL,
+                "GAME_CMSG_USE_ATTACK_SKILL",
+            ),
+            (
+                msg::GAME_CMSG_SKILLBAR_SKILL_SET,
+                "GAME_CMSG_SKILLBAR_SKILL_SET",
+            ),
+            (msg::GAME_CMSG_SKILLBAR_LOAD, "GAME_CMSG_SKILLBAR_LOAD"),
+            (
+                msg::GAME_CMSG_SKILLBAR_SKILL_REPLACE,
+                "GAME_CMSG_SKILLBAR_SKILL_REPLACE",
+            ),
+            (
+                msg::GAME_CMSG_SKILLBAR_SKILL_MOVE,
+                "GAME_CMSG_SKILLBAR_SKILL_MOVE",
+            ),
+            (
+                msg::GAME_CMSG_ATTRIBUTE_INCREASE,
+                "GAME_CMSG_ATTRIBUTE_INCREASE",
+            ),
+            (
+                msg::GAME_CMSG_ATTRIBUTE_DECREASE,
+                "GAME_CMSG_ATTRIBUTE_DECREASE",
+            ),
+            (msg::GAME_CMSG_ATTRIBUTE_LOAD, "GAME_CMSG_ATTRIBUTE_LOAD"),
+            (msg::GAME_CMSG_TRANSACT_ITEMS, "GAME_CMSG_TRANSACT_ITEMS"),
+            (msg::GAME_CMSG_BUY_MATERIALS, "GAME_CMSG_BUY_MATERIALS"),
+            (
+                msg::GAME_CMSG_ITEM_CHANGE_GOLD,
+                "GAME_CMSG_ITEM_CHANGE_GOLD",
+            ),
+            (msg::GAME_CMSG_SEND_DIALOG, "GAME_CMSG_SEND_DIALOG"),
+            (msg::GAME_CMSG_QUEST_ABANDON, "GAME_CMSG_QUEST_ABANDON"),
+            (
+                msg::GAME_CMSG_QUEST_REQUEST_INFOS,
+                "GAME_CMSG_QUEST_REQUEST_INFOS",
+            ),
             (msg::GAME_CMSG_TITLE_DISPLAY, "GAME_CMSG_TITLE_DISPLAY"),
             (msg::GAME_CMSG_TITLE_HIDE, "GAME_CMSG_TITLE_HIDE"),
             (msg::GAME_CMSG_PING_REPLY, "GAME_CMSG_PING_REPLY"),
@@ -254,7 +385,7 @@ mod tests {
         ];
         assert_eq!(
             arms.len(),
-            25,
+            47,
             "an arm was added or removed without this table"
         );
         for (header, name) in arms {

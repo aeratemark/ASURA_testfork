@@ -94,7 +94,10 @@ fn visit(dir: &Path, records: &mut Vec<MapRecord>, notes: &mut Vec<String>) {
         if !folder.is_dir() {
             continue;
         }
-        let name = folder.file_name().and_then(|name| name.to_str()).unwrap_or("");
+        let name = folder
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("");
         let Ok(folder_id) = name.parse::<i32>() else {
             visit(&folder, records, notes);
             continue;
@@ -229,7 +232,10 @@ mod tests {
         )
         .expect("write");
         let (records, notes) = walk(&dir);
-        assert!(notes.is_empty(), "the levels above a map are not errors: {notes:?}");
+        assert!(
+            notes.is_empty(),
+            "the levels above a map are not errors: {notes:?}"
+        );
         assert_eq!(records.len(), 1, "the map is found four levels down");
         assert_eq!(records[0].map_id, 148);
         std::fs::remove_dir_all(&dir).ok();

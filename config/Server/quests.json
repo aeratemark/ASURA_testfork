@@ -1,0 +1,25 @@
+{
+  "max_records": {
+    "value": 4096,
+    "doc": "How many quest attempts one character profile may hold. A bound on a stored profile, not a game rule: the stage machine refuses an acceptance past it and the server logs the refusal. 4096 is preforged's own storage bound (gw_quest_state.h, validate)."
+  },
+  "max_credits": {
+    "value": 64,
+    "doc": "How many objective credits one quest attempt may carry. A bound on a stored profile, not a game rule. 64 is preforged's own storage bound (gw_quest_state.h, validate); the first quest ported has no objectives."
+  },
+  "marker_offer": {
+    "value": 5,
+    "immutable": true,
+    "doc": "The 0x009F agent property 11 value that draws the offer marker above a quest giver. The client's own marker state, measured on the Town Crier before its offer (side-quests-2026-10-12 packets, tick 169041703: {11, 75, 5}). Changing it changes what this server asks the client to draw, not what the client accepts."
+  },
+  "marker_turn_in": {
+    "value": 4,
+    "immutable": true,
+    "doc": "The 0x009F agent property 11 value that draws the turn-in marker. Measured on Sir Tydus once quest 80 is accepted (tick 169042640: {11, 42, 4}). The client's own marker state, as above."
+  },
+  "marker_none": {
+    "value": 0,
+    "immutable": true,
+    "doc": "Not sent. The live server never clears a marker with property 11: it sends {12, npc, 0} (the talked-to property) to a giver whose quest was accepted and to a trainer whose turn-in was taken (four-professions-2026-10-11 packets, ticks 81485859 and 81601156), and that is what crate::quest::marker_update sends for no marker. A property-11 value of 0 is drawn by the client as a marker. Kept so the settings file still reads."
+  }
+}

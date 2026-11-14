@@ -18,11 +18,17 @@ Seven files today:
 - `config/Server/movement.json`: the tolerances a client's movement reports are judged by. One key
   today - `max_allowed_correction`, how far a client may place itself when it cancels a walk and
   still be believed. The reference's own value is 100 and is the fallback in code; this machine runs
-  it at 150. Read by `asura-config`, once per process, same precedence as the intervals file.
+  it at 150. A second key, `interact_range`, is how near a player walks to an NPC it interacts with
+  or an agent it follows before the server stops it (50, chosen). Read by `asura-config`, once per
+  process, same precedence as the intervals file.
 - `config/Server/spawns.json`: how a character is placed around the spawn point it entered at. One
   key today - `spawn_scatter`, the radius in map units of the circle a character lands in around a
   random point of the map's own spawn list (250 here; zero stacks everyone on the point). Read by
   `asura-config`, once per process, same precedence as the movement file.
+- `config/Server/quests.json`: the quest settings. `max_records` and `max_credits` are the storage
+  bounds the stage rule is handed as its `Limits`; `marker_offer`, `marker_turn_in` and `marker_none`
+  are the client's own `0x009F` property 11 values and are marked `immutable`. Read by `asura-config`
+  once per process (`ASURA_QUESTS` names another file) (`docs/58-quests.md`).
 
 - `config/Server/titles.json`: the title definitions - per title, the values its track message
   (`0x00F6`) and rank records (`0x00F3`) carry that do not change with play: scope, flags, the coded

@@ -466,7 +466,7 @@ the existence of a type, table, packet builder, or manager button does not prove
 |---|---|---|
 | 1 | Edit the selected maps' spawns/portal arrivals through the manager | Planned |
 | 2 | Independent solo copies and the selected party-sharing policy | Planned |
-| Shared prerequisite | Profile-owned Lua behavior executes through Rust operations before scripted NPC/skill/AI work | Planned |
+| Shared prerequisite | Profile-owned Lua behavior executes through Rust operations before scripted NPC/skill/AI work | Started: the loader, `npcs/behaviors.lua` and the Plague Worm cycle; profile-owned skill/AI behavior remains |
 | 3 | A configured NPC walking its route | Planned |
 | 4 | A player and NPC resolving the selected combat actions | Planned |
 | 5 | NPC skill and target decisions driven by ported HeroAI policy | Planned |

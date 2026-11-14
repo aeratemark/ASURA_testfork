@@ -1,0 +1,181 @@
+{
+  "note": "The values skills and combat decide by (docs/52-skills.md). Ranges are game units; times are milliseconds unless a key says seconds. Read once when the world starts: restart the world after changing it.",
+  "spell_range": {
+    "value": 1248,
+    "doc": "How far a targeted spell, signet or skill reaches: the client's cast range."
+  },
+  "touch_range": {
+    "value": 144,
+    "doc": "How far a touch skill reaches (Vampiric Touch)."
+  },
+  "adjacent_range": {
+    "value": 166,
+    "doc": "The radius 'adjacent' means: Cyclone Axe, Imagined Burden's spread, Shatter Delusions' blast."
+  },
+  "melee_range": {
+    "value": 50,
+    "doc": "How far a melee attack or attack skill reaches. The owner's report on 2026-11-14: a hammer at 144 reached too far, and melee should be quite close; 50 is the interaction distance this machine already chose for walking to an NPC (config/Server/movement.json, interact_range), not the touch spell's 144. The client's own click range may still be wider; the server walks the character in and only accepts the hit here."
+  },
+  "bow_range": {
+    "value": 1248,
+    "doc": "How far a bow attack skill reaches."
+  },
+  "projectile_speed": {
+    "value": 1600,
+    "doc": "How fast a ranged weapon's shot flies, in map units per second. The flight is the distance from the shooter to the aim point over this, so a shot at 100 units arrives in 0.06 s and one at 1,000 in 0.63 s. GWW's bow table puts the shortbow at 0.59 s for its 1004 range; the live corpus's weapon speeds are round classes (1200, 1600, 2800) and 1600 is the bow/spear class (Rurik content/world.toml weapon_type.bow)."
+  },
+  "dodge_tolerance": {
+    "value": 54,
+    "doc": "How far a projectile's target may stand from the aim, measured ACROSS the line of fire from the shooter to the aim, and still be hit. The measured live rule: a shot connects inside 54 u across and 114 u along; outside it the client draws a dodge. The mechanism is a reconstruction fitted inside retail's zero-violation bands [51.0, 57.5] across and [101, 128] along (Rurik toolkit/authsrv/authsrv.py:17340-17375)."
+  },
+  "dodge_along": {
+    "value": 114,
+    "doc": "How far short of, or past, the aim a projectile's target may stand ALONG the line of fire and still be hit; see dodge_tolerance. A target that runs straight away or straight in stays inside this; one that steps sideways leaves it."
+  },
+  "range_tolerance": {
+    "value": 1.25,
+    "doc": "How far past a skill's reach the server still accepts a target, as a multiple of the reach: the client's reported position lags its walk."
+  },
+  "health_base": {
+    "value": 80,
+    "doc": "A player's health before levels: maximum health is health_base + health_per_level * level."
+  },
+  "health_per_level": {
+    "value": 20,
+    "doc": "Maximum health each level adds."
+  },
+  "energy_max": {
+    "value": 25,
+    "doc": "A player's maximum energy. 25 is what this world already sent every player (asura-protocol PLAYER_ENERGY_MAX)."
+  },
+  "energy_regen_pips": {
+    "value": 4,
+    "doc": "A player's energy regeneration, in pips. One pip is a third of an energy per second."
+  },
+  "health_pip_per_second": {
+    "value": 2.0,
+    "doc": "Health one regeneration pip restores (or one degeneration pip removes) per second."
+  },
+  "energy_pip_per_second": {
+    "value": 0.333333,
+    "doc": "Energy one pip restores per second."
+  },
+  "regen_pip_cap": {
+    "value": 10,
+    "doc": "The most pips health regeneration or degeneration can sum to, either way."
+  },
+  "spell_strike_per_level": {
+    "value": 3,
+    "doc": "A spell's strike level is this times the caster's level; damage is base * 2^((strike - armor) / 40)."
+  },
+  "weapon_strike_per_rank": {
+    "value": 5,
+    "doc": "A weapon attack's strike level is this times the caster's rank in the weapon's attribute."
+  },
+  "armor_divisor": {
+    "value": 40.0,
+    "doc": "The divisor in the damage formula's exponent."
+  },
+  "player_armor_default": {
+    "value": 60,
+    "doc": "A player's armor rating when its equipped pieces carry no armor word: the rating the damage tables are normalised to."
+  },
+  "adrenaline_per_hit": {
+    "value": 25,
+    "doc": "Adrenaline units every adrenal skill on the bar gains when an attack hits. 25 units are one strike."
+  },
+  "divine_favor_attribute": {
+    "value": 16,
+    "doc": "The attribute index of Divine Favor.",
+    "immutable": true
+  },
+  "divine_favor_heal_per_rank": {
+    "value": 3.2,
+    "doc": "Extra healing a primary Monk's healing spell gives an ally per rank of Divine Favor."
+  },
+  "monk_profession": {
+    "value": 3,
+    "doc": "The profession id of the Monk.",
+    "immutable": true
+  },
+  "condition_skills": {
+    "value": {
+      "bleeding": 478,
+      "blind": 479,
+      "burning": 480,
+      "crippled": 481,
+      "deep_wound": 482,
+      "disease": 483,
+      "poison": 484,
+      "dazed": 485,
+      "weakness": 486
+    },
+    "doc": "The client's skill id for each condition: the id an effect add for a condition carries.",
+    "immutable": true
+  },
+  "condition_degeneration": {
+    "value": {
+      "bleeding": 3,
+      "burning": 7,
+      "disease": 4,
+      "poison": 4
+    },
+    "doc": "Health degeneration pips a condition adds while it lasts."
+  },
+  "weapons": {
+    "value": {
+      "2": {
+        "name": "axe",
+        "attribute": 18,
+        "period_ms": 1330,
+        "damage_type": "slashing",
+        "ranged": false
+      },
+      "5": {
+        "name": "bow",
+        "attribute": 25,
+        "period_ms": 2000,
+        "damage_type": "piercing",
+        "ranged": true
+      },
+      "15": {
+        "name": "hammer",
+        "attribute": 19,
+        "period_ms": 1750,
+        "damage_type": "blunt",
+        "ranged": false
+      },
+      "27": {
+        "name": "sword",
+        "attribute": 20,
+        "period_ms": 1330,
+        "damage_type": "slashing",
+        "ranged": false
+      }
+    },
+    "doc": "The weapons an attack skill can be used with, by the item's type code: the attribute its strike level reads, the swing time, its damage type and whether it shoots. The damage range is the item's own 584 modifier."
+  },
+  "weapon_requirements": {
+    "value": {
+      "axe": 2,
+      "bow": 5,
+      "hammer": 15,
+      "sword": 27
+    },
+    "doc": "A skill's `weapon` key, as the item type code it requires."
+  },
+  "armor_slots": {
+    "value": {
+      "7": 0.375,
+      "19": 0.25,
+      "16": 0.125,
+      "13": 0.125,
+      "4": 0.125
+    },
+    "doc": "Each body-armor item type and its share of the armor rating: chest, legs, head, hands, feet."
+  },
+  "knockdown_ms": {
+    "value": 2000,
+    "doc": "How long a knockdown lasts when a skill names none."
+  }
+}

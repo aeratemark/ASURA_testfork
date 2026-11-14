@@ -1,8 +1,9 @@
 # World content and scripting
 
-Design discussion recorded 2026-11-01. This is a planning document, not an implemented subsystem.
-The source for the decisions below is the owner's instructions in that discussion, not a claim
-about the live game's internal design.
+Design discussion recorded 2026-11-01. The first part is implemented: the world loads a pack's
+`npcs/behaviors.lua` and the Plague Worm cycle runs from it. The rest of this document remains the
+design record for the node set, quests and the HeroAI port. The source for the decisions below is
+the owner's instructions in that discussion, not a claim about the live game's internal design.
 
 ## Chosen: Rust simulation and Lua content scripts
 
@@ -10,16 +11,16 @@ The owner selected **Lua** for content scripting on 2026-11-01, replacing Rhai a
 "Seems too new, not much documentation and examples and real world usage. I think ill do LUA
 instead." Contributors should be able to edit text files and run them through ASURA without
 installing a separate scripting interpreter or rebuilding the server for each content change. Lua is
-intended to be embedded in the server; it has not been added to Cargo or the runtime yet.
+embedded through `crates/asura-world/src/npc/lua.rs`; the first script is
+`config/World/Vanilla/npcs/behaviors.lua`.
 
 What the change carries, recorded so it is not discovered later:
 
-- the build gains a C toolchain. A vendored Lua compiles from C source: 50.6 s cold build and 19.8 s
-  incremental in a scratch crate on 2026-11-01, where the seven member crates in `Cargo.toml`
-  (`asura-auth`, `asura-world`, `asura-webgate`, `asura-protocol`, `asura-db`, `asura-fakeworld`,
-  `asura-supervisor`) are all pure Rust today;
-- the sandbox becomes ours to assemble: no `io`, `os`, `debug` or `package`, no bytecode loading, an
-  instruction hook and a memory ceiling. Lua supplies the parts; the policy is ours;
+- the build gains a C toolchain. `mlua` with the `vendored` feature compiles Lua 5.4 from C source;
+  the measured cold build was 50.6 s in a scratch crate on 2026-11-01;
+- the loader exposes only the table, string and math libraries. No `io`, `os`, `debug` or `package`
+  and no bytecode loading. An instruction hook and a memory ceiling are not implemented yet; the
+  script is pack content, not an untrusted upload;
 - quests gain suspension. Coroutines let a quest wait mid-flow, so the handler shape proposed below
   is one option rather than the only one.
 
@@ -83,13 +84,17 @@ configuration, including for custom skills, without modifying or rebuilding Rust
 required mechanics already exist. A skill's behavior configuration and HeroAI's rules for using
 it are separate entries, both supplied by the selected profile.
 
-The division is fixed (owner, 2026-11-02): **Rust owns the technical layer** - the behavior-tree
-runtime and its tick, node kinds and execution semantics, per-agent tree state, halting and
-reset, actor-relative queries, wrapped actions and calls, budgets, and error policy. **Lua is the
-configuration layer**: it declares the behavioral configuration and constructs the tree from
-Rust-provided node kinds and wrapped leaves. Lua does not tick, does not hold running node state,
-and does not execute per-tick logic. Tree construction is configuration; execution is a Rust
-mechanic. The Lua binding shape and the configuration format remain open.
+The division, as of 2026-11-14 (the owner asked for readable per-tick Lua in the shape of
+`wormBurrowCombat(ctx)`): **Rust owns the technical layer** - the behavior-tree runtime and its tick,
+node kinds and execution semantics, per-agent tree state, halting and reset, actor-relative queries,
+wrapped actions and calls, budgets, and error policy. **Lua has two forms**: a table entry is the
+configuration layer and constructs a tree from Rust-provided node kinds and wrapped leaves; a function
+entry is a **script leaf**, called once per agent per tick with a Rust-owned `ctx.state` table, the
+fight's `ctx.in_combat` and read-only `ctx.phase`, and a command table. Lua reads and writes
+`ctx.state`, but the state table, the phase clock, the wire and the fight remain Rust's; the leaf
+returns `running`, `success` or `failure`, and the commands it appends are applied by Rust. The node
+set is still the runtime's, and every new operation still needs its Rust mechanic before a script can
+name it (`docs/59-plague-worm-burrow.md`).
 
 A later acceptance case must add a custom skill using existing mechanics, define its behavior
 and HeroAI usage in a copied profile, and demonstrate the NPC using it without editing or

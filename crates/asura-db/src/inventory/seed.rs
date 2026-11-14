@@ -42,7 +42,7 @@ pub const BAGS: &[SeedBag] = &[
 pub const ITEMS: &[SeedItem] = &[
     // item 1: type 3, model 32, no slot (the bag's own item)
     SeedItem {
-        id: 1, bag_id: None, slot: None,
+        id: 1, definition_id: "backpack", bag_id: None, slot: None,
         file_id: 0x8001B536, item_type: 3, model_id: 32,
         dye_tint: 1, dye_colors: 0, materials: 0, unk1: 0,
         flags: 0x20001000, value: 5, quantity: 1, profession: 0,
@@ -51,7 +51,7 @@ pub const ITEMS: &[SeedItem] = &[
     },
     // item 2: type 9, model 22269, bag 1 slot 0
     SeedItem {
-        id: 2, bag_id: Some(1), slot: Some(0),
+        id: 2, definition_id: "birthday_cupcake", bag_id: Some(1), slot: Some(0),
         file_id: 0x47C34, item_type: 9, model_id: 22269,
         dye_tint: 0, dye_colors: 0, materials: 0, unk1: 0,
         flags: 0x21080201, value: 0, quantity: 100, profession: 0,
@@ -60,7 +60,7 @@ pub const ITEMS: &[SeedItem] = &[
     },
     // item 9: type 9, model 22269, bag 1 slot 1
     SeedItem {
-        id: 9, bag_id: Some(1), slot: Some(1),
+        id: 9, definition_id: "birthday_cupcake", bag_id: Some(1), slot: Some(1),
         file_id: 0x47C34, item_type: 9, model_id: 22269,
         dye_tint: 0, dye_colors: 0, materials: 0, unk1: 0,
         flags: 0x21080201, value: 0, quantity: 100, profession: 0,
@@ -69,7 +69,7 @@ pub const ITEMS: &[SeedItem] = &[
     },
     // item 3: type 15, model 1699, bag 5 slot 0
     SeedItem {
-        id: 3, bag_id: Some(5), slot: Some(0),
+        id: 3, definition_id: "warrior_starter_hammer", bag_id: Some(5), slot: Some(0),
         file_id: 0x80009B60, item_type: 15, model_id: 1699,
         dye_tint: 6, dye_colors: 0, materials: 0, unk1: 0,
         flags: 0x22201000, value: 0, quantity: 1, profession: 1,
@@ -78,7 +78,7 @@ pub const ITEMS: &[SeedItem] = &[
     },
     // item 4: type 7, model 823, bag 5 slot 2
     SeedItem {
-        id: 4, bag_id: Some(5), slot: Some(2),
+        id: 4, definition_id: "warrior_starter_body", bag_id: Some(5), slot: Some(2),
         file_id: 0x8000005B, item_type: 7, model_id: 823,
         dye_tint: 19, dye_colors: 11, materials: 0, unk1: 0,
         flags: 0x20001006, value: 0, quantity: 1, profession: 1,
@@ -87,7 +87,7 @@ pub const ITEMS: &[SeedItem] = &[
     },
     // item 5: type 19, model 2440, bag 5 slot 3
     SeedItem {
-        id: 5, bag_id: Some(5), slot: Some(3),
+        id: 5, definition_id: "warrior_starter_legs", bag_id: Some(5), slot: Some(3),
         file_id: 0x8000005E, item_type: 19, model_id: 2440,
         dye_tint: 19, dye_colors: 11, materials: 0, unk1: 0,
         flags: 0x20001006, value: 0, quantity: 1, profession: 1,
@@ -96,7 +96,7 @@ pub const ITEMS: &[SeedItem] = &[
     },
     // item 6: type 16, model 6136, bag 5 slot 4
     SeedItem {
-        id: 6, bag_id: Some(5), slot: Some(4),
+        id: 6, definition_id: "warrior_starter_head", bag_id: Some(5), slot: Some(4),
         file_id: 0x8000005D, item_type: 16, model_id: 6136,
         dye_tint: 19, dye_colors: 11, materials: 0, unk1: 0,
         flags: 0x20001006, value: 0, quantity: 1, profession: 1,
@@ -105,7 +105,7 @@ pub const ITEMS: &[SeedItem] = &[
     },
     // item 7: type 4, model 355, bag 5 slot 5
     SeedItem {
-        id: 7, bag_id: Some(5), slot: Some(5),
+        id: 7, definition_id: "warrior_starter_boots", bag_id: Some(5), slot: Some(5),
         file_id: 0x8000005A, item_type: 4, model_id: 355,
         dye_tint: 19, dye_colors: 11, materials: 0, unk1: 0,
         flags: 0x20001006, value: 0, quantity: 1, profession: 1,
@@ -114,7 +114,7 @@ pub const ITEMS: &[SeedItem] = &[
     },
     // item 8: type 13, model 1598, bag 5 slot 6
     SeedItem {
-        id: 8, bag_id: Some(5), slot: Some(6),
+        id: 8, definition_id: "warrior_starter_gloves", bag_id: Some(5), slot: Some(6),
         file_id: 0x8000005C, item_type: 13, model_id: 1598,
         dye_tint: 19, dye_colors: 11, materials: 0, unk1: 0,
         flags: 0x20001006, value: 0, quantity: 1, profession: 1,

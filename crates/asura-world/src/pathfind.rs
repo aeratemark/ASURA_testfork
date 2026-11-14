@@ -1679,6 +1679,12 @@ impl PathGraphs {
         }
     }
 
+    /// Whether `at` lies on a trapezoid of its own plane: `None` when this world has no graph for the
+    /// map. What the NPC content check at start-up asks of every placement and route point.
+    pub fn on_ground(&self, map_id: i32, at: Pos) -> Option<bool> {
+        self.with_finder(map_id, |finder| finder.find_trapezoid(at).is_some())
+    }
+
     /// Run `use_it` against the finder for `map_id`, or `None` when this world has no graph for it.
     fn with_finder<R>(
         &self,

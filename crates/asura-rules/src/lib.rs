@@ -25,6 +25,16 @@ pub mod party;
 /// Guilds: whether a guild may be created, a character invited, a guild left or its announcement set.
 pub mod guild;
 
+/// Skills and attributes: whether a bar may hold what a client asks for, and whether a rank may change.
+pub mod skills;
+
+/// Experience and levels: the curve a total falls on, and the skill points a level grants.
+pub mod experience;
+
+/// Quests: the stage of one attempt, the transitions that may move it, and the character name a
+/// captured text carries.
+pub mod quest;
+
 /// What the client asked for: a map id and the map type it named with it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Requested {

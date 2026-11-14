@@ -20,10 +20,10 @@ Tags, as in `docs/40-titles-system-research.md`:
 - **WIKI** - Guild Wars Wiki, via Rurik's pre-Searing manifest.
 - **GUESS** - an inference; it says what would confirm it.
 
-**No vendor capture exists in this repo yet.** A scan of every file under `recordings/client/feature/`
-for `0x00C3`-`0x00CD`, `0x004A`, `0x004D` finds none (2026-11-06). The one vendor-family message seen is
-`0x00CC {8}` after guild creation (`docs/41-guild-system-research.md` 3.1). Section 6 says what to
-capture.
+**Captures exist now** (2026-11-12): a live merchant window in
+`recordings/client/feature/movement/movement-live-20261109-200703.jsonl` seq 5281-5288, and preforged's live
+pre-Searing session with windows, a purchase and a collector exchange. What they show, and what was built
+from them, is `docs/53-npc-services.md`; section 7 below is superseded by it.
 
 ## 1. Opening a merchant window
 

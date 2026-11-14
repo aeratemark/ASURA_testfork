@@ -43,8 +43,22 @@ pub use appearance::Appearance;
 /// The title family's six messages (`0x00F3`-`0x00F6`, `0x8058`, `0x8059`): builders and the one reader.
 pub mod title;
 
+/// The skill family: the bar, the learned set, casts, effects, damage and attribute requests
+/// (`docs/52-skills.md`).
+pub mod skill;
+
 /// The guild family (`0x0118`-`0x0133`, `0x8036`, `0x80B5`, `0x80BB`, `0x80BE`): builders and readers.
 pub mod guild;
+
+/// The vendor family: trade windows, transactions, gold and the Xunlai storage window
+/// (`docs/53-npc-services.md`).
+pub mod vendor;
+
+/// An NPC's dialog and the client's choice (`docs/53-npc-services.md`).
+pub mod dialog;
+
+/// The quest log: an entry, its details, its marker, its objectives and its removal (`docs/58-quests.md`).
+pub mod quest;
 
 /// `GAME_SMSG_INSTANCE_LOAD_HEAD` (`0x017C`): 6 bytes. The first message a client receives on the
 /// game connection.
@@ -133,12 +147,23 @@ pub const CREATE_UNNAMED_ITEM: u16 = crate::packets::game::GAME_SMSG_CREATE_UNNA
 pub const ITEM_LOW_DETAIL: u16 = crate::packets::game::GAME_SMSG_ITEM_LOW_DETAIL;
 /// `GAME_SMSG_ITEM_MOVE_TO_LOCATION` (`0x013E`): 11 bytes.
 pub const ITEM_MOVE_TO_LOCATION: u16 = crate::packets::game::GAME_SMSG_ITEM_MOVED_TO_LOCATION;
+/// `GAME_SMSG_ITEM_CHANGE_LOCATION` (`0x014B`): 11 bytes. The mid-session move
+/// reply; the load block uses `ITEM_MOVE_TO_LOCATION` instead.
+pub const ITEM_CHANGE_LOCATION: u16 = crate::packets::game::GAME_SMSG_ITEM_CHANGE_LOCATION;
 /// `GAME_SMSG_ITEM_REMOVE` (`0x014D`): 8 bytes. Takes an item out of the client's inventory model.
 ///
-/// The reference has this message and uses it when it frees a bag (`GameSrv_FreeBagItems`); it is not
-/// used anywhere near a drop, because its drop handler never removes the item. A port that does remove
-/// one has to tell the client, and this is the message that does it.
+/// The live server sends it for a whole-stack drop and for a trash destroy
+/// (`items-live-20261108-173913.jsonl` seq 41 and 193); the fields are `{stream: u16, item_id: u32}`.
 pub const ITEM_REMOVE: u16 = crate::packets::game::GAME_SMSG_ITEM_REMOVE;
+/// `GAME_SMSG_ITEM_UPDATE_QUANTITY` (`0x0139`): 10 bytes. The stack a live drop left behind.
+pub const ITEM_UPDATE_QUANTITY: u16 = crate::packets::game::GAME_SMSG_ITEM_UPDATE_QUANTITY;
+/// `GAME_SMSG_ITEM_UPDATE` (`0x0162`): the same layout as [`CREATE_NAMED_ITEM`], against an item id the
+/// client already knows. The live server sends it for the part of a stack a partial drop put on the
+/// ground (`items-live-20261108-174014.jsonl` seq 134, 150, 243).
+pub const ITEM_UPDATE: u16 = crate::packets::game::GAME_SMSG_ITEM_UPDATE;
+/// `GAME_SMSG_ITEM_PICKED_UP` (`0x0159`): 8 bytes, `{item_id: u32, agent_id: u16}`. The live server
+/// sends it on a pickup with the picking agent id (`items-live-20261108-173913.jsonl` seq 60).
+pub const ITEM_PICKED_UP: u16 = 0x0159;
 /// `GAME_SMSG_ITEM_SET_PROFESSION` (`0x015A`): 7 bytes.
 pub const ITEM_SET_PROFESSION: u16 = crate::packets::game::GAME_SMSG_ITEM_SET_PROFESSION;
 /// `GAME_SMSG_ITEM_SET_ACTIVE_WEAPON_SET` (`0x0148`): 5 bytes.
@@ -223,6 +248,9 @@ pub const AGENT_UPDATE_EFFECTS: u16 = crate::packets::game::GAME_SMSG_AGENT_UPDA
 /// `GAME_SMSG_UPDATE_AGENT_VISUAL_EQUIPMENT` (`0x006E`): 42 bytes.
 pub const UPDATE_AGENT_VISUAL_EQUIPMENT: u16 =
     crate::packets::game::GAME_SMSG_UPDATE_AGENT_VISUAL_EQUIPMENT;
+/// `GAME_SMSG_UPDATE_AGENT_VISUAL_EQUIPMENT_SLOT` (`0x006F`): 14 bytes, one item into one visual slot.
+pub const UPDATE_AGENT_VISUAL_EQUIPMENT_SLOT: u16 =
+    crate::packets::game::GAME_SMSG_UPDATE_AGENT_VISUAL_EQUIPMENT_SLOT;
 /// `GAME_SMSG_AGENT_DISPLAY_CAPE` (`0x0048`): 7 bytes.
 pub const AGENT_DISPLAY_CAPE: u16 = crate::packets::game::GAME_SMSG_AGENT_DISPLAY_CAPE;
 /// `GAME_SMSG_WORLD_UPDATE_CONTROLLED_AGENT` (`0x0022`): 10 bytes.
@@ -256,12 +284,93 @@ pub const CHANNEL_ALL: u32 = 3;
 pub const CHANNEL_GROUP: u32 = 11;
 /// `Channel_Trade`: the channel `$` speaks on.
 pub const CHANNEL_TRADE: u32 = 12;
+/// `Channel_Global`: the channel the live server commits a system line on, such as the drop and pickup
+/// lines (`items-live-20261108-173913.jsonl` seq 45 and 59, `0x005E {1, 10}`).
+pub const CHANNEL_GLOBAL: u32 = 10;
 /// `Channel_Warning`: the middle-of-the-screen channel the reference answers a command on.
 pub const CHANNEL_WARNING: u32 = 7;
+/// `Channel_Emote`: the channel a `/roll` result is spoken on. Not measured here: preforged speaks a
+/// roll on 6 (`gw_world_simulation.h`, `Kind::roll`), and 6 is `Emote` in GWCA's channel enum.
+pub const CHANNEL_EMOTE: u32 = 6;
+/// `Channel_Whisper`: the channel a whisper is delivered on. Not measured here: preforged delivers a
+/// whisper on 14 (`Kind::whisper`), and 14 is `Whisper` in GWCA's channel enum.
+pub const CHANNEL_WHISPER: u32 = 14;
+
+/// The most points one compass stroke message carries: the `Array32` capacity of `0x802B` and `0x0091`.
+pub const COMPASS_POINTS: usize = 16;
+
+/// One stroke segment a client drew on its compass: `GAME_CMSG_DRAW_MAP` (`0x802B`) without its header,
+/// and what `GAME_SMSG_COMPASS_DRAWING` (`0x0091`) repeats to the rest of the party.
+///
+/// Not measured in any ASURA capture. The layout is this build's packet table (a dword and an
+/// `Array32` of 16); the meaning is preforged's (`gw_compass_wire.h`: a stroke dword, then packed
+/// short-x/short-y points). The dwords are relayed as they arrive and never interpreted.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompassStroke {
+    /// The stroke the points belong to, as the drawing client numbers it.
+    pub stroke: u32,
+    /// The points, each a packed pair of shorts; 1 to [`COMPASS_POINTS`] of them.
+    pub points: Vec<u32>,
+}
+
+/// Read `GAME_CMSG_DRAW_MAP`'s body: a dword, a `u16` count and exactly that many dwords. `None` for a
+/// body of any other shape, an empty stroke or one over [`COMPASS_POINTS`].
+pub fn read_draw_map(body: &[u8]) -> Option<CompassStroke> {
+    let stroke = u32::from_le_bytes(body.get(..4)?.try_into().ok()?);
+    let count = usize::from(u16::from_le_bytes(body.get(4..6)?.try_into().ok()?));
+    if !(1..=COMPASS_POINTS).contains(&count) || body.len() != 6 + 4 * count {
+        return None;
+    }
+    let points = body[6..]
+        .chunks_exact(4)
+        .map(|point| u32::from_le_bytes([point[0], point[1], point[2], point[3]]))
+        .collect();
+    Some(CompassStroke { stroke, points })
+}
+
+/// `GAME_SMSG_COMPASS_DRAWING` (`0x0091`): the player who drew, then the stroke as it was sent.
+/// Not measured: see [`CompassStroke`].
+pub fn compass_drawing(player_id: u16, stroke: &CompassStroke) -> crate::client::Frame {
+    Builder::new(crate::packets::game::GAME_SMSG_COMPASS_DRAWING)
+        .u16(player_id)
+        .u32(stroke.stroke)
+        .dwords(&stroke.points[..stroke.points.len().min(COMPASS_POINTS)])
+        .frame()
+}
+
+/// The `kind` byte of `GAME_CMSG_TARGET_CALL` for a called target (Ctrl+click on an agent). The other
+/// kinds name the caller's own health, energy, experience, morale or a skill, per preforged's
+/// `gw_callout.h`; none of them is modelled here.
+pub const TARGET_CALL_TARGET: u8 = 10;
+
+/// Read `GAME_CMSG_TARGET_CALL`'s body (`0x8023`): a kind byte and a dword whose meaning the kind
+/// decides. Not measured in any ASURA capture; the layout is this build's packet table.
+pub fn read_target_call(body: &[u8]) -> Option<(u8, u32)> {
+    let [kind, a, b, c, d] = *body else {
+        return None;
+    };
+    Some((kind, u32::from_le_bytes([a, b, c, d])))
+}
+
+/// `GAME_SMSG_AGENT_PINGED` (`0x0034`): a player calls an agent as its target. Not measured: the
+/// layout is this build's packet table (a word and an agent id), the use is preforged's
+/// (`callout::target_response`).
+pub fn agent_pinged(player_id: u16, agent_id: u32) -> crate::client::Frame {
+    Builder::new(crate::packets::game::GAME_SMSG_AGENT_PINGED)
+        .u16(player_id)
+        .u32(agent_id)
+        .frame()
+}
 
 /// `GAME_SMSG_CHAT_MESSAGE_CORE`: one fragment of the coded-string body.
 pub fn chat_message_core(text: &str) -> crate::client::Frame {
     Builder::new(CHAT_MESSAGE_CORE).text(text, 122).frame()
+}
+
+/// A `CHAT_MESSAGE_CORE` from coded-string units already assembled: the live server's drop and pickup
+/// lines are a fixed message prefix and the item's own name units, not text.
+pub fn chat_message_core_units(units: &[u16]) -> crate::client::Frame {
+    Builder::new(CHAT_MESSAGE_CORE).units(units, 122).frame()
 }
 
 /// The leading word of a player's All-channel chat body: string id 8, the All-chat body wrapper.
@@ -301,6 +410,24 @@ pub fn player_chat_line(player_id: u32, channel: u32, text: &str) -> Vec<crate::
         })
         .collect();
     frames.push(chat_message_local(player_id, channel));
+    frames
+}
+
+/// A server-composed line on `channel` under `subject_player_id`: the coded body in fragments, then
+/// the `CHAT_MESSAGE_SERVER` tag. The live server sends this pair for a drop and a pickup
+/// (`recordings/client/feature/items/items-live-20261108-173913.jsonl` seq 44-45 and 58-59); this is
+/// the same pair for a command answer that this server chooses to show in the client's chat log.
+pub fn server_chat_line(
+    subject_player_id: u32,
+    channel: u32,
+    text: &str,
+) -> Vec<crate::client::Frame> {
+    let body = chat_body_units(text);
+    let mut frames: Vec<crate::client::Frame> = body
+        .chunks(CHAT_FRAGMENT_UNITS)
+        .map(chat_message_core_units)
+        .collect();
+    frames.push(chat_message_server(subject_player_id, channel));
     frames
 }
 
@@ -384,6 +511,9 @@ pub const AGENT_UPDATE_DIRECTION: u16 = crate::packets::game::GAME_SMSG_AGENT_UP
 pub const AGENT_UPDATE_SPEED: u16 = crate::packets::game::GAME_SMSG_AGENT_UPDATE_SPEED;
 /// `GAME_SMSG_AGENT_STOP_MOVING` (`0x0028`): 6 bytes. Only the two-byte-header dialect has it.
 pub const AGENT_STOP_MOVING: u16 = crate::packets::game::GAME_SMSG_AGENT_STOP_MOVING;
+/// `GAME_SMSG_AGENT_UPDATE_DESTINATION` (`0x002A`): 22 bytes. An agent is walking to another agent.
+pub const AGENT_UPDATE_DESTINATION: u16 =
+    crate::packets::game::GAME_SMSG_AGENT_UPDATE_DESTINATION;
 /// `GAME_SMSG_AGENT_UPDATE_POSITION` (`0x002C`): 16 bytes.
 pub const AGENT_UPDATE_POSITION: u16 = crate::packets::game::GAME_SMSG_AGENT_UPDATE_POSITION;
 /// `GAME_SMSG_PING_REQUEST` (`0x000C`): 2 bytes.
@@ -399,6 +529,12 @@ pub const AGENT_PROPERTY_ENERGY: u32 = 41;
 pub const AGENT_PROPERTY_HEALTH: u32 = 42;
 /// See [`AGENT_PROPERTY_PUBLIC_LEVEL`].
 pub const AGENT_PROPERTY_ENERGY_REGEN: u32 = 43;
+/// The player action hold a pickup sets to 1 and clears when it ends
+/// (`items-live-20261108-173913.jsonl` seq 56 and 71: property 8 on the player agent).
+pub const AGENT_PROPERTY_ACTION: u32 = 8;
+/// The agent a pickup is aimed at: the ground item's agent id
+/// (`items-live-20261108-173913.jsonl` seq 57: property 39 on the player agent).
+pub const AGENT_PROPERTY_TARGET: u32 = 39;
 
 /// `GameSrv_CreatePlayerAgent`'s defaults: a player agent is a living agent that moves at 288 units a
 /// second, with 400 health and 25 energy. The reference hardcodes them and so does this.
@@ -784,7 +920,20 @@ pub fn item_low_detail(item: &NamedItem) -> crate::client::Frame {
 /// The fixed part is 33 bytes after the header: 4 + 4 + 1 + 1 + 2 + 2 + 1 + 4 + 4 + 4 + 4 + 2, then
 /// `2 * name.len()`, then 1, then `4 * modifiers.len()`.
 pub fn create_named_item(item: &NamedItem) -> crate::client::Frame {
-    Builder::new(CREATE_NAMED_ITEM)
+    named_item_frame(Builder::new(CREATE_NAMED_ITEM), item)
+}
+
+/// `GAME_SMSG_ITEM_UPDATE` (`0x0162`): the same fields as [`create_named_item`], against an item id the
+/// client has already seen. The live server sends it for the part of a stack a partial drop put on the
+/// ground, with a new id and the dropped quantity; the id is the client's, not the bag row's
+/// (`items-live-20261108-174014.jsonl` seq 134, 150, 243).
+pub fn item_update(item: &NamedItem) -> crate::client::Frame {
+    named_item_frame(Builder::new(ITEM_UPDATE), item)
+}
+
+/// One item body, shared by the create and update headers so the two layouts cannot drift.
+fn named_item_frame(mut builder: Builder, item: &NamedItem) -> crate::client::Frame {
+    builder = builder
         .u32(item.id)
         .u32(item.file_id)
         .u8(item.item_type)
@@ -797,7 +946,23 @@ pub fn create_named_item(item: &NamedItem) -> crate::client::Frame {
         .u32(item.model_id)
         .u32(item.quantity)
         .units(&item.name, 64)
-        .nested_dwords(&item.modifiers)
+        .nested_dwords(&item.modifiers);
+    builder.frame()
+}
+
+/// `GAME_SMSG_ITEM_UPDATE_QUANTITY` (`0x0139`): the quantity a stack has after a drop or a merge.
+pub fn item_update_quantity(item_id: u32, quantity: u32) -> crate::client::Frame {
+    Builder::new(ITEM_UPDATE_QUANTITY)
+        .u32(item_id)
+        .u32(quantity)
+        .frame()
+}
+
+/// `GAME_SMSG_ITEM_PICKED_UP` (`0x0159`): the item and the agent that picked it up.
+pub fn item_picked_up(item_id: u32, agent_id: u16) -> crate::client::Frame {
+    Builder::new(ITEM_PICKED_UP)
+        .u32(item_id)
+        .u16(agent_id)
         .frame()
 }
 
@@ -809,6 +974,24 @@ pub fn item_move_to_location(
     slot: u8,
 ) -> crate::client::Frame {
     Builder::new(ITEM_MOVE_TO_LOCATION)
+        .u16(stream)
+        .u32(item_id)
+        .u16(bag_id)
+        .u8(slot)
+        .frame()
+}
+
+/// `GAME_SMSG_ITEM_CHANGE_LOCATION` (`0x014B`): where an item moved during a session.
+///
+/// The load block uses [`item_move_to_location`] (`0x013E`); a live client answered
+/// a drag with this message instead. The two carry the same five fields.
+pub fn item_change_location(
+    stream: u16,
+    item_id: u32,
+    bag_id: u16,
+    slot: u8,
+) -> crate::client::Frame {
+    Builder::new(ITEM_CHANGE_LOCATION)
         .u16(stream)
         .u32(item_id)
         .u16(bag_id)
@@ -1260,32 +1443,95 @@ pub struct CreateAgent {
     pub direction: (f32, f32),
     /// Walking speed the client uses until a `0x002B` says otherwise.
     pub speed_base: f32,
-    /// The team the body belongs to; 0 for a neutral body.
+    /// The team the body belongs to: this server's token for a player, the client's four-character code
+    /// for an NPC (`'nonc'` in `pre-searing-load-3.jsonl` seq 233), 0 for a ground item.
     pub player_team_token: u32,
+    /// The reference's `h000B`. 0 for an item (`items-live-20261108-173913.jsonl` seq 43); for a living
+    /// agent the live server sends 5 for a player, 9 for a person NPC and 8 for an animal NPC
+    /// (`pre-searing-load-3.jsonl` seq 221, 233, 517).
+    pub h000b: u8,
+    /// The reference's `h001E`. 1 for every NPC in the 148 capture and for this server's own players;
+    /// live players carry 1, 4, 7 or 9 there (seq 221, 308, 370), a value this server does not model.
+    pub h001e: u8,
+    /// The reference's `h0023`. 1.0 for most bodies; the live server sends 0.32 and 0.167 for some NPCs
+    /// and 0.66 or 0.75 for some players (seq 267, 517, 221, 370). Unnamed.
+    pub h0023: f32,
+    /// The reference's `h0027`: `0x41400000` (12.0) for every living agent, players and NPCs alike
+    /// (`pre-searing-load-3.jsonl`, all 42 creates), `0x34000000` for an item.
+    pub h0027: u32,
+}
+
+/// The create's dword at body offset `0x27` for every living agent, players and NPCs alike
+/// (`pre-searing-load-3.jsonl`, all 42 creates).
+pub const AGENT_H0027_LIVING: u32 = 0x4140_0000;
+
+impl CreateAgent {
+    /// What every living create shares, to finish with struct-update syntax: the type, `h001E` 1,
+    /// `h0023` 1.0 and the living `h0027`, with a player's `h000B` (5). The rest is zero and is the
+    /// caller's to state.
+    pub const LIVING: CreateAgent = CreateAgent {
+        agent_id: 0,
+        model_id: 0,
+        agent_type: AGENT_TYPE_LIVING,
+        position: (0.0, 0.0),
+        plane: 0,
+        direction: (1.0, 0.0),
+        speed_base: 0.0,
+        player_team_token: 0,
+        h000b: 5,
+        h001e: 1,
+        h0023: 1.0,
+        h0027: AGENT_H0027_LIVING,
+    };
+}
+
+/// A player's `WORLD_CREATE_AGENT`: the one place a player's create is put together, for the client
+/// that owns the body and for every client that is introduced to it.
+pub fn player_create_agent(
+    agent_id: u32,
+    player_id: u32,
+    position: (f32, f32),
+    plane: u16,
+    direction: (f32, f32),
+    team_token: u32,
+) -> crate::client::Frame {
+    world_create_agent(&CreateAgent {
+        agent_id,
+        model_id: CHAR_CLASS_PLAYER_BASE | player_id,
+        position,
+        plane,
+        direction,
+        speed_base: PLAYER_SPEED_BASE,
+        player_team_token: team_token,
+        ..CreateAgent::LIVING
+    })
 }
 
 /// The 99-byte `GAME_SMSG_WORLD_CREATE_AGENT`, field for field as the reference builds it
 /// (`GameSrv_BuildCreateAgentMsg`).
 ///
-/// `h001E = 1`, `h0023 = 1.0` and `h0027 = 0x41400000` are the reference's own unverified
-/// constants; the two `HUGE_VALF` pairs are what it sends for the unmodelled vectors. They are copied
-/// rather than reasoned about, because a client that reads them differently will still read them the
-/// same way as it does from GWPS.
+/// `h000B`, `h001E`, `h0023` and `h0027` are carried by the caller because the live server fills them
+/// per body (see [`CreateAgent`]). The two `HUGE_VALF` pairs are what it sends for the unmodelled
+/// vectors of a body that is not walking; a body created mid-walk carries its destination there in
+/// the live stream (seq 517, 584), which this builder does not model - a walking NPC is created
+/// standing and told its walk right after. `h003B` goes out as 0: the live load carries a non-zero
+/// value there for every body (seq 233: `0x25DE3604`) and 0 for a body created after the load
+/// (seq 885, 1012, 1346); what it is is not established.
 pub fn world_create_agent(agent: &CreateAgent) -> crate::client::Frame {
     let mut builder = Builder::new(WORLD_CREATE_AGENT)
         .u32(agent.agent_id)
         .u32(agent.model_id)
         .u8(agent.agent_type)
-        .u8(5) // h000B
+        .u8(agent.h000b)
         .f32(agent.position.0)
         .f32(agent.position.1)
         .u16(agent.plane)
         .f32(agent.direction.0)
         .f32(agent.direction.1)
-        .u8(1) // h001E
+        .u8(agent.h001e)
         .f32(agent.speed_base)
-        .f32(1.0) // h0023
-        .u32(0x4140_0000) // h0027: 12.0 reinterpreted, exactly as the reference writes it
+        .f32(agent.h0023)
+        .u32(agent.h0027)
         .u32(agent.player_team_token)
         .u32(0) // h002F
         .u32(0) // h0033
@@ -1303,6 +1549,133 @@ pub fn world_create_agent(agent: &CreateAgent) -> crate::client::Frame {
         .u16(0); // h0061
     builder.bytes.reserve(0);
     builder.frame()
+}
+
+/// A dropped item's ground agent: `WORLD_CREATE_AGENT` with the item's id where a living agent carries
+/// its model, type 4, no speed and no team. The fields are the live server's
+/// (`items-live-20261108-173913.jsonl` seq 43: agent 13, item 609, type 4, `h000B = 0`,
+/// `h0027 = 0x34000000`, direction `(1, 0)`).
+pub fn item_agent(
+    agent_id: u32,
+    item_id: u32,
+    position: (f32, f32),
+    plane: u16,
+    direction: (f32, f32),
+) -> crate::client::Frame {
+    world_create_agent(&CreateAgent {
+        agent_id,
+        model_id: item_id,
+        agent_type: AGENT_TYPE_ITEM,
+        position,
+        plane,
+        direction,
+        speed_base: 0.0,
+        player_team_token: 0,
+        h000b: 0,
+        h001e: 1,
+        h0023: 1.0,
+        h0027: 0x3400_0000,
+    })
+}
+
+/// `CHAR_CLASS_NPC_BASE`: the top nibble of an NPC agent's model word, over its definition index
+/// (`recordings/client/feature/maps/pre-searing-load-3.jsonl` seq 233: `0x200005B3` for definition
+/// `0x5B3`, against `0x30000035` for player 0x35 at seq 221).
+pub const CHAR_CLASS_NPC_BASE: u32 = 0x2000_0000;
+
+/// See [`npc_update_properties`].
+pub const NPC_UPDATE_PROPERTIES: u16 = crate::packets::game::GAME_SMSG_NPC_UPDATE_PROPERTIES;
+/// See [`npc_update_model`].
+pub const NPC_UPDATE_MODEL: u16 = crate::packets::game::GAME_SMSG_NPC_UPDATE_MODEL;
+/// See [`agent_update_npc_name`].
+pub const AGENT_UPDATE_NPC_NAME: u16 = crate::packets::game::GAME_SMSG_AGENT_UPDATE_NPC_NAME;
+/// See [`agent_update_scale`].
+pub const AGENT_UPDATE_SCALE: u16 = crate::packets::game::GAME_SMSG_AGENT_UPDATE_SCALE;
+/// See [`npc_update_weapons`].
+pub const NPC_UPDATE_WEAPONS: u16 = crate::packets::game::GAME_SMSG_NPC_UPDATE_WEAPONS;
+
+/// The fields of one `GAME_SMSG_NPC_UPDATE_PROPERTIES` (`0x0056`), in wire order: the client's table
+/// gives six dwords, two bytes and a `String16` of capacity 8. Named from the 14 live records of
+/// `pre-searing-load-3.jsonl` (seq 229, 237, 246, ...): the definition index the creates' model words
+/// carry, a model file id, the visual word whose top byte `0x009A` repeats as the scale, a flags word,
+/// the profession byte and the level byte. The two dwords at body offsets `0x0A` and `0x12` are 0 in
+/// every record and are not named.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct NpcProperties<'a> {
+    /// The client's NPC table index.
+    pub definition_index: u32,
+    /// The model file.
+    pub file_id: u32,
+    /// Body offset `0x0A`; 0 in every capture.
+    pub h000a: u32,
+    /// The visual word; its top byte is the scale in percent.
+    pub visual: u32,
+    /// Body offset `0x12`; 0 in every capture.
+    pub h0012: u32,
+    /// The flags word.
+    pub flags: u32,
+    /// The primary profession.
+    pub primary: u8,
+    /// The level.
+    pub level: u8,
+    /// The encoded name, at most 8 units.
+    pub name: &'a [u16],
+}
+
+/// `GAME_SMSG_NPC_UPDATE_PROPERTIES` (`0x0056`): one NPC definition, sent once per connection in front
+/// of the first agent that uses it (seq 229 before agent 0x29; seq 265 is the second body of
+/// definition `0x5C8` and has none).
+pub fn npc_update_properties(npc: &NpcProperties<'_>) -> crate::client::Frame {
+    Builder::new(NPC_UPDATE_PROPERTIES)
+        .u32(npc.definition_index)
+        .u32(npc.file_id)
+        .u32(npc.h000a)
+        .u32(npc.visual)
+        .u32(npc.h0012)
+        .u32(npc.flags)
+        .u8(npc.primary)
+        .u8(npc.level)
+        .units(npc.name, 8)
+        .frame()
+}
+
+/// `GAME_SMSG_NPC_UPDATE_MODEL` (`0x0057`): a definition's model files, right after its `0x0056`; a
+/// definition with none sends no `0x0057` (seq 294). The table's layout: a dword and an `Array32` of
+/// capacity 8.
+pub fn npc_update_model(definition_index: u32, files: &[u32]) -> crate::client::Frame {
+    Builder::new(NPC_UPDATE_MODEL)
+        .u32(definition_index)
+        .dwords(&files[..files.len().min(8)])
+        .frame()
+}
+
+/// `GAME_SMSG_AGENT_UPDATE_NPC_NAME` (`0x009B`): one NPC agent's own name, ahead of its effects and
+/// create (seq 231). Two bodies of one definition carry different names (seq 239, 265).
+pub fn agent_update_npc_name(agent_id: u32, name: &[u16]) -> crate::client::Frame {
+    Builder::new(AGENT_UPDATE_NPC_NAME)
+        .u32(agent_id)
+        .units(name, 32)
+        .frame()
+}
+
+/// `GAME_SMSG_AGENT_UPDATE_SCALE` (`0x009A`): an agent's scale word, ahead of its create for the
+/// animal NPCs (seq 514: `0x1B000000`, the definition's own visual word).
+pub fn agent_update_scale(agent_id: u32, scale: u32) -> crate::client::Frame {
+    Builder::new(AGENT_UPDATE_SCALE)
+        .u32(agent_id)
+        .u32(scale)
+        .frame()
+}
+
+/// `GAME_SMSG_NPC_UPDATE_WEAPONS` (`0x006D`): the items an NPC holds, right after its create, for
+/// every NPC (seq 236: `{0x29, 2, 3}`, the two item records sent just before; seq 251: `{0x2B, 0, 0}`
+/// for an unarmed body).
+pub fn npc_update_weapons(agent_id: u32, lead: u32, offhand: u32) -> crate::client::Frame {
+    Builder::new(NPC_UPDATE_WEAPONS)
+        .u32(agent_id)
+        .u32(lead)
+        .u32(offhand)
+        .frame()
 }
 
 /// `GAME_SMSG_AGENT_UPDATE_MORALE`: one agent's morale as a percentage, 100 being the unmodified value.
@@ -1365,6 +1738,46 @@ pub fn update_agent_visual_equipment(agent_id: u32, items: [u32; 9]) -> crate::c
         builder = builder.u32(item);
     }
     builder.frame()
+}
+
+/// `GAME_SMSG_UPDATE_AGENT_VISUAL_EQUIPMENT_SLOT`: one visual slot on one agent, or 0 to clear it.
+///
+/// The live server sends this after every equip and unequip (`items-live-20261108-174014.jsonl`
+/// seq 24, 32, 41, 48, ...); the bulk `0x006E` is the load block's form. The slot is a **visual** slot,
+/// which is not the equipped bag's slot for legs, head, boots and gloves - see
+/// [`visual_equipment_slot`].
+pub fn update_agent_visual_equipment_slot(
+    agent_id: u32,
+    slot: u8,
+    item_id: u32,
+) -> crate::client::Frame {
+    Builder::new(UPDATE_AGENT_VISUAL_EQUIPMENT_SLOT)
+        .u32(agent_id)
+        .u32(u32::from(slot))
+        .u32(item_id)
+        .frame()
+}
+
+/// The visual slot a piece in equipped-bag `slot` is drawn in.
+///
+/// The equipped bag's order is weapon, off-hand, body, legs, head, boots, gloves, costume body, costume
+/// head (`EquippedItemSlot`, `GmInventory.h`). The visual message's order is weapon, off-hand, body,
+/// boots, legs, gloves, head (`0x006F` slots in `items-live-20261108-174014.jsonl`: body 2 -> 2, legs
+/// 3 -> 4, boots 5 -> 3, gloves 6 -> 5; the head slot is 4 -> 6 by the same permutation and the
+/// catalogue's own "2 body, 3 boots, 4 legs, 5 gloves, 6 head").
+pub fn visual_equipment_slot(equipped_slot: u8) -> u8 {
+    match equipped_slot {
+        0 => 0,
+        1 => 1,
+        2 => 2,
+        3 => 4,
+        4 => 6,
+        5 => 3,
+        6 => 5,
+        7 => 7,
+        8 => 8,
+        other => other,
+    }
 }
 
 /// `GAME_SMSG_AGENT_DISPLAY_CAPE`.
@@ -1858,6 +2271,15 @@ pub fn agent_update_direction_live(agent_id: u32, direction: (f32, f32)) -> crat
         .frame()
 }
 
+/// `GAME_SMSG_AGENT_UPDATE_SPEED_BASE` (`0x0027`): 10 bytes, the agent and the speed it walks at.
+/// cmonmeow sends this before a leg (`movement_base_speed_2022`, `gw_agent_wire.h:35-38`).
+pub fn agent_update_speed_base(agent_id: u32, speed: f32) -> crate::client::Frame {
+    Builder::new(crate::packets::game::GAME_SMSG_AGENT_UPDATE_SPEED_BASE)
+        .u32(agent_id)
+        .f32(speed)
+        .frame()
+}
+
 /// `GAME_SMSG_AGENT_UPDATE_SPEED`, the live form: 16 bytes, `2b 00 00 00 | agent | 1.0 | mode`.
 ///
 /// The capture shows 1.0 in every instance, mode 1 when a walk starts and mode 9 when it is cancelled.
@@ -1884,6 +2306,33 @@ pub fn world_simulation_tick_live(elapsed_ms: u32) -> crate::client::Frame {
 /// `GAME_SMSG_AGENT_STOP_MOVING`: the agent is no longer walking (`GameSrv_AgentStopMoving`).
 pub fn agent_stop_moving(agent_id: u32) -> crate::client::Frame {
     Builder::new(AGENT_STOP_MOVING).u32(agent_id).frame()
+}
+
+/// `GAME_SMSG_AGENT_UPDATE_DESTINATION` (`0x002A`): `agent` is walking to the agent `target`, which
+/// stands at `destination`.
+///
+/// Measured: the live server answers `INTERACT_LIVING` (`0x8039`), `ATTACK_AGENT` (`0x8026`) and
+/// `INTERACT_PLAYER` (`0x8033`) with this message for the requesting player's own agent, naming the
+/// target's current position and the target's agent id in the last dword
+/// (`recordings/client/feature/movement/movement-live-20261109-200703.jsonl` seq 626 -> 630,
+/// `multiplay/multiplay-live-20261106-195109.jsonl` seq 2154 -> 2158,
+/// `gwpackets/titles-live-20261106-034507.jsonl` seq 122 -> 124), and sends it again about every half
+/// second while the target walks (`movement-live-20261109-200703.jsonl` seq 721, 729, 747, 752).
+pub fn agent_update_destination(
+    agent_id: u32,
+    destination: (f32, f32),
+    plane: u16,
+    current_plane: u16,
+    target: u32,
+) -> crate::client::Frame {
+    Builder::new(AGENT_UPDATE_DESTINATION)
+        .u32(agent_id)
+        .f32(destination.0)
+        .f32(destination.1)
+        .u16(plane)
+        .u16(current_plane)
+        .u32(target)
+        .frame()
 }
 
 /// `GAME_SMSG_AGENT_UPDATE_POSITION`: where an agent is now. Sent to everyone *else* - the client that
@@ -1921,6 +2370,22 @@ mod tests {
     }
 
     #[test]
+    fn the_walk_to_an_agent_names_the_walker_the_point_and_the_target() {
+        // movement-live-20261109-200703.jsonl seq 630: agent 276 walking to agent 48 at
+        // (7264.79, 8828.81), planes 0 and 0. The capture is the client's struct (planes padded to
+        // dwords); the wire carries them as words, which is the row's declared 22 bytes.
+        let frame = agent_update_destination(276, (7264.795, 8828.808), 0, 0, 48);
+        assert_eq!(frame.header(), AGENT_UPDATE_DESTINATION);
+        assert_eq!(wire(&frame), 22);
+        let body = frame.body();
+        assert_eq!(&body[0..4], &276u32.to_le_bytes());
+        assert_eq!(&body[4..8], &7264.795f32.to_le_bytes());
+        assert_eq!(&body[8..12], &8828.808f32.to_le_bytes());
+        assert_eq!(&body[12..16], &[0, 0, 0, 0]);
+        assert_eq!(&body[16..20], &48u32.to_le_bytes());
+    }
+
+    #[test]
     fn the_fixed_size_messages_match_the_size_the_reference_sends() {
         // Every number here is a size measured from the reference's own send log
         // (docs/03-protocol.md section 11), not from a struct: `sizeof` is a maximum, the wire is not.
@@ -1947,9 +2412,14 @@ mod tests {
         assert_eq!(wire(&item_weapon_set(1, 0, 0, 0)), 13);
         assert_eq!(wire(&inventory_create_bag(1, 1, 0, 1, 20, 0)), 13);
         assert_eq!(wire(&item_move_to_location(1, 2, 1, 0)), 11);
+        assert_eq!(wire(&item_change_location(1, 2, 1, 0)), 11);
         assert_eq!(wire(&item_remove(1, 2)), 8);
-        // The unnamed form is fixed at 25 bytes; the named one has no fixed size at all.
+        assert_eq!(wire(&item_update_quantity(2, 5)), 10);
+        assert_eq!(wire(&item_picked_up(2, 1)), 8);
+        assert_eq!(wire(&item_agent(2, 9, (0.0, 0.0), 0, (1.0, 0.0))), 99);
+        // The unnamed form is fixed at 25 bytes; the named ones have no fixed size at all.
         assert_eq!(wire(&create_unnamed_item(&NamedItem::default())), 25);
+        assert_eq!(wire(&item_update(&NamedItem::default())), 36);
         assert_eq!(wire(&item_set_profession(3, 1)), 7);
         assert_eq!(wire(&chat_message_local(1, CHANNEL_ALL)), 5);
         assert_eq!(wire(&chat_message_server(1, CHANNEL_WARNING)), 5);
@@ -2025,6 +2495,10 @@ mod tests {
                 direction: (1.0, 0.0),
                 speed_base: 288.0,
                 player_team_token: 1,
+                h000b: 5,
+                h001e: 1,
+                h0023: 1.0,
+                h0027: 0x4140_0000,
             })),
             99
         );
@@ -2169,6 +2643,38 @@ mod tests {
             wire(&map_update_unlocked_list([&[7][..], &[8], &[], &[], &[9]])),
             24,
             "each list is a count plus its dwords"
+        );
+    }
+
+    #[test]
+    fn an_equipped_piece_is_drawn_in_its_visual_slot() {
+        // The equipped bag's slot -> the visual slot (`items-live-20261108-174014.jsonl` seq 24, 41,
+        // 59, 73, 90, 102: body 2 -> 2, legs 3 -> 4, boots 5 -> 3, gloves 6 -> 5; head 4 -> 6 by the
+        // same permutation, and the catalogue's "2 body, 3 boots, 4 legs, 5 gloves, 6 head").
+        assert_eq!(visual_equipment_slot(0), 0);
+        assert_eq!(visual_equipment_slot(1), 1);
+        assert_eq!(visual_equipment_slot(2), 2);
+        assert_eq!(visual_equipment_slot(3), 4);
+        assert_eq!(visual_equipment_slot(4), 6);
+        assert_eq!(visual_equipment_slot(5), 3);
+        assert_eq!(visual_equipment_slot(6), 5);
+        assert_eq!(
+            update_agent_visual_equipment_slot(7, 2, 639).encode(),
+            vec![0x6f, 0x00, 7, 0, 0, 0, 2, 0, 0, 0, 0x7f, 0x02, 0, 0]
+        );
+    }
+
+    #[test]
+    fn the_drop_and_pickup_answers_are_the_bytes_the_live_server_sent() {
+        // `items-live-20261108-174014.jsonl` seq 133: `39 01 | 6e 02 00 00 | 05 00 00 00`.
+        assert_eq!(
+            item_update_quantity(0x26e, 5).encode(),
+            vec![0x39, 0x01, 0x6e, 0x02, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00]
+        );
+        // `items-live-20261108-173913.jsonl` seq 60: `59 01 | 67 01 00 00 | 07 00`.
+        assert_eq!(
+            item_picked_up(0x167, 7).encode(),
+            vec![0x59, 0x01, 0x67, 0x01, 0x00, 0x00, 0x07, 0x00]
         );
     }
 
@@ -2383,6 +2889,149 @@ mod tests {
         assert_eq!(
             agent_update_flags(7, 4).encode(),
             vec![0x26, 0x00, 0x07, 0x00, 0x00, 0x00, 0x04]
+        );
+    }
+
+    /// The NPC entry messages of `recordings/client/feature/maps/pre-searing-load-3.jsonl`, each record's
+    /// struct fields narrowed to the client table's widths (`docs/03-protocol.md` 5e).
+    #[test]
+    fn the_npc_messages_are_the_captured_bytes() {
+        // Seq 229: definition 0x5B3, file 0x1C603, visual 0x64000000, flags 0x20C, warrior, level 2,
+        // a four-unit name.
+        let name = [0x0F4B, 0x8B51, 0xE2DF, 0x498E];
+        assert_eq!(
+            npc_update_properties(&NpcProperties {
+                definition_index: 0x5B3,
+                file_id: 0x1_C603,
+                h000a: 0,
+                visual: 0x6400_0000,
+                h0012: 0,
+                flags: 0x20C,
+                primary: 1,
+                level: 2,
+                name: &name,
+            })
+            .encode(),
+            vec![
+                0x56, 0x00, 0xb3, 0x05, 0x00, 0x00, 0x03, 0xc6, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x64, 0x00, 0x00, 0x00, 0x00, 0x0c, 0x02, 0x00, 0x00, 0x01, 0x02,
+                0x04, 0x00, 0x4b, 0x0f, 0x51, 0x8b, 0xdf, 0xe2, 0x8e, 0x49,
+            ]
+        );
+        // Seq 230: one model file.
+        assert_eq!(
+            npc_update_model(0x5B3, &[0x1_FB99]).encode(),
+            vec![0x57, 0x00, 0xb3, 0x05, 0x00, 0x00, 0x01, 0x00, 0x99, 0xfb, 0x01, 0x00]
+        );
+        // Seq 231: agent 0x29's name.
+        assert_eq!(
+            agent_update_npc_name(0x29, &[0x3382, 0x95BE, 0xE31B, 0x6F31]).encode(),
+            vec![
+                0x9b, 0x00, 0x29, 0x00, 0x00, 0x00, 0x04, 0x00, 0x82, 0x33, 0xbe, 0x95, 0x1b, 0xe3,
+                0x31, 0x6f,
+            ]
+        );
+        // Seq 514 and seq 251.
+        assert_eq!(
+            agent_update_scale(0xF5, 0x1B00_0000).encode(),
+            vec![0x9a, 0x00, 0xf5, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1b]
+        );
+        assert_eq!(
+            npc_update_weapons(0x2B, 0, 0).encode(),
+            vec![0x6d, 0x00, 0x2b, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        );
+        // Seq 233: agent 0x29's create, every field as captured except `h003B`, which this server
+        // sends as 0 (see `world_create_agent`).
+        let create = world_create_agent(&CreateAgent {
+            agent_id: 0x29,
+            model_id: CHAR_CLASS_NPC_BASE | 0x5B3,
+            agent_type: AGENT_TYPE_LIVING,
+            position: (f32::from_bits(0x4637_0C00), f32::from_bits(0x455B_D000)),
+            plane: 26,
+            direction: (f32::from_bits(0xBF76_14EA), f32::from_bits(0x3E8D_22A7)),
+            speed_base: 250.0,
+            player_team_token: 0x6E6F_6E63,
+            h000b: 9,
+            h001e: 1,
+            h0023: 1.0,
+            h0027: 0x4140_0000,
+        })
+        .encode();
+        let mut expected = vec![0x20, 0x00];
+        for dword in [0x29u32, 0x2000_05B3] {
+            expected.extend_from_slice(&dword.to_le_bytes());
+        }
+        expected.extend_from_slice(&[1, 9]);
+        for dword in [0x4637_0C00u32, 0x455B_D000] {
+            expected.extend_from_slice(&dword.to_le_bytes());
+        }
+        expected.extend_from_slice(&26u16.to_le_bytes());
+        for dword in [0xBF76_14EAu32, 0x3E8D_22A7] {
+            expected.extend_from_slice(&dword.to_le_bytes());
+        }
+        expected.push(1);
+        for dword in [
+            0x437A_0000u32,
+            0x3F80_0000,
+            0x4140_0000,
+            0x6E6F_6E63,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ] {
+            expected.extend_from_slice(&dword.to_le_bytes());
+        }
+        for dword in [0x7F80_0000u32, 0x7F80_0000] {
+            expected.extend_from_slice(&dword.to_le_bytes());
+        }
+        expected.extend_from_slice(&[0, 0, 0, 0, 0, 0]);
+        for dword in [0x7F80_0000u32, 0x7F80_0000] {
+            expected.extend_from_slice(&dword.to_le_bytes());
+        }
+        expected.extend_from_slice(&[0, 0]);
+        assert_eq!(create, expected);
+        assert_eq!(create.len(), 99);
+    }
+
+    #[test]
+    fn a_compass_stroke_is_relayed_with_its_drawer_in_front() {
+        // CMSG body: stroke 7, two points. The reply is the table's shape: word, dword, counted dwords.
+        let body = [7, 0, 0, 0, 2, 0, 0x10, 0x00, 0x20, 0x00, 0xF0, 0xFF, 0x05, 0x00];
+        let stroke = read_draw_map(&body).expect("a well-formed stroke");
+        assert_eq!(stroke.points, vec![0x0020_0010, 0x0005_FFF0]);
+        assert_eq!(
+            compass_drawing(0x0102, &stroke).encode(),
+            [&[0x91, 0x00, 0x02, 0x01][..], &body].concat()
+        );
+        // Sixteen points are 74 bytes on the wire; the table's declared 76 counts the array's count as
+        // four bytes.
+        let full = CompassStroke {
+            stroke: 1,
+            points: vec![0; COMPASS_POINTS],
+        };
+        assert_eq!(compass_drawing(1, &full).encode().len(), 74);
+        // An empty stroke, a count that disagrees with the body, and 17 points are not strokes.
+        assert_eq!(read_draw_map(&[7, 0, 0, 0, 0, 0]), None);
+        assert_eq!(read_draw_map(&body[..10]), None);
+        let mut long = vec![0, 0, 0, 0, 17, 0];
+        long.extend([0; 68]);
+        assert_eq!(read_draw_map(&long), None);
+    }
+
+    #[test]
+    fn a_target_call_becomes_an_agent_ping() {
+        assert_eq!(
+            read_target_call(&[TARGET_CALL_TARGET, 0x29, 0, 0, 0]),
+            Some((10, 0x29))
+        );
+        assert_eq!(read_target_call(&[10, 0x29, 0, 0]), None);
+        assert_eq!(
+            agent_pinged(3, 0x29).encode(),
+            vec![0x34, 0x00, 0x03, 0x00, 0x29, 0x00, 0x00, 0x00]
         );
     }
 

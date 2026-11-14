@@ -100,7 +100,10 @@ fn visit(dir: &Path, lists: &mut HashMap<i32, Vec<MapSpawn>>, notes: &mut Vec<St
         if !folder.is_dir() {
             continue;
         }
-        let name = folder.file_name().and_then(|name| name.to_str()).unwrap_or("");
+        let name = folder
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("");
         let Ok(folder_id) = name.parse::<i32>() else {
             visit(&folder, lists, notes);
             continue;
@@ -202,7 +205,10 @@ mod tests {
             angle: Some(0.0),
         };
         let (dx, dy) = spawn.direction();
-        assert!((dx - 1.0).abs() < 1e-6 && dy.abs() < 1e-6, "0 radians is +x");
+        assert!(
+            (dx - 1.0).abs() < 1e-6 && dy.abs() < 1e-6,
+            "0 radians is +x"
+        );
         let spawn = MapSpawn {
             angle: Some(std::f32::consts::FRAC_PI_2),
             ..spawn
@@ -212,7 +218,14 @@ mod tests {
             dx.abs() < 1e-6 && (dy - 1.0).abs() < 1e-6,
             "a quarter turn is +y"
         );
-        assert_eq!((1.0, 0.0), MapSpawn { angle: None, ..spawn }.direction());
+        assert_eq!(
+            (1.0, 0.0),
+            MapSpawn {
+                angle: None,
+                ..spawn
+            }
+            .direction()
+        );
     }
 
     #[test]
@@ -226,7 +239,10 @@ mod tests {
         )
         .expect("write");
         let (lists, notes) = walk(&dir);
-        assert!(notes.is_empty(), "no spawns.json is not a problem: {notes:?}");
+        assert!(
+            notes.is_empty(),
+            "no spawns.json is not a problem: {notes:?}"
+        );
         assert!(lists.is_empty(), "and it names no spawn list");
         std::fs::remove_dir_all(&dir).ok();
     }

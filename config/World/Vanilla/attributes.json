@@ -1,0 +1,31 @@
+{
+  "note": "The attribute rules a character's points are spent by (docs/52-skills.md). Read once when the world starts: restart the world after changing it.",
+  "professions": {
+    "value": [
+      [5, true], [5, false], [5, false], [5, false], [4, false], [4, false], [4, true], [4, false],
+      [6, false], [6, false], [6, false], [6, false], [6, true], [3, false], [3, false], [3, false], [3, true],
+      [1, true], [1, false], [1, false], [1, false], [1, false], [2, false], [2, true], [2, false], [2, false],
+      [11, false], [11, false], [11, false], [7, false], [7, false], [7, false], [8, false], [8, false], [8, false],
+      [7, true], [8, true], [9, false], [9, false], [9, false], [9, true], [10, false], [10, false], [10, false], [10, true],
+      [11, false], [11, false], [11, false], [11, false], [11, false], [11, false]
+    ],
+    "doc": "One pair per attribute index 0..50: the profession it belongs to, and whether only a primary of that profession may raise it. Profession 11 marks attributes no player allocates. The client's own table (preforged gw_attributes.h, pinned 2022 VA 980de0).",
+    "immutable": true
+  },
+  "rank_cost": {
+    "value": [0, 1, 3, 6, 10, 15, 21, 28, 37, 48, 61, 77, 97],
+    "doc": "The total points a rank costs, for ranks 0..12."
+  },
+  "level_points": {
+    "value": [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 55, 65, 75, 85, 95, 110, 125, 140, 155, 170],
+    "doc": "The attribute points a character has at each level, levels 1..20."
+  },
+  "max_rank": {
+    "value": 12,
+    "doc": "The highest rank points can buy."
+  },
+  "max_attributes": {
+    "value": 16,
+    "doc": "The most attributes one character can have between its two professions: the size of an attribute load."
+  }
+}

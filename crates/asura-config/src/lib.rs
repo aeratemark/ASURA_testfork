@@ -266,6 +266,20 @@ pub const MOVEMENT_VARIABLE: &str = "ASURA_MOVEMENT";
 pub struct Movement {
     /// How far a client may place itself when it cancels a walk and still be believed.
     pub max_allowed_correction: Described<f32>,
+    /// How near a player walks to an agent it interacts with or follows (`INTERACT_LIVING`,
+    /// `INTERACT_PLAYER`) before the server stops it. A file without the key runs on the default.
+    #[serde(default = "default_interact_range")]
+    pub interact_range: Described<f32>,
+}
+
+/// The built-in interact range, in game units: inside the 62 units at which the live server still sent
+/// a walk (`movement-live-20261109-200703.jsonl` seq 5171 -> 5173). Chosen, not measured.
+fn default_interact_range() -> Described<f32> {
+    Described {
+        value: 50.0,
+        doc: None,
+        immutable: false,
+    }
 }
 
 impl Default for Movement {
@@ -276,6 +290,7 @@ impl Default for Movement {
                 doc: None,
                 immutable: false,
             },
+            interact_range: default_interact_range(),
         }
     }
 }
@@ -289,6 +304,11 @@ impl Movement {
     /// The correction ceiling, as the number rather than the wrapper.
     pub fn max_allowed_correction(&self) -> f32 {
         self.max_allowed_correction.value
+    }
+
+    /// The interact range, as the number rather than the wrapper.
+    pub fn interact_range(&self) -> f32 {
+        self.interact_range.value
     }
 }
 
@@ -395,6 +415,136 @@ pub fn spawns() -> &'static Spawns {
                     "asura: spawns file {path} is not readable: {err}; using the built-in defaults"
                 );
                 Spawns::default()
+            }
+        }
+    })
+}
+
+/// The file that holds this machine's quest settings.
+pub const QUESTS_FILE: &str = "config/Server/quests.json";
+
+/// The variable that names a different quest settings file, for an experiment.
+pub const QUESTS_VARIABLE: &str = "ASURA_QUESTS";
+
+/// The quest settings: the storage bounds a profile is checked against, and the marker values sent to
+/// the client.
+///
+/// Same shape and same precedence as [`Movement`]: an environment variable overrides the file, the file
+/// overrides the built-in default. Read once per process, because a bound that changed mid-session would
+/// let one acceptance through and refuse the next, and a marker that changed would draw two.
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct QuestSettings {
+    /// The most quest attempts one character profile may hold.
+    pub max_records: Described<usize>,
+    /// The most objective credits one attempt may carry.
+    pub max_credits: Described<usize>,
+    /// The `0x009F` property 11 value for an open offer.
+    pub marker_offer: Described<u32>,
+    /// The `0x009F` property 11 value for an open turn-in.
+    pub marker_turn_in: Described<u32>,
+    /// The `0x009F` property 11 value that clears a marker.
+    pub marker_none: Described<u32>,
+}
+
+impl Default for QuestSettings {
+    fn default() -> Self {
+        QuestSettings {
+            max_records: Described {
+                value: 4096,
+                doc: None,
+                immutable: false,
+            },
+            max_credits: Described {
+                value: 64,
+                doc: None,
+                immutable: false,
+            },
+            marker_offer: Described {
+                value: 5,
+                doc: None,
+                immutable: true,
+            },
+            marker_turn_in: Described {
+                value: 4,
+                doc: None,
+                immutable: true,
+            },
+            marker_none: Described {
+                value: 0,
+                doc: None,
+                immutable: true,
+            },
+        }
+    }
+}
+
+impl QuestSettings {
+    /// Parse the file's text.
+    pub fn from_json(text: &str) -> Result<QuestSettings, String> {
+        let settings: QuestSettings = serde_json::from_str(text).map_err(|err| err.to_string())?;
+        if settings.max_records.value == 0 {
+            return Err("max_records must be greater than zero".to_string());
+        }
+        if settings.max_credits.value == 0 {
+            return Err("max_credits must be greater than zero".to_string());
+        }
+        Ok(settings)
+    }
+
+    /// The record bound, as the number rather than the wrapper.
+    pub fn max_records(&self) -> usize {
+        self.max_records.value
+    }
+
+    /// The credit bound, as the number rather than the wrapper.
+    pub fn max_credits(&self) -> usize {
+        self.max_credits.value
+    }
+
+    /// The open-offer marker value.
+    pub fn marker_offer(&self) -> u32 {
+        self.marker_offer.value
+    }
+
+    /// The open-turn-in marker value.
+    pub fn marker_turn_in(&self) -> u32 {
+        self.marker_turn_in.value
+    }
+
+    /// The value that clears a marker.
+    pub fn marker_none(&self) -> u32 {
+        self.marker_none.value
+    }
+}
+
+/// The quest settings in force, read once per process.
+pub fn quest_settings() -> &'static QuestSettings {
+    static IN_FORCE: OnceLock<QuestSettings> = OnceLock::new();
+    IN_FORCE.get_or_init(|| {
+        let path = match std::env::var(QUESTS_VARIABLE) {
+            Ok(value) if !value.trim().is_empty() => value.trim().to_string(),
+            _ => QUESTS_FILE.to_string(),
+        };
+        let path = resolve(&path).display().to_string();
+        match std::fs::read_to_string(&path) {
+            Ok(text) => match QuestSettings::from_json(&text) {
+                Ok(settings) => {
+                    eprintln!("asura: quest settings from {path}");
+                    settings
+                }
+                Err(err) => {
+                    // A broken file is not worth crashing a running world over, but it must be visible:
+                    // silently falling back would accept a profile nobody chose the bound for.
+                    eprintln!("asura: {path} is not a valid quest settings file: {err}; using the built-in defaults");
+                    QuestSettings::default()
+                }
+            },
+            Err(err) => {
+                eprintln!(
+                    "asura: quest settings file {path} is not readable: {err}; using the built-in defaults"
+                );
+                QuestSettings::default()
             }
         }
     })

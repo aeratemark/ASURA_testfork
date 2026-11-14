@@ -138,6 +138,13 @@ pub struct Traits {
     /// The character's level (`characters.level`, migration 0009): one of the fifteen dwords
     /// `GAME_SMSG_CHARACTER_UPDATE_FACTIONS` carries, and the number the client's own record shows.
     pub level: u16,
+    /// Total experience (`characters.experience`, migration 0036): the first of the fifteen dwords
+    /// `GAME_SMSG_CHARACTER_UPDATE_FACTIONS` carries.
+    pub experience: u32,
+    /// Skill points held now (`characters.skill_points`, migration 0036).
+    pub skill_points: u32,
+    /// Skill points earned in total (`characters.skill_points_total`, migration 0036).
+    pub skill_points_total: u32,
 }
 
 impl Default for Traits {
@@ -153,22 +160,36 @@ impl Default for Traits {
             campaign: 0,
             secondary_profession: 0,
             level: 1,
+            experience: 0,
+            skill_points: 0,
+            skill_points_total: 0,
         }
     }
 }
 
 /// The traits of one character, or `None` if there is no such row.
 pub async fn traits(pool: &PgPool, character: Uuid) -> sqlx::Result<Option<Traits>> {
-    let row: Option<(i64, i32, i64, i32, i32, i32, i32)> = sqlx::query_as(
+    let row: Option<(i64, i32, i64, i32, i32, i32, i32, i32, i32, i32)> = sqlx::query_as(
         "SELECT appearance, primary_profession, unlocked_professions, gold, campaign::int,
-                secondary_profession::int, level::int
+                secondary_profession::int, level::int, experience, skill_points, skill_points_total
            FROM t_characters WHERE id = $1",
     )
     .bind(character)
     .fetch_optional(pool)
     .await?;
     Ok(row.map(
-        |(appearance, profession, unlocked, gold, campaign, secondary, level)| Traits {
+        |(
+            appearance,
+            profession,
+            unlocked,
+            gold,
+            campaign,
+            secondary,
+            level,
+            experience,
+            skill_points,
+            skill_points_total,
+        )| Traits {
             appearance: appearance as u32,
             profession: profession as u8,
             unlocked_professions: unlocked as u32,
@@ -176,8 +197,50 @@ pub async fn traits(pool: &PgPool, character: Uuid) -> sqlx::Result<Option<Trait
             campaign: campaign as u8,
             secondary_profession: secondary as u8,
             level: level as u16,
+            experience: experience as u32,
+            skill_points: skill_points as u32,
+            skill_points_total: skill_points_total as u32,
         },
     ))
+}
+
+/// Write the four progression numbers a level change touches, in one statement.
+///
+/// The caller computes them from `asura_rules::experience::Curve`; this is the row, not the rule.
+pub async fn set_progress(
+    pool: &PgPool,
+    character: Uuid,
+    experience: u32,
+    level: u16,
+    skill_points: u32,
+    skill_points_total: u32,
+) -> sqlx::Result<()> {
+    sqlx::query(
+        "UPDATE t_characters
+            SET experience = $2, level = $3, skill_points = $4, skill_points_total = $5
+          WHERE id = $1",
+    )
+    .bind(character)
+    .bind(i32::try_from(experience).unwrap_or(i32::MAX))
+    .bind(i16::try_from(level).unwrap_or(i16::MAX))
+    .bind(i32::try_from(skill_points).unwrap_or(i32::MAX))
+    .bind(i32::try_from(skill_points_total).unwrap_or(i32::MAX))
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// The gold in the character's storage (migration 0035), or 0 for a character with no row.
+///
+/// Read apart from [`Traits`] on purpose: the load block reads the traits everywhere, and only the item
+/// answer and a Xunlai window need this balance.
+pub async fn storage_gold(pool: &PgPool, character: Uuid) -> sqlx::Result<u32> {
+    let row: Option<i32> =
+        sqlx::query_scalar("SELECT gold_storage FROM t_characters WHERE id = $1")
+            .bind(character)
+            .fetch_optional(pool)
+            .await?;
+    Ok(row.map_or(0, |gold| u32::try_from(gold).unwrap_or(0)))
 }
 
 /// One armour piece of the character settings blob: `GmChar.h`'s inline `pieces[]` entry.
