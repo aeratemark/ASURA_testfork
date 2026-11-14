@@ -3,6 +3,9 @@
 A private Guild Wars 1 server (Rust + PostgreSQL) that only runs pre-Searing. This is an experimental fork:
 things change fast and some features are half-built on purpose.
 
+**Feature checklist:** [`MILESTONES.md`](MILESTONES.md) lists every feature built so far and what is not
+built yet, each marked `[x]` client-confirmed, `[o]` test-proven, `[~]` built but unproven, `[ ]` not done.
+
 ## Run it
 
 1. Install Rust and PostgreSQL.
@@ -191,6 +194,7 @@ answered; everything else is a guess, and a live client decides.
 
 | document | what it settles |
 |---|---|
+| [`MILESTONES.md`](MILESTONES.md) | the feature checklist: what is built, proven and still open |
 | [`AGENTS.md`](AGENTS.md) | the binding rules for anyone (or any agent) changing this repo |
 | [`docs/HANDOFF.md`](docs/HANDOFF.md) | the evidence behind those rules and where work stands |
 | [`docs/19-running.md`](docs/19-running.md) | how to run it, and troubleshooting |
